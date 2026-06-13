@@ -11,7 +11,7 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: #374151 #1e2028;
+    scrollbar-color: #374151 #1a1b26;
   }
 }
 
@@ -32,7 +32,7 @@
 
   .sidebar-item.active {
     @apply bg-accent/20 text-accent-400;
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 12px rgba(124, 92, 252, 0.2);
   }
 
   /* Kanban */
@@ -43,7 +43,7 @@
 
   .kanban-column--drag-over {
     @apply border-accent/40 bg-accent/5;
-    box-shadow: 0 0 24px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 24px rgba(124, 92, 252, 0.1);
   }
 
   /* Task Card */
@@ -78,7 +78,7 @@
   }
 
   .btn-primary:hover {
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 16px rgba(124, 92, 252, 0.3);
   }
 
   .btn-secondary {
@@ -110,5 +110,32 @@
 
   .stat-card:hover {
     @apply border-white/10;
+  }
+
+  /* Home page cards */
+  .home-card {
+    @apply bg-surface-400/50 backdrop-blur-sm rounded-2xl p-6 border border-white/5 transition-all duration-200;
+  }
+
+  .home-card:hover {
+    @apply border-white/10;
+  }
+
+  .home-stat-card {
+    @apply bg-surface-400/50 backdrop-blur-sm rounded-2xl p-5 border border-white/5 transition-all duration-200;
+  }
+
+  .home-stat-card:hover {
+    @apply border-white/10;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.06);
+  }
+
+  /* Quick action buttons */
+  .quick-action-btn {
+    @apply flex flex-col items-center gap-2 p-4 rounded-xl bg-surface-300/50 border border-white/5 text-sm text-muted-400 hover:text-white hover:border-accent/30 hover:bg-accent/5 transition-all duration-200 cursor-pointer;
+  }
+
+  .quick-action-btn:hover {
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.1);
   }
 }

@@ -13,7 +13,10 @@ import { KanbanColumn } from "./components/KanbanColumn";
 import { TaskModal } from "./components/TaskModal";
 import { TaskDetailModal } from "./components/TaskDetailModal";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { HomePage } from "./components/HomePage";
 import { PlusIcon, KanbanIcon, HomeIcon, ChartIcon, SettingsIcon, LayersIcon } from "./Icons";
+
+type Page = "home" | "kanban" | "stats" | "config";
 
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -26,6 +29,7 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState<Page>("home");
 
   useEffect(() => {
     loadData();
@@ -149,136 +153,198 @@ export default function App() {
           </div>
 
           {/* Nav Items */}
-          <button className="sidebar-item" aria-label="Inicio" title="Inicio">
+          <button
+            className={`sidebar-item ${currentPage === "home" ? "active" : ""}`}
+            aria-label="Inicio"
+            title="Inicio"
+            onClick={() => setCurrentPage("home")}
+          >
             <HomeIcon size={20} />
           </button>
           <button
-            className="sidebar-item active"
+            className={`sidebar-item ${currentPage === "kanban" ? "active" : ""}`}
             aria-label="Tablero Kanban"
             title="Tablero Kanban"
+            onClick={() => setCurrentPage("kanban")}
           >
             <KanbanIcon size={20} />
           </button>
-          <button className="sidebar-item" aria-label="Estadísticas" title="Estadísticas">
+          <button
+            className={`sidebar-item ${currentPage === "stats" ? "active" : ""}`}
+            aria-label="Estadísticas"
+            title="Estadísticas"
+            onClick={() => setCurrentPage("stats")}
+          >
             <ChartIcon size={20} />
           </button>
 
           {/* Spacer to push Configuración to bottom */}
           <div className="flex-1" />
 
-          <button className="sidebar-item" aria-label="Configuración" title="Configuración">
+          <button
+            className={`sidebar-item ${currentPage === "config" ? "active" : ""}`}
+            aria-label="Configuración"
+            title="Configuración"
+            onClick={() => setCurrentPage("config")}
+          >
             <SettingsIcon size={20} />
           </button>
         </nav>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-        {/* Header */}
-        <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
-          <div className="px-8 py-5 flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-white">Tablero de Tareas</h1>
-              <p className="text-sm text-muted-400 mt-0.5">
-                {tasks.length} tareas · {doneTasks.length} completadas
-              </p>
-            </div>
-            <button onClick={handleNewTask} className="btn-primary flex items-center gap-2">
-              <PlusIcon size={18} />
-              <span>Nueva Tarea</span>
-            </button>
-          </div>
-        </header>
+      {/* Page Content */}
+      {currentPage === "home" && (
+        <HomePage
+          tasks={tasks}
+          todoCount={todoTasks.length}
+          inProgressCount={inProgressTasks.length}
+          doneCount={doneTasks.length}
+          onNavigate={(page) => setCurrentPage(page as Page)}
+        />
+      )}
 
-        {/* Stats Bar */}
-        <div className="px-8 py-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="stat-card">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-muted-400">Por Hacer</span>
-                <span className="text-lg font-bold text-white">{todoTasks.length}</span>
+      {currentPage === "kanban" && (
+        <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
+          {/* Header */}
+          <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
+            <div className="px-8 py-5 flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-white">Tablero de Tareas</h1>
+                <p className="text-sm text-muted-400 mt-0.5">
+                  {tasks.length} tareas · {doneTasks.length} completadas
+                </p>
               </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-accent rounded-full transition-all duration-500"
-                  style={{
-                    width: tasks.length ? `${(todoTasks.length / tasks.length) * 100}%` : "0%",
-                  }}
-                ></div>
-              </div>
+              <button onClick={handleNewTask} className="btn-primary flex items-center gap-2">
+                <PlusIcon size={18} />
+                <span>Nueva Tarea</span>
+              </button>
             </div>
-            <div className="stat-card">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-muted-400">En Progreso</span>
-                <span className="text-lg font-bold text-white">{inProgressTasks.length}</span>
+          </header>
+
+          {/* Stats Bar */}
+          <div className="px-8 py-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="stat-card">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-muted-400">Por Hacer</span>
+                  <span className="text-lg font-bold text-white">{todoTasks.length}</span>
+                </div>
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent rounded-full transition-all duration-500"
+                    style={{
+                      width: tasks.length ? `${(todoTasks.length / tasks.length) * 100}%` : "0%",
+                    }}
+                  ></div>
+                </div>
               </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-warning rounded-full transition-all duration-500"
-                  style={{
-                    width: tasks.length
-                      ? `${(inProgressTasks.length / tasks.length) * 100}%`
-                      : "0%",
-                  }}
-                ></div>
+              <div className="stat-card">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-muted-400">En Progreso</span>
+                  <span className="text-lg font-bold text-white">{inProgressTasks.length}</span>
+                </div>
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-warning rounded-full transition-all duration-500"
+                    style={{
+                      width: tasks.length
+                        ? `${(inProgressTasks.length / tasks.length) * 100}%`
+                        : "0%",
+                    }}
+                  ></div>
+                </div>
               </div>
-            </div>
-            <div className="stat-card">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-muted-400">Completadas</span>
-                <span className="text-lg font-bold text-white">{doneTasks.length}</span>
-              </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-success rounded-full transition-all duration-500"
-                  style={{
-                    width: tasks.length ? `${(doneTasks.length / tasks.length) * 100}%` : "0%",
-                  }}
-                ></div>
+              <div className="stat-card">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-muted-400">Completadas</span>
+                  <span className="text-lg font-bold text-white">{doneTasks.length}</span>
+                </div>
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-success rounded-full transition-all duration-500"
+                    style={{
+                      width: tasks.length ? `${(doneTasks.length / tasks.length) * 100}%` : "0%",
+                    }}
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Kanban Board */}
+          <main className="flex-1 px-8 pb-8">
+            <div className="flex gap-6 overflow-x-auto pb-4">
+              <KanbanColumn
+                title="Por Hacer"
+                status="todo"
+                tasks={todoTasks}
+                color="accent"
+                onViewTask={handleViewTask}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteRequest}
+                onStatusChange={handleStatusChange}
+                onDrop={handleDrop}
+              />
+              <KanbanColumn
+                title="En Progreso"
+                status="in_progress"
+                tasks={inProgressTasks}
+                color="warning"
+                onViewTask={handleViewTask}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteRequest}
+                onStatusChange={handleStatusChange}
+                onDrop={handleDrop}
+              />
+              <KanbanColumn
+                title="Completadas"
+                status="done"
+                tasks={doneTasks}
+                color="success"
+                onViewTask={handleViewTask}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteRequest}
+                onStatusChange={handleStatusChange}
+                onDrop={handleDrop}
+              />
+            </div>
+          </main>
         </div>
+      )}
 
-        {/* Kanban Board */}
-        <main className="flex-1 px-8 pb-8">
-          <div className="flex gap-6 overflow-x-auto pb-4">
-            <KanbanColumn
-              title="Por Hacer"
-              status="todo"
-              tasks={todoTasks}
-              color="accent"
-              onViewTask={handleViewTask}
-              onEditTask={handleEditTask}
-              onDeleteTask={handleDeleteRequest}
-              onStatusChange={handleStatusChange}
-              onDrop={handleDrop}
-            />
-            <KanbanColumn
-              title="En Progreso"
-              status="in_progress"
-              tasks={inProgressTasks}
-              color="warning"
-              onViewTask={handleViewTask}
-              onEditTask={handleEditTask}
-              onDeleteTask={handleDeleteRequest}
-              onStatusChange={handleStatusChange}
-              onDrop={handleDrop}
-            />
-            <KanbanColumn
-              title="Completadas"
-              status="done"
-              tasks={doneTasks}
-              color="success"
-              onViewTask={handleViewTask}
-              onEditTask={handleEditTask}
-              onDeleteTask={handleDeleteRequest}
-              onStatusChange={handleStatusChange}
-              onDrop={handleDrop}
-            />
-          </div>
-        </main>
-      </div>
+      {currentPage === "stats" && (
+        <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
+          <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
+            <div className="px-8 py-6">
+              <h1 className="text-xl font-bold text-white">Estadísticas</h1>
+              <p className="text-sm text-muted-400 mt-0.5">Resumen de productividad</p>
+            </div>
+          </header>
+          <main className="flex-1 px-8 py-6">
+            <div className="home-card text-center py-12">
+              <ChartIcon size={48} className="text-muted-500 mx-auto mb-4" />
+              <p className="text-muted-400">Próximamente — estadísticas detalladas</p>
+            </div>
+          </main>
+        </div>
+      )}
+
+      {currentPage === "config" && (
+        <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
+          <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
+            <div className="px-8 py-6">
+              <h1 className="text-xl font-bold text-white">Configuración</h1>
+              <p className="text-sm text-muted-400 mt-0.5">Preferencias de la aplicación</p>
+            </div>
+          </header>
+          <main className="flex-1 px-8 py-6">
+            <div className="home-card text-center py-12">
+              <SettingsIcon size={48} className="text-muted-500 mx-auto mb-4" />
+              <p className="text-muted-400">Próximamente — configuración de la aplicación</p>
+            </div>
+          </main>
+        </div>
+      )}
 
       {/* Modals */}
       {showTaskModal && (
