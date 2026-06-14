@@ -138,4 +138,20 @@
   .quick-action-btn:hover {
     box-shadow: 0 0 16px rgba(99, 102, 241, 0.1);
   }
+
+  /* Kiro mascot floating animation */
+  .kiro-float {
+    @apply animate-[kiroFloat_4s_ease-in-out_infinite];
+  }
+
+  /* Hero gradient background */
+  .hero-gradient {
+    background: linear-gradient(135deg, rgba(124, 92, 252, 0.08) 0%, transparent 60%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kiro-float {
+    animation: none;
+  }
 }

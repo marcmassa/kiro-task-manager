@@ -10,9 +10,10 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "elysia": "^1.0.0",
     "@elysiajs/cors": "^1.0.0",
     "@elysiajs/static": "^1.0.0",
+    "@lobehub/icons": "^5.10.0",
+    "elysia": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

@@ -7,6 +7,7 @@ import {
   ArrowRightIcon,
   CalendarIcon,
 } from "../Icons";
+import { KiroMascot } from "./KiroMascot";
 
 interface HomePageProps {
   tasks: Task[];
@@ -46,6 +47,22 @@ export function HomePage({
       </header>
 
       <main className="flex-1 px-8 py-6 space-y-8">
+        {/* Hero Section */}
+        <div className="home-card hero-gradient flex items-center gap-6 md:flex-row flex-col">
+          <div className="kiro-float shrink-0">
+            <KiroMascot
+              size={160}
+              className="w-[60px] h-[60px] md:w-[120px] md:h-[120px] lg:w-[160px] lg:h-[160px]"
+            />
+          </div>
+          <div className="text-center md:text-left">
+            <h2 className="text-lg font-semibold text-white">Kiro está listo para ayudarte</h2>
+            <p className="text-sm text-muted-400 mt-1">
+              Tu asistente de productividad está aquí. ¡Organicemos tu día!
+            </p>
+          </div>
+        </div>
+
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="home-stat-card">
@@ -148,9 +165,12 @@ export function HomePage({
             </div>
             <div className="space-y-2">
               {recentTasks.length === 0 ? (
-                <p className="text-sm text-muted-400 text-center py-6">
-                  No hay tareas aún. ¡Crea tu primera tarea!
-                </p>
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <KiroMascot size={48} variant="compact" className="opacity-60" />
+                  <p className="text-sm text-muted-400 text-center">
+                    No hay tareas aún. ¡Crea tu primera tarea!
+                  </p>
+                </div>
               ) : (
                 recentTasks.map((task) => (
                   <div
