@@ -69,8 +69,8 @@ describe("linearClient.validateApiKey", () => {
       });
     });
     try {
-      const viewer = await validateApiKey("lin_api_test_abc123");
-      expect(capturedAuth.value).toBe("lin_api_test_abc123");
+      const viewer = await validateApiKey("test_key_abc123");
+      expect(capturedAuth.value).toBe("test_key_abc123");
       expect(viewer).toEqual({ id: "u1", name: "Test User", email: "t@example.com" });
     } finally {
       restore();
@@ -80,7 +80,7 @@ describe("linearClient.validateApiKey", () => {
   test("401 response throws LinearAuthError", async () => {
     const { restore } = mockFetch(() => jsonResponse({ errors: [{ message: "auth" }] }, 401));
     try {
-      await expect(validateApiKey("lin_api_bad")).rejects.toBeInstanceOf(LinearAuthError);
+      await expect(validateApiKey("test_key_bad")).rejects.toBeInstanceOf(LinearAuthError);
     } finally {
       restore();
     }
@@ -89,7 +89,7 @@ describe("linearClient.validateApiKey", () => {
   test("200 with data.viewer === null throws LinearAuthError", async () => {
     const { restore } = mockFetch(() => jsonResponse({ data: { viewer: null } }));
     try {
-      await expect(validateApiKey("lin_api_noviewer")).rejects.toBeInstanceOf(LinearAuthError);
+      await expect(validateApiKey("test_key_noviewer")).rejects.toBeInstanceOf(LinearAuthError);
     } finally {
       restore();
     }
@@ -102,7 +102,7 @@ describe("linearClient.validateApiKey", () => {
       return jsonResponse({ errors: [{ message: "boom" }] }, 500);
     });
     try {
-      await expect(validateApiKey("lin_api_500")).rejects.toBeInstanceOf(LinearNetworkError);
+      await expect(validateApiKey("test_key_500")).rejects.toBeInstanceOf(LinearNetworkError);
       // 1 initial + 1 retry = 2
       expect(calls).toBeGreaterThanOrEqual(2);
     } finally {
@@ -117,7 +117,7 @@ describe("linearClient.validateApiKey", () => {
       return jsonResponse({ errors: [{ message: "rate limited" }] }, 429);
     });
     try {
-      await expect(validateApiKey("lin_api_429")).rejects.toBeInstanceOf(LinearRateLimitError);
+      await expect(validateApiKey("test_key_429")).rejects.toBeInstanceOf(LinearRateLimitError);
       expect(calls).toBeGreaterThanOrEqual(2);
     } finally {
       restore();
@@ -133,7 +133,7 @@ describe("linearClient.validateApiKey", () => {
       }),
     );
     try {
-      await expect(validateApiKey("lin_api_gql_auth")).rejects.toBeInstanceOf(LinearAuthError);
+      await expect(validateApiKey("test_key_gql_auth")).rejects.toBeInstanceOf(LinearAuthError);
     } finally {
       restore();
     }
