@@ -46,3 +46,51 @@ export interface TaskFormData {
   due_date: string;
   status: TaskStatus;
 }
+
+// ── FEAT-005: Settings + Linear integration types ─────────────────────────
+
+export interface WorkspaceSettings {
+  workspaceName: string;
+  defaultLanguage: string; // 'es-ES' en v1
+  defaultTimezone: string; // 'Europe/Madrid' en v1
+}
+
+export interface NotificationSettings {
+  notifyOnDue: boolean;
+  notifyOnDone: boolean;
+  notifyDailyDigest: boolean;
+}
+
+export interface SettingsResponse {
+  workspace: WorkspaceSettings;
+  notifications: NotificationSettings;
+}
+
+export interface LinearAccount {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface LinearIntegrationStatus {
+  connected: boolean;
+  account?: LinearAccount; // presente solo si connected
+  lastSyncAt?: string | null; // ISO timestamp
+  lastSyncSummary?: {
+    // presente si lastSyncAt !== null
+    found: number;
+    mappable: number;
+    alreadyInKanban: number;
+  };
+}
+
+export interface SyncResult {
+  found: number;
+  mappable: number;
+  alreadyInKanban: number;
+  lastSyncAt: string;
+}
+
+export interface DeleteAllResult {
+  deleted: number;
+}

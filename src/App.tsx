@@ -14,6 +14,8 @@ import { TaskModal } from "./components/TaskModal";
 import { TaskDetailModal } from "./components/TaskDetailModal";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { HomePage } from "./components/HomePage";
+import { StatsDashboard } from "./components/StatsDashboard";
+import { SettingsPage } from "./components/SettingsPage";
 import { PlusIcon, KanbanIcon, HomeIcon, ChartIcon, SettingsIcon, LayersIcon } from "./Icons";
 
 type Page = "home" | "kanban" | "stats" | "config";
@@ -29,6 +31,7 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("home");
 
   useEffect(() => {
@@ -36,6 +39,8 @@ export default function App() {
   }, []);
 
   async function loadData() {
+    setError(null);
+    setLoading(true);
     try {
       const [tasksData, catsData, priosData] = await Promise.all([
         fetchTasks(),
@@ -47,6 +52,7 @@ export default function App() {
       setPriorities(priosData);
     } catch (error) {
       console.error("Error loading data:", error);
+      setError("Error al cargar las estadísticas. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -313,37 +319,11 @@ export default function App() {
       )}
 
       {currentPage === "stats" && (
-        <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-          <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
-            <div className="px-8 py-6">
-              <h1 className="text-xl font-bold text-white">Estadísticas</h1>
-              <p className="text-sm text-muted-400 mt-0.5">Resumen de productividad</p>
-            </div>
-          </header>
-          <main className="flex-1 px-8 py-6">
-            <div className="home-card text-center py-12">
-              <ChartIcon size={48} className="text-muted-500 mx-auto mb-4" />
-              <p className="text-muted-400">Próximamente — estadísticas detalladas</p>
-            </div>
-          </main>
-        </div>
+        <StatsDashboard tasks={tasks} loading={loading} error={error} onRetry={loadData} />
       )}
 
       {currentPage === "config" && (
-        <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-          <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
-            <div className="px-8 py-6">
-              <h1 className="text-xl font-bold text-white">Configuración</h1>
-              <p className="text-sm text-muted-400 mt-0.5">Preferencias de la aplicación</p>
-            </div>
-          </header>
-          <main className="flex-1 px-8 py-6">
-            <div className="home-card text-center py-12">
-              <SettingsIcon size={48} className="text-muted-500 mx-auto mb-4" />
-              <p className="text-muted-400">Próximamente — configuración de la aplicación</p>
-            </div>
-          </main>
-        </div>
+        <SettingsPage loading={loading} error={error} onRetry={loadData} onDataChanged={loadData} />
       )}
 
       {/* Modals */}

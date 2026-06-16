@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { WarningIcon } from "../Icons";
 
 interface ConfirmDialogProps {
@@ -5,12 +6,70 @@ interface ConfirmDialogProps {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Override the default button labels. Defaults: "Eliminar" / "Cancelar". */
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
-export function ConfirmDialog({ title, message, onConfirm, onCancel }: ConfirmDialogProps) {
+/**
+ * Accessible confirmation dialog for destructive actions (R14).
+ *
+ * Accessibility features:
+ *   - `role="alertdialog"` + `aria-modal="true"` (screen readers know it's modal)
+ *   - `aria-labelledby` / `aria-describedby` linking the title and message
+ *   - On mount: focus moves to the **Cancel** button (safer default for destructive actions)
+ *   - **Esc** key cancels
+ *   - **Tab** is trapped within the dialog (focus cycles between the two buttons)
+ *   - Click on the backdrop cancels
+ *
+ * v1 trade-off: focus trap is implemented via a Tab/Shift+Tab handler on the
+ * dialog that wraps focus to the opposite button when it would leave the
+ * dialog. This covers the keyboard-only case; a full focus-trap would also
+ * intercept screen-reader virtual cursors and `aria-hidden` siblings, which
+ * is out of scope for the workshop.
+ */
+export function ConfirmDialog({
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  confirmLabel = "Eliminar",
+  cancelLabel = "Cancelar",
+}: ConfirmDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Focus the safer default (Cancel) on open
+    cancelRef.current?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      if (e.key === "Tab") {
+        // Two-button focus trap
+        const active = document.activeElement;
+        if (e.shiftKey && active === cancelRef.current) {
+          e.preventDefault();
+          confirmRef.current?.focus();
+        } else if (!e.shiftKey && active === confirmRef.current) {
+          e.preventDefault();
+          cancelRef.current?.focus();
+        }
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onCancel]);
+
   return (
     <div className="modal-overlay" onClick={onCancel} role="presentation">
       <div
+        ref={dialogRef}
         className="bg-surface-300 border border-white/10 rounded-2xl shadow-modal w-full max-w-sm p-6 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
         role="alertdialog"
@@ -30,11 +89,21 @@ export function ConfirmDialog({ title, message, onConfirm, onCancel }: ConfirmDi
           {message}
         </p>
         <div className="flex gap-3">
-          <button onClick={onConfirm} className="btn-danger flex-1">
-            Eliminar
+          <button
+            ref={confirmRef}
+            onClick={onConfirm}
+            className="btn-danger flex-1"
+            aria-label={`${confirmLabel} — acción destructiva`}
+          >
+            {confirmLabel}
           </button>
-          <button onClick={onCancel} className="btn-secondary flex-1">
-            Cancelar
+          <button
+            ref={cancelRef}
+            onClick={onCancel}
+            className="btn-secondary flex-1"
+            aria-label={cancelLabel}
+          >
+            {cancelLabel}
           </button>
         </div>
       </div>

@@ -2,6 +2,17 @@ import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import db from "./db/database";
 import path from "path";
+import {
+  getSettings,
+  patchWorkspaceSettings,
+  patchNotificationSettings,
+  getLinearStatus,
+  connectLinear,
+  disconnectLinear,
+  syncLinear,
+  exportAttachmentResponse,
+  deleteAllTasks,
+} from "./src/utils/settingsHandlers";
 
 const PUBLIC_DIR = path.resolve(import.meta.dir, "public");
 
@@ -155,6 +166,42 @@ const app = new Elysia()
     return db.query("SELECT * FROM priorities ORDER BY level").all();
   })
 
+  // ── FEAT-005: Settings + Integrations + Export + Delete-all ──────────────
+
+  .get("/api/settings", () => getSettings(db))
+
+  .patch("/api/settings/workspace", ({ body, set }) => {
+    const result = patchWorkspaceSettings(db, body as any);
+    if (result.status !== 200) set.status = result.status;
+    return result.body;
+  })
+
+  .patch("/api/settings/notifications", ({ body, set }) => {
+    const result = patchNotificationSettings(db, body as any);
+    if (result.status !== 200) set.status = result.status;
+    return result.body;
+  })
+
+  .get("/api/integrations/linear", () => getLinearStatus(db))
+
+  .post("/api/integrations/linear/connect", async ({ body, set }) => {
+    const result = await connectLinear(db, body as any);
+    if (result.status !== 200) set.status = result.status;
+    return result.body;
+  })
+
+  .post("/api/integrations/linear/sync", ({ set }) => {
+    const result = syncLinear(db);
+    if (result.status !== 200) set.status = result.status;
+    return result.body;
+  })
+
+  .delete("/api/integrations/linear", () => disconnectLinear(db).body)
+
+  .get("/api/export", () => exportAttachmentResponse(db))
+
+  .delete("/api/tasks/all", () => deleteAllTasks(db).body)
+
   // Serve index.html for all non-API routes (SPA fallback)
   .get("/*", ({ request }) => {
     const url = new URL(request.url);
@@ -164,8 +211,13 @@ const app = new Elysia()
     return new Response(Bun.file(path.join(PUBLIC_DIR, "index.html")), {
       headers: { "Content-Type": "text/html" },
     });
-  })
+  });
 
-  .listen(3000);
+// Start the server only when this file is run directly (not when imported
+// for tests in the future — server.ts is the production entry point).
+if (import.meta.main) {
+  app.listen(3000);
+  console.log(`🚀 Task Manager running at http://localhost:3000`);
+}
 
-console.log(`🚀 Task Manager running at http://localhost:${app.server?.port}`);
+export { app };

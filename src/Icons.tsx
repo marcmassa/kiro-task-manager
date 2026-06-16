@@ -257,3 +257,65 @@ export function LayersIcon({ className = "", size = 20 }: IconProps) {
     </svg>
   );
 }
+
+// FEAT-005 icons — settings page
+
+export function BellIcon({ className = "", size = 20 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+      className={className}
+    >
+      <path d="M221.8,175.94c-5.55-9.56-13.8-36.61-13.8-71.94a80,80,0,0,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H208a16,16,0,0,0,13.8-24.06ZM48,184c6.71-12.45,16-41.45,16-80a64,64,0,0,1,128,0c0,38.55,9.29,67.55,16,80Zm112,40a8,8,0,0,1-8,8H104a8,8,0,0,1,0-16h48A8,8,0,0,1,160,224Z" />
+    </svg>
+  );
+}
+
+export function LinkIcon({ className = "", size = 20 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+      className={className}
+    >
+      <path d="M137.54,186.36a8,8,0,0,1,0,11.31l-9.94,10A46,46,0,0,1,65,142.74l24.43-24.43a8,8,0,0,1,11.32,11.32L76.36,154a30,30,0,0,0,42.43,42.43l9.94-9.94A8,8,0,0,1,137.54,186.36Zm70.41-138.31a45.92,45.92,0,0,0-65,0L132,68.06a8,8,0,0,0,11.32,11.32l10-9.94a30,30,0,0,1,42.43,42.43l-24.43,24.43a8,8,0,0,0,11.32,11.32L207.94,122A46,46,0,0,0,207.95,48.05Zm-19.43,75.06a8,8,0,0,0-10.92,3.27L132.74,200A30,30,0,1,1,90.31,157.59l31.86-44.4a8,8,0,0,0-12.93-9.28L77.07,148.27A46,46,0,1,0,144.19,208.2l44.85-62.43A8,8,0,0,0,188.52,123.11Z" />
+    </svg>
+  );
+}
+
+export function DownloadIcon({ className = "", size = 20 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+      className={className}
+    >
+      <path d="M240,136v64a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V136a8,8,0,0,1,16,0v64H224V136a8,8,0,0,1,16,0Zm-117.66-5.66L128,134.69,133.66,140l-56-56a8,8,0,0,1,11.32-11.32L128,116.69V24a8,8,0,0,1,16,0v92.69l43.66-43.66a8,8,0,0,1,11.32,11.32Z" />
+    </svg>
+  );
+}
+
+export function RefreshIcon({ className = "", size = 20 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+      className={className}
+    >
+      <path d="M240,56v48a8,8,0,0,1-8,8H184a8,8,0,0,1,0-16h35.31l-18.32-18.34a80,80,0,1,0,1.79,108.36,8,8,0,0,1,11.32,11.32A96,96,0,1,1,189.66,76.06L210.34,96.74V56a8,8,0,0,1,16,0Z" />
+    </svg>
+  );
+}
