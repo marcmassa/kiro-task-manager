@@ -74,6 +74,29 @@ export default {
           600: "#4b5563",
           700: "#374151",
         },
+        // ── AWS Brand palette ────────────────────────────────────────
+        // Used via Tailwind classes (bg-squid, border-aws-orange, etc.)
+        // so components never need hex literals.
+        squid: {
+          DEFAULT: "#252F3E",
+          light: "#2d3a4e",
+          dark: "#1a2230",
+        },
+        "aws-orange": {
+          DEFAULT: "#FF9900",
+          muted: "#cc7a00",
+          subtle: "#fff3e0",
+        },
+        "aws-green": {
+          DEFAULT: "#037F0C",
+          muted: "#025f09",
+          subtle: "#e6f4e7",
+        },
+        "aws-red": {
+          DEFAULT: "#D91515",
+          muted: "#b01010",
+          subtle: "#fce8e8",
+        },
       },
       fontFamily: {
         sans: [

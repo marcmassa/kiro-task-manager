@@ -208,23 +208,18 @@ export function IntegrationCard({
       role="region"
       aria-label="Conectar integración"
     >
-      {/* Info banner */}
-      <div className="flex items-start gap-3 p-3 rounded-xl border border-accent/20 bg-accent/10 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-accent/20 text-accent-300 flex items-center justify-center shrink-0">
+      {/* Header compacto — ícono + título + descripción discreta */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-9 h-9 rounded-lg bg-accent/15 text-accent-400 flex items-center justify-center shrink-0">
           <LinkIcon size={16} />
         </div>
         <div>
-          <p className="text-sm font-medium text-white">Conecta tu herramienta profesional</p>
-          <p className="text-xs text-muted-300 mt-0.5">
-            En esta versión, solo Linear está habilitado.
+          <p className="text-sm font-medium text-white">Linear</p>
+          <p className="text-xs text-muted-500">
+            Importa issues a tu kanban. Jira, Trello y Asana llegan pronto.
           </p>
         </div>
       </div>
-
-      {/* Change 2: One-line description above the form row */}
-      <p className="text-xs text-muted-400 mb-4">
-        Conecta tu workspace con Linear para importar issues y asignarlas a tu kanban.
-      </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="block">

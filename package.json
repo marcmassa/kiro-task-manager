@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "bun run server.ts",
     "build": "bun build ./src/index.tsx --outdir ./public/dist --target browser",
+    "build:css": "bunx tailwindcss -i ./src/styles.css -o ./public/styles.css --minify",
+    "build:all": "bun run build:css && bun run build",
     "start": "bun run server.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

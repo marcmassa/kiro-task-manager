@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { WarningIcon, DownloadIcon, TrashIcon, CheckCircleIcon } from "../Icons";
+import { DownloadIcon, TrashIcon, CheckCircleIcon, BellIcon } from "../Icons";
+import { PageHeader } from "./ui/PageHeader";
+import { SectionHeader } from "./ui/SectionHeader";
+import { LoadingState, ErrorState } from "./ui/StateView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { IntegrationCard } from "./IntegrationCard";
 import {
@@ -212,14 +215,7 @@ export function SettingsPage({
   if (loading || (!settings && !externalError && !localError)) {
     return (
       <div className="flex-1 ml-[72px] flex items-center justify-center min-h-screen">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
-            <div className="w-6 h-6 rounded-full bg-accent/40" />
-          </div>
-          <p className="text-muted-400 text-sm" role="status" aria-live="polite">
-            Cargando configuración...
-          </p>
-        </div>
+        <LoadingState message="Cargando configuración..." />
       </div>
     );
   }
@@ -228,24 +224,9 @@ export function SettingsPage({
     const displayError = externalError ?? localError;
     return (
       <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-        <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
-          <div className="px-8 py-6">
-            <h1 className="text-2xl font-bold text-white">Configuración</h1>
-            <p className="text-sm text-muted-400 mt-1">
-              Preferencias del workspace e integraciones
-            </p>
-          </div>
-        </header>
-        <main className="flex-1 px-4 md:px-8 py-6 flex items-center justify-center">
-          <div className="home-card text-center py-12 max-w-md">
-            <div className="w-12 h-12 rounded-xl bg-danger/15 text-danger-400 flex items-center justify-center mx-auto mb-4">
-              <WarningIcon size={24} />
-            </div>
-            <p className="text-danger-400 mb-4">{displayError}</p>
-            <button className="btn-primary" onClick={() => void handleRetrySettings()}>
-              Reintentar
-            </button>
-          </div>
+        <PageHeader title="Configuración" subtitle="Preferencias del workspace e integraciones" />
+        <main className="flex-1 px-8 py-6 flex items-center justify-center">
+          <ErrorState message={displayError!} onRetry={() => void handleRetrySettings()} />
         </main>
       </div>
     );
@@ -263,197 +244,168 @@ export function SettingsPage({
 
   return (
     <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
-        <div className="px-8 py-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Configuración</h1>
-              <p className="text-sm text-muted-400 mt-1">
-                Preferencias del workspace e integraciones
-              </p>
-            </div>
-            {feedback && (
-              <div
-                role="status"
-                aria-live="polite"
-                className={`text-xs px-3 py-1.5 rounded-lg shrink-0 ${
-                  feedback.kind === "ok"
-                    ? "bg-success/15 text-success-400 border border-success/20"
-                    : "bg-danger/15 text-danger-400 border border-danger/20"
-                }`}
-              >
-                {feedback.text}
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Header — usa el mismo PageHeader que StatsDashboard */}
+      <PageHeader title="Configuración" subtitle="Preferencias del workspace e integraciones" />
 
-      <main className="flex-1 px-8 py-6">
-        <div className="space-y-8">
-          {/* ── 1. Datos del workspace ─────────────────────────────── */}
-          <section aria-label="Datos del workspace">
-            <h2 className="text-sm font-semibold text-gray-200 mb-4">Datos del workspace</h2>
-            <div className="home-card space-y-4">
+      <main className="flex-1 px-8 py-6 space-y-8">
+        {/* ── 1. Datos del workspace ─────────────────────────────── */}
+        <section aria-label="Datos del workspace">
+          <SectionHeader label="Datos del workspace" dotColor="bg-accent" />
+          <div className="home-card space-y-4">
+            <label className="block">
+              <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+                Nombre del workspace
+              </span>
+              <input
+                type="text"
+                value={ws.workspaceName}
+                onChange={(e) => setWorkspaceForm({ ...ws, workspaceName: e.target.value })}
+                className="input-field"
+                maxLength={64}
+                aria-label="Nombre del workspace"
+              />
+              <p className="text-[11px] text-muted-500 mt-1">
+                {ws.workspaceName.length}/64 caracteres
+              </p>
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="block">
                 <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                  Nombre del workspace
+                  Idioma por defecto
                 </span>
-                <input
-                  type="text"
-                  value={ws.workspaceName}
-                  onChange={(e) => setWorkspaceForm({ ...ws, workspaceName: e.target.value })}
+                <select
+                  value={ws.defaultLanguage}
+                  onChange={(e) => setWorkspaceForm({ ...ws, defaultLanguage: e.target.value })}
                   className="input-field"
-                  maxLength={64}
-                  aria-label="Nombre del workspace"
-                />
-                <p className="text-[11px] text-muted-500 mt-1">
-                  {ws.workspaceName.length}/64 caracteres
-                </p>
+                  aria-label="Idioma por defecto"
+                  disabled
+                >
+                  <option value="es-ES">Español (España)</option>
+                </select>
               </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="block">
-                  <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                    Idioma por defecto
-                  </span>
-                  <select
-                    value={ws.defaultLanguage}
-                    onChange={(e) => setWorkspaceForm({ ...ws, defaultLanguage: e.target.value })}
-                    className="input-field"
-                    aria-label="Idioma por defecto"
-                    disabled
-                  >
-                    <option value="es-ES">Español (España)</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                    Zona horaria
-                  </span>
-                  <select
-                    value={ws.defaultTimezone}
-                    onChange={(e) => setWorkspaceForm({ ...ws, defaultTimezone: e.target.value })}
-                    className="input-field"
-                    aria-label="Zona horaria por defecto"
-                    disabled
-                  >
-                    <option value="Europe/Madrid">Europe/Madrid</option>
-                  </select>
-                </label>
-              </div>
-              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-400/30 border border-white/5">
-                <p className="text-xs text-muted-400">
-                  Los cambios se guardan localmente en este workspace.
-                </p>
-                <button
-                  onClick={handleSaveWorkspace}
-                  disabled={!workspaceDirty}
-                  className="btn-primary"
-                  aria-label="Guardar cambios del workspace"
+              <label className="block">
+                <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+                  Zona horaria
+                </span>
+                <select
+                  value={ws.defaultTimezone}
+                  onChange={(e) => setWorkspaceForm({ ...ws, defaultTimezone: e.target.value })}
+                  className="input-field"
+                  aria-label="Zona horaria por defecto"
+                  disabled
                 >
-                  Guardar
-                </button>
-              </div>
+                  <option value="Europe/Madrid">Europe/Madrid</option>
+                </select>
+              </label>
             </div>
-          </section>
+            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-400/30 border border-white/5">
+              <p className="text-xs text-muted-400">
+                Los cambios se guardan localmente en este workspace.
+              </p>
+              <button
+                onClick={handleSaveWorkspace}
+                disabled={!workspaceDirty}
+                className="btn-primary"
+                aria-label="Guardar cambios del workspace"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </section>
 
-          {/* ── 2. Integración con servicio profesional ────────────── */}
-          <section aria-label="Integración con servicio profesional">
-            <h2 className="text-sm font-semibold text-gray-200 mb-4">
-              Integración con servicio profesional
-            </h2>
-            <IntegrationCard
-              status={linearStatus}
-              syncing={syncing}
-              error={connectError ?? syncError}
-              onConnect={handleConnect}
-              onSync={handleSync}
-              onDisconnect={async () => {
-                setShowDisconnectConfirm(true);
-              }}
+        {/* ── 2. Integración con servicio profesional ────────────── */}
+        <section aria-label="Integración con servicio profesional">
+          <SectionHeader label="Integración con servicio profesional" dotColor="bg-warning" />
+          <IntegrationCard
+            status={linearStatus}
+            syncing={syncing}
+            error={connectError ?? syncError}
+            onConnect={handleConnect}
+            onSync={handleSync}
+            onDisconnect={async () => {
+              setShowDisconnectConfirm(true);
+            }}
+          />
+        </section>
+
+        {/* ── 3. Notificaciones ──────────────────────────────────── */}
+        <section aria-label="Preferencias de notificación">
+          <SectionHeader label="Notificaciones" dotColor="bg-success" />
+          <div className="home-card space-y-4">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-surface-400/30 border border-white/5">
+              <div className="w-6 h-6 rounded-md bg-white/5 text-muted-400 flex items-center justify-center shrink-0">
+                <BellIcon size={14} />
+              </div>
+              <p className="text-xs text-muted-400 leading-relaxed">
+                Las notificaciones se almacenan con tus preferencias y se activarán en la próxima
+                versión. Mientras tanto, las estadísticas se actualizan en tiempo real.
+              </p>
+            </div>
+
+            <NotificationCheckbox
+              label="Notificarme cuando una tarea vence"
+              description="Aviso preventivo antes de que expire una tarea activa."
+              checked={ns.notifyOnDue}
+              onChange={() => handleToggleNotification("notifyOnDue")}
             />
-          </section>
+            <NotificationCheckbox
+              label="Notificarme cuando se completa una tarea"
+              description="Confirmación automática cuando una tarea pasa a completada."
+              checked={ns.notifyOnDone}
+              onChange={() => handleToggleNotification("notifyOnDone")}
+            />
+            <NotificationCheckbox
+              label="Resumen diario por correo"
+              description="Resumen consolidado de actividad y progreso al final del día."
+              checked={ns.notifyDailyDigest}
+              onChange={() => handleToggleNotification("notifyDailyDigest")}
+            />
+          </div>
+        </section>
 
-          {/* ── 3. Notificaciones ──────────────────────────────────── */}
-          <section aria-label="Preferencias de notificación">
-            <h2 className="text-sm font-semibold text-gray-200 mb-4">Notificaciones</h2>
-            <div className="home-card space-y-4">
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-surface-400/30 border border-white/5">
-                <div className="w-6 h-6 rounded-md bg-white/5 text-muted-400 flex items-center justify-center shrink-0">
-                  <WarningIcon size={14} />
-                </div>
-                <p className="text-xs text-muted-400 leading-relaxed">
-                  Las notificaciones se almacenan con tus preferencias y se activarán en la próxima
-                  versión. Mientras tanto, las estadísticas se actualizan en tiempo real.
+        {/* ── 4. Gestión de datos ────────────────────────────────── */}
+        <section aria-label="Gestión de datos">
+          <SectionHeader label="Gestión de datos" dotColor="bg-danger" />
+          <div className="home-card space-y-4">
+            {/* Export row */}
+            <div className="flex items-center justify-between gap-4 flex-wrap p-4 rounded-xl bg-surface-400/30 border border-white/5">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">Exportar tareas (JSON)</p>
+                <p className="text-xs text-muted-400 mt-0.5">
+                  Descarga una copia de seguridad con tareas, comentarios, categorías y prioridades.
                 </p>
               </div>
-
-              <NotificationCheckbox
-                label="Notificarme cuando una tarea vence"
-                description="Aviso preventivo antes de que expire una tarea activa."
-                checked={ns.notifyOnDue}
-                onChange={() => handleToggleNotification("notifyOnDue")}
-              />
-              <NotificationCheckbox
-                label="Notificarme cuando se completa una tarea"
-                description="Confirmación automática cuando una tarea pasa a completada."
-                checked={ns.notifyOnDone}
-                onChange={() => handleToggleNotification("notifyOnDone")}
-              />
-              <NotificationCheckbox
-                label="Resumen diario por correo"
-                description="Resumen consolidado de actividad y progreso al final del día."
-                checked={ns.notifyDailyDigest}
-                onChange={() => handleToggleNotification("notifyDailyDigest")}
-              />
+              <button
+                onClick={handleExport}
+                className="btn-secondary flex items-center gap-2 shrink-0"
+                aria-label="Exportar todas las tareas en JSON"
+              >
+                <DownloadIcon size={16} />
+                <span>Exportar</span>
+              </button>
             </div>
-          </section>
 
-          {/* ── 4. Gestión de datos ────────────────────────────────── */}
-          <section aria-label="Gestión de datos">
-            <h2 className="text-sm font-semibold text-gray-200 mb-4">Gestión de datos</h2>
-            <div className="home-card space-y-4">
-              {/* Export row */}
-              <div className="flex items-center justify-between gap-4 flex-wrap p-4 rounded-xl bg-surface-400/30 border border-white/5">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">Exportar tareas (JSON)</p>
-                  <p className="text-xs text-muted-400 mt-0.5">
-                    Descarga una copia de seguridad con tareas, comentarios, categorías y
-                    prioridades.
-                  </p>
-                </div>
-                <button
-                  onClick={handleExport}
-                  className="btn-secondary flex items-center gap-2 shrink-0"
-                  aria-label="Exportar todas las tareas en JSON"
-                >
-                  <DownloadIcon size={16} />
-                  <span>Exportar</span>
-                </button>
+            {/* Delete row */}
+            <div className="flex items-center justify-between gap-4 flex-wrap p-4 rounded-xl bg-danger/5 border border-danger/10">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">Eliminar todas las tareas</p>
+                <p className="text-xs text-muted-400 mt-0.5">
+                  Borra de forma permanente todas las tareas y comentarios.{" "}
+                  <span className="font-semibold text-danger-400">No se puede deshacer.</span>
+                </p>
               </div>
-
-              {/* Delete row */}
-              <div className="flex items-center justify-between gap-4 flex-wrap p-4 rounded-xl bg-danger/5 border border-danger/10">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">Eliminar todas las tareas</p>
-                  <p className="text-xs text-muted-400 mt-0.5">
-                    Borra de forma permanente todas las tareas y comentarios.{" "}
-                    <span className="font-semibold text-danger-400">No se puede deshacer.</span>
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowDeleteAllConfirm(true)}
-                  className="btn-danger flex items-center gap-2 shrink-0"
-                  aria-label="Eliminar todas las tareas"
-                >
-                  <TrashIcon size={16} />
-                  <span>Eliminar todas</span>
-                </button>
-              </div>
+              <button
+                onClick={() => setShowDeleteAllConfirm(true)}
+                className="btn-danger flex items-center gap-2 shrink-0"
+                aria-label="Eliminar todas las tareas"
+              >
+                <TrashIcon size={16} />
+                <span>Eliminar todas</span>
+              </button>
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </main>
 
       {/* ── Confirm dialogs ─────────────────────────────────────── */}
@@ -483,6 +435,24 @@ export function SettingsPage({
         >
           <div className="w-3 h-3 rounded-full bg-danger animate-pulse" />
           Eliminando todas las tareas...
+        </div>
+      )}
+
+      {/* Toast flotante de feedback (éxito / error) */}
+      {feedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-4 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm shadow-modal animate-slide-up border ${
+            feedback.kind === "ok"
+              ? "bg-surface-300 border-success/30 text-success-300"
+              : "bg-surface-300 border-danger/30 text-danger-300"
+          } ${deleting ? "bottom-16" : ""}`}
+        >
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${feedback.kind === "ok" ? "bg-success" : "bg-danger"}`}
+          />
+          {feedback.text}
         </div>
       )}
     </div>
