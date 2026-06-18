@@ -69,10 +69,94 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- FEAT-006: agentes disponibles (extensible sin cambios de código)
+  CREATE TABLE IF NOT EXISTS agents (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'mcp',
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- FEAT-006: ejecución de agente, paralela al status Kanban.
+  -- Una ejecución activa por tarea (UNIQUE task_id).
+  CREATE TABLE IF NOT EXISTS agent_executions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id         INTEGER NOT NULL UNIQUE,
+    agent_id        TEXT NOT NULL,
+    state           TEXT NOT NULL DEFAULT 'assigned'
+                    CHECK (state IN ('assigned','agent_working','pending_review','changes_requested','done')),
+    agent_summary   TEXT,
+    review_feedback TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (task_id)  REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY (agent_id) REFERENCES agents(id)
+  );
+
+  -- FEAT-006: historial de transiciones (auditoría del gate humano).
+  CREATE TABLE IF NOT EXISTS agent_execution_events (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    execution_id INTEGER NOT NULL,
+    from_state   TEXT NOT NULL,
+    to_state     TEXT NOT NULL,
+    actor        TEXT NOT NULL CHECK (actor IN ('human','agent')),
+    note         TEXT,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (execution_id) REFERENCES agent_executions(id) ON DELETE CASCADE
+  );
+
+  -- FEAT-006: adjuntos de tarea (fichero en disco, metadata aquí).
+  CREATE TABLE IF NOT EXISTS task_attachments (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id     INTEGER NOT NULL,
+    filename    TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    mime_type   TEXT NOT NULL,
+    size_bytes  INTEGER NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+  );
+
+  -- FEAT-007: registro de servidores MCP externos.
+  CREATE TABLE IF NOT EXISTS mcp_servers (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT NOT NULL UNIQUE,
+    transport     TEXT NOT NULL DEFAULT 'stdio'
+                  CHECK (transport IN ('stdio','http')),
+    command       TEXT,
+    args          TEXT NOT NULL DEFAULT '[]',
+    env_encrypted TEXT NOT NULL DEFAULT '',
+    url           TEXT,
+    enabled       INTEGER NOT NULL DEFAULT 1,
+    auto_approve  TEXT NOT NULL DEFAULT '[]',
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- FEAT-009: configuración del proveedor de IA (singleton, máximo 1 fila).
+  CREATE TABLE IF NOT EXISTS ai_provider_config (
+    id                          INTEGER PRIMARY KEY CHECK (id = 1),
+    provider_id                 TEXT NOT NULL,
+    model                       TEXT NOT NULL,
+    api_key_encrypted           TEXT NOT NULL DEFAULT '',
+    secret_access_key_encrypted TEXT NOT NULL DEFAULT '',
+    access_key_id               TEXT NOT NULL DEFAULT '',
+    region                      TEXT NOT NULL DEFAULT '',
+    base_url                    TEXT NOT NULL DEFAULT '',
+    temperature                 REAL NOT NULL DEFAULT 0.7,
+    max_tokens                  INTEGER NOT NULL DEFAULT 4096,
+    created_at                  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at                  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 // FEAT-005: ensure the singleton workspace_settings row exists with defaults.
 db.exec("INSERT OR IGNORE INTO workspace_settings (id) VALUES (1)");
+
+// FEAT-006: seed the default Kiro agent (idempotent).
+db.exec("INSERT OR IGNORE INTO agents (id, name, kind) VALUES ('kiro', 'Kiro', 'mcp')");
 
 // Seed priorities
 const priorityCount = db.query("SELECT COUNT(*) as count FROM priorities").get() as {

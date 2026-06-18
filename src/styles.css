@@ -155,8 +155,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kiro-float {
-    animation: none;
+  .animate-kiro-float,
+  .animate-kiro-wave,
+  .animate-kiro-think,
+  .animate-kiro-pop,
+  .animate-kiro-shake {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
   }
 }
 
@@ -183,9 +189,9 @@
 @layer components {
   /* ── Page header ──────────────────────────────────────────────────────── */
 
-  /* Sticky page header shell — Squid Ink background + AWS Orange bottom border */
+  /* Sticky page header shell — same dark surface as sidebar + AWS Orange bottom border */
   .ds-page-header {
-    @apply sticky top-0 z-10 backdrop-blur-xl bg-squid/95
+    @apply sticky top-0 z-10 backdrop-blur-xl bg-surface-400/90
            border-b border-aws-orange/40;
   }
 

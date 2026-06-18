@@ -5,6 +5,8 @@ import { SectionHeader } from "./ui/SectionHeader";
 import { LoadingState, ErrorState } from "./ui/StateView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { IntegrationCard } from "./IntegrationCard";
+import { McpServersSection, McpServerForm } from "./McpServersSection";
+import { AiProviderSection } from "./AiProviderSection";
 import {
   fetchSettings,
   updateWorkspaceSettings,
@@ -15,6 +17,18 @@ import {
   disconnectLinear,
   exportTasks,
   deleteAllTasks,
+  fetchMcpServers,
+  createMcpServer as apiCreateMcpServer,
+  updateMcpServer as apiUpdateMcpServer,
+  toggleMcpServer as apiToggleMcpServer,
+  deleteMcpServer as apiDeleteMcpServer,
+  testMcpServer as apiTestMcpServer,
+  applyMcpConfig as apiApplyMcpConfig,
+  fetchAiProviderRegistry,
+  fetchAiProviderConfig,
+  saveAiProviderConfig as apiSaveAiProvider,
+  deleteAiProviderConfig as apiDeleteAiProvider,
+  testAiProviderConnection as apiTestAiProvider,
 } from "../api";
 import type {
   SettingsResponse,
@@ -22,6 +36,13 @@ import type {
   NotificationSettings,
   LinearIntegrationStatus,
   SyncResult,
+  McpServer,
+  McpServerInput,
+  McpTestResult,
+  AiProviderMeta,
+  AiProviderConfigResponse,
+  AiProviderSaveInput,
+  AiConnectionTestResult,
 } from "../types";
 
 interface SettingsPageProps {
@@ -67,13 +88,41 @@ export function SettingsPage({
   const [workspaceForm, setWorkspaceForm] = useState<WorkspaceSettings | null>(null);
   const [notificationForm, setNotificationForm] = useState<NotificationSettings | null>(null);
 
+  // MCP Servers state
+  const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
+  const [mcpError, setMcpError] = useState<string | null>(null);
+  const [mcpFormMode, setMcpFormMode] = useState<"hidden" | "create" | "edit">("hidden");
+  const [mcpEditTarget, setMcpEditTarget] = useState<McpServer | null>(null);
+  const [mcpFormError, setMcpFormError] = useState<string | null>(null);
+  const [mcpSubmitting, setMcpSubmitting] = useState(false);
+  const [mcpTestResults, setMcpTestResults] = useState<Record<number, McpTestResult | "loading">>(
+    {},
+  );
+  const [mcpDeleteTarget, setMcpDeleteTarget] = useState<McpServer | null>(null);
+  const [mcpApplying, setMcpApplying] = useState(false);
+
+  // AI Provider state
+  const [aiRegistry, setAiRegistry] = useState<AiProviderMeta[]>([]);
+  const [aiConfig, setAiConfig] = useState<AiProviderConfigResponse | null>(null);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiDeleting, setAiDeleting] = useState(false);
+
   // ── Data load ──────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     setLocalError(null);
     try {
-      const [s, lin] = await Promise.all([fetchSettings(), getLinearStatus()]);
+      const [s, lin, mcpList, aiReg, aiCfg] = await Promise.all([
+        fetchSettings(),
+        getLinearStatus(),
+        fetchMcpServers(),
+        fetchAiProviderRegistry(),
+        fetchAiProviderConfig(),
+      ]);
       setSettings(s);
       setLinearStatus(lin);
+      setMcpServers(mcpList);
+      setAiRegistry(aiReg);
+      setAiConfig(aiCfg);
       setWorkspaceForm(s.workspace);
       setNotificationForm(s.notifications);
     } catch (e) {
@@ -199,6 +248,127 @@ export function SettingsPage({
       setFeedback({ kind: "err", text: "No se pudieron eliminar las tareas" });
     } finally {
       setDeleting(false);
+    }
+  }
+
+  // ── AI Provider handlers ─────────────────────────────────────────
+  async function handleAiSave(data: AiProviderSaveInput) {
+    setAiSaving(true);
+    try {
+      const cfg = await apiSaveAiProvider(data);
+      setAiConfig(cfg);
+      setFeedback({ kind: "ok", text: "Proveedor de IA configurado" });
+      setTimeout(() => setFeedback(null), 2500);
+    } catch (e) {
+      throw e; // let the section component handle the error display
+    } finally {
+      setAiSaving(false);
+    }
+  }
+
+  async function handleAiDelete() {
+    setAiDeleting(true);
+    try {
+      const cfg = await apiDeleteAiProvider();
+      setAiConfig(cfg);
+      setFeedback({ kind: "ok", text: "Configuración del proveedor eliminada" });
+      setTimeout(() => setFeedback(null), 2500);
+    } finally {
+      setAiDeleting(false);
+    }
+  }
+
+  async function handleAiTest(data: AiProviderSaveInput): Promise<AiConnectionTestResult> {
+    return await apiTestAiProvider(data);
+  }
+
+  // ── MCP Servers handlers ─────────────────────────────────────────
+  async function handleMcpCreate(data: McpServerInput) {
+    setMcpFormError(null);
+    setMcpSubmitting(true);
+    try {
+      await apiCreateMcpServer(data);
+      setMcpFormMode("hidden");
+      const list = await fetchMcpServers();
+      setMcpServers(list);
+      setFeedback({ kind: "ok", text: "Servidor MCP registrado" });
+      setTimeout(() => setFeedback(null), 2500);
+    } catch (e) {
+      setMcpFormError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setMcpSubmitting(false);
+    }
+  }
+
+  async function handleMcpEdit(data: McpServerInput) {
+    if (!mcpEditTarget) return;
+    setMcpFormError(null);
+    setMcpSubmitting(true);
+    try {
+      await apiUpdateMcpServer(mcpEditTarget.id, data);
+      setMcpFormMode("hidden");
+      setMcpEditTarget(null);
+      const list = await fetchMcpServers();
+      setMcpServers(list);
+      setFeedback({ kind: "ok", text: "Servidor actualizado" });
+      setTimeout(() => setFeedback(null), 2500);
+    } catch (e) {
+      setMcpFormError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setMcpSubmitting(false);
+    }
+  }
+
+  async function handleMcpToggle(id: number) {
+    try {
+      await apiToggleMcpServer(id);
+      const list = await fetchMcpServers();
+      setMcpServers(list);
+    } catch {
+      setMcpError("No se pudo cambiar el estado del servidor");
+      setTimeout(() => setMcpError(null), 3000);
+    }
+  }
+
+  async function handleMcpTest(id: number) {
+    setMcpTestResults((prev) => ({ ...prev, [id]: "loading" }));
+    try {
+      const result = await apiTestMcpServer(id);
+      setMcpTestResults((prev) => ({ ...prev, [id]: result }));
+    } catch {
+      setMcpTestResults((prev) => ({
+        ...prev,
+        [id]: { ok: false, errorKind: "protocol_error" as const, message: "Error de conexión" },
+      }));
+    }
+  }
+
+  async function handleMcpDelete() {
+    if (!mcpDeleteTarget) return;
+    try {
+      await apiDeleteMcpServer(mcpDeleteTarget.id);
+      setMcpDeleteTarget(null);
+      const list = await fetchMcpServers();
+      setMcpServers(list);
+      setFeedback({ kind: "ok", text: "Servidor eliminado" });
+      setTimeout(() => setFeedback(null), 2500);
+    } catch {
+      setMcpError("No se pudo eliminar el servidor");
+      setTimeout(() => setMcpError(null), 3000);
+    }
+  }
+
+  async function handleMcpApply() {
+    setMcpApplying(true);
+    try {
+      await apiApplyMcpConfig();
+      setFeedback({ kind: "ok", text: "Configuración MCP aplicada correctamente" });
+      setTimeout(() => setFeedback(null), 2500);
+    } catch {
+      setFeedback({ kind: "err", text: "No se pudo aplicar la configuración MCP" });
+      setTimeout(() => setFeedback(null), 3000);
+    } finally {
+      setMcpApplying(false);
     }
   }
 
@@ -406,6 +576,88 @@ export function SettingsPage({
             </div>
           </div>
         </section>
+
+        {/* ── 5. Proveedor de IA ─────────────────────────────────── */}
+        <section aria-label="Proveedor de IA">
+          <SectionHeader label="Proveedor de IA" dotColor="bg-warning" />
+          <div className="home-card">
+            <AiProviderSection
+              registry={aiRegistry}
+              config={aiConfig}
+              onSave={handleAiSave}
+              onDelete={handleAiDelete}
+              onTest={handleAiTest}
+              saving={aiSaving}
+              deleting={aiDeleting}
+            />
+          </div>
+        </section>
+
+        {/* ── 6. Servidores MCP ──────────────────────────────────── */}
+        <section aria-label="Servidores MCP">
+          <SectionHeader label="Servidores MCP" dotColor="bg-accent" />
+          <div className="home-card space-y-4">
+            {/* Action bar: Add + Apply */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-muted-400">
+                Servidores MCP externos que consume el agente Kiro de la aplicación.
+              </p>
+              <div className="flex items-center gap-2">
+                {mcpFormMode === "hidden" && (
+                  <button
+                    onClick={() => {
+                      setMcpFormMode("create");
+                      setMcpFormError(null);
+                    }}
+                    className="btn-primary text-xs"
+                    aria-label="Añadir servidor MCP"
+                  >
+                    + Añadir servidor
+                  </button>
+                )}
+                <button
+                  onClick={handleMcpApply}
+                  disabled={mcpApplying || mcpServers.length === 0}
+                  className="btn-secondary text-xs flex items-center gap-1.5"
+                  aria-label="Aplicar configuración MCP"
+                >
+                  {mcpApplying ? "Aplicando..." : "Aplicar configuración"}
+                </button>
+              </div>
+            </div>
+
+            {/* Form (create/edit) */}
+            {mcpFormMode !== "hidden" && (
+              <McpServerForm
+                mode={mcpFormMode === "create" ? "create" : "edit"}
+                initialData={mcpEditTarget}
+                onSubmit={mcpFormMode === "create" ? handleMcpCreate : handleMcpEdit}
+                onCancel={() => {
+                  setMcpFormMode("hidden");
+                  setMcpEditTarget(null);
+                  setMcpFormError(null);
+                }}
+                error={mcpFormError}
+                submitting={mcpSubmitting}
+              />
+            )}
+
+            {/* Server list */}
+            <McpServersSection
+              servers={mcpServers}
+              onEdit={(server) => {
+                setMcpEditTarget(server);
+                setMcpFormMode("edit");
+                setMcpFormError(null);
+              }}
+              onToggle={handleMcpToggle}
+              onTest={handleMcpTest}
+              onDelete={(server) => setMcpDeleteTarget(server)}
+              testResults={mcpTestResults}
+              error={mcpError}
+            />
+          </div>
+        </section>
       </main>
 
       {/* ── Confirm dialogs ─────────────────────────────────────── */}
@@ -424,6 +676,15 @@ export function SettingsPage({
           message="¿Eliminar TODAS las tareas? Esta acción no se puede deshacer."
           onConfirm={handleConfirmDeleteAll}
           onCancel={() => setShowDeleteAllConfirm(false)}
+        />
+      )}
+
+      {mcpDeleteTarget && (
+        <ConfirmDialog
+          title="Eliminar servidor MCP"
+          message={`¿Eliminar el servidor "${mcpDeleteTarget.name}"? Esta acción no se puede deshacer.`}
+          onConfirm={handleMcpDelete}
+          onCancel={() => setMcpDeleteTarget(null)}
         />
       )}
 

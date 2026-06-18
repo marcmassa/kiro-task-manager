@@ -319,3 +319,35 @@ export function RefreshIcon({ className = "", size = 20 }: IconProps) {
     </svg>
   );
 }
+
+// FEAT-006 icons — agent orchestration
+
+export function RobotIcon({ className = "", size = 20 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+      className={className}
+    >
+      <path d="M200,48H136V16a8,8,0,0,0-16,0V48H56A32,32,0,0,0,24,80V192a32,32,0,0,0,32,32H200a32,32,0,0,0,32-32V80A32,32,0,0,0,200,48Zm16,144a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V80A16,16,0,0,1,56,64H200a16,16,0,0,1,16,16Zm-52-56H92a28,28,0,0,0,0,56h72a28,28,0,0,0,0-56Zm-24,16v24H116V152ZM80,164a12,12,0,0,1,12-12h8v24H92A12,12,0,0,1,80,164Zm84,12H156V152h8a12,12,0,0,1,0,24ZM72,108a12,12,0,1,1,12,12A12,12,0,0,1,72,108Zm88,0a12,12,0,1,1,12,12A12,12,0,0,1,160,108Z" />
+    </svg>
+  );
+}
+
+export function PaperclipIcon({ className = "", size = 20 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+      className={className}
+    >
+      <path d="M209.66,122.34a8,8,0,0,1,0,11.32l-82.05,82a56,56,0,0,1-79.2-79.21L147.67,37.21a40,40,0,1,1,56.61,56.55L105,193A24,24,0,1,1,71,159L154.83,75a8,8,0,0,1,11.32,11.32L82.34,170.34a8,8,0,1,0,11.32,11.32L192.93,82.45a24,24,0,1,0-33.95-33.94L59.32,147.8a40,40,0,1,0,56.55,56.58l82.06-82A8,8,0,0,1,209.66,122.34Z" />
+    </svg>
+  );
+}

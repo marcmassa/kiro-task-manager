@@ -119,6 +119,10 @@ export default {
         "slide-up": "slideUp 0.3s ease-out",
         "scale-in": "scaleIn 0.2s ease-out",
         "kiro-float": "kiroFloat 4s ease-in-out infinite",
+        "kiro-wave": "kiroWave 2.4s ease-in-out infinite",
+        "kiro-think": "kiroThink 1.4s ease-in-out infinite",
+        "kiro-pop": "kiroPop 1.2s ease-in-out infinite",
+        "kiro-shake": "kiroShake 0.6s ease-in-out 1",
       },
       keyframes: {
         fadeIn: {
@@ -136,6 +140,23 @@ export default {
         kiroFloat: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-6px)" },
+        },
+        kiroWave: {
+          "0%, 100%": { transform: "rotate(0deg)" },
+          "50%": { transform: "rotate(6deg)" },
+        },
+        kiroThink: {
+          "0%, 100%": { opacity: "0.5" },
+          "50%": { opacity: "1" },
+        },
+        kiroPop: {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.06)" },
+        },
+        kiroShake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "25%": { transform: "translateX(-2px)" },
+          "75%": { transform: "translateX(2px)" },
         },
       },
     },

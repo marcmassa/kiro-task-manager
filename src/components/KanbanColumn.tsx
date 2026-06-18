@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Task, TaskStatus } from "../types";
+import { Task, TaskStatus, AgentExecution } from "../types";
 import { TaskCard } from "./TaskCard";
+import { KiroIllustration } from "./KiroIllustration";
 
 interface KanbanColumnProps {
   title: string;
   status: TaskStatus;
   tasks: Task[];
   color: "accent" | "warning" | "success";
+  executions?: Map<number, AgentExecution>;
   onViewTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
@@ -37,6 +39,7 @@ export function KanbanColumn({
   status,
   tasks,
   color,
+  executions,
   onViewTask,
   onEditTask,
   onDeleteTask,
@@ -93,14 +96,16 @@ export function KanbanColumn({
       {/* Cards */}
       <div className="space-y-3">
         {tasks.length === 0 ? (
-          <div className="text-center py-10 text-muted-400 text-sm border border-dashed border-white/10 rounded-xl">
-            No hay tareas aquí
+          <div className="flex flex-col items-center gap-3 py-8 text-center border border-dashed border-white/10 rounded-xl">
+            <KiroIllustration mood="vacio" size={48} className="opacity-70" />
+            <p className="text-sm text-muted-400">No hay tareas aquí</p>
           </div>
         ) : (
           tasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
+              execution={executions?.get(task.id) ?? null}
               onView={() => onViewTask(task)}
               onEdit={() => onEditTask(task)}
               onDelete={() => onDeleteTask(task)}

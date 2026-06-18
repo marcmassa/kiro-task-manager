@@ -41,6 +41,11 @@ interface KiroBaseProps {
    * without modifying the base Kiro markup.
    */
   children?: ReactNode;
+  /**
+   * When true, render the SVG as purely decorative: emit `aria-hidden="true"`
+   * and omit `role="img"` and `aria-label`. Default false.
+   */
+  decorative?: boolean;
 }
 
 /**
@@ -58,6 +63,7 @@ export function KiroBase({
   behind,
   silhouetteShiftX = 0,
   children,
+  decorative = false,
 }: KiroBaseProps) {
   // useId() includes ":" which is invalid in CSS selectors — strip it so the
   // clipPath reference stays valid everywhere.
@@ -72,8 +78,7 @@ export function KiroBase({
       height={dim}
       viewBox="0 0 24 24"
       className={className}
-      role="img"
-      aria-label={label}
+      {...(decorative ? { "aria-hidden": true } : { role: "img", "aria-label": label })}
     >
       <defs>
         <clipPath id={clipId}>
@@ -103,8 +108,11 @@ export function KiroBase({
 /**
  * The spiral notebook — rendered BEHIND the ghost so it peeks out from behind
  * Kiro's body. Lower area, tilted slightly right.
+ *
+ * Shared between `KiroMascot` "full" variant and the `trabajando` mood in
+ * `KiroIllustration` to guarantee visual parity from a single source.
  */
-function NotebookLayer() {
+export function NotebookLayer() {
   return (
     <g transform="translate(17.6 11.5) rotate(20)">
       {/* Shadow */}
@@ -166,8 +174,11 @@ function NotebookLayer() {
  *
  * The arm, pencil, gripping hand, scribble cue and sparkles. The notebook
  * itself lives in {@link NotebookLayer} and is rendered behind the ghost.
+ *
+ * Shared between `KiroMascot` "full" variant and the `trabajando` mood in
+ * `KiroIllustration` to guarantee visual parity from a single source.
  */
-function NotebookWritingLayers() {
+export function NotebookWritingLayers() {
   return (
     <>
       {/* Pencil + hand + writing cue are grouped and shifted to follow the

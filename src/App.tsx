@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Task, Category, Priority, TaskStatus, TaskFormData } from "./types";
+import { Task, Category, Priority, TaskStatus, TaskFormData, AgentExecution } from "./types";
 import {
   fetchTasks,
   fetchCategories,
   fetchPriorities,
+  fetchAllExecutions,
   createTask,
   updateTask,
   updateTaskStatus,
@@ -16,6 +17,8 @@ import { ConfirmDialog } from "./components/ConfirmDialog";
 import { HomePage } from "./components/HomePage";
 import { StatsDashboard } from "./components/StatsDashboard";
 import { SettingsPage } from "./components/SettingsPage";
+import { KiroIllustration } from "./components/KiroIllustration";
+import { PageHeader } from "./components/ui/PageHeader";
 import { PlusIcon, KanbanIcon, HomeIcon, ChartIcon, SettingsIcon, LayersIcon } from "./Icons";
 
 type Page = "home" | "kanban" | "stats" | "config";
@@ -24,6 +27,7 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [priorities, setPriorities] = useState<Priority[]>([]);
+  const [executions, setExecutions] = useState<Map<number, AgentExecution>>(new Map());
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -50,6 +54,13 @@ export default function App() {
       setTasks(tasksData);
       setCategories(catsData);
       setPriorities(priosData);
+      // Agent executions are best-effort: a failure here must not block the board.
+      try {
+        const execs = await fetchAllExecutions();
+        setExecutions(new Map(execs.map((e) => [e.task_id, e])));
+      } catch (execErr) {
+        console.error("Error loading executions:", execErr);
+      }
     } catch (error) {
       console.error("Error loading data:", error);
       setError("Error al cargar las estadísticas. Intenta de nuevo.");
@@ -135,14 +146,30 @@ export default function App() {
     }
   }
 
-  if (loading) {
+  if (loading && tasks.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-surface-600">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
-            <div className="w-6 h-6 rounded-full bg-accent/40"></div>
-          </div>
+        <div className="flex flex-col items-center gap-4">
+          <KiroIllustration mood="pensando" size={120} />
           <p className="text-muted-400 text-sm">Cargando tareas...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loading && error && tasks.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-surface-600">
+        <div className="flex flex-col items-center gap-4">
+          <KiroIllustration mood="error" size={120} />
+          <p className="text-sm text-danger-400">{error}</p>
+          <button
+            onClick={loadData}
+            className="btn-primary"
+            aria-label="Reintentar carga de tareas"
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );
@@ -200,32 +227,57 @@ export default function App() {
 
       {/* Page Content */}
       {currentPage === "home" && (
-        <HomePage
-          tasks={tasks}
-          todoCount={todoTasks.length}
-          inProgressCount={inProgressTasks.length}
-          doneCount={doneTasks.length}
-          onNavigate={(page) => setCurrentPage(page as Page)}
-        />
+        <>
+          {error && tasks.length > 0 && (
+            <div className="ml-[72px] mx-8 mt-4 flex items-center gap-3 p-4 rounded-xl bg-danger/5 border border-danger/20">
+              <KiroIllustration mood="error" size={40} animated={false} />
+              <p className="text-sm text-danger-400 flex-1">{error}</p>
+              <button
+                onClick={loadData}
+                className="btn-danger text-sm"
+                aria-label="Reintentar carga de tareas"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+          <HomePage
+            tasks={tasks}
+            todoCount={todoTasks.length}
+            inProgressCount={inProgressTasks.length}
+            doneCount={doneTasks.length}
+            onNavigate={(page) => setCurrentPage(page as Page)}
+          />
+        </>
       )}
 
       {currentPage === "kanban" && (
         <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-          {/* Header */}
-          <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
-            <div className="px-8 py-5 flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-white">Tablero de Tareas</h1>
-                <p className="text-sm text-muted-400 mt-0.5">
-                  {tasks.length} tareas · {doneTasks.length} completadas
-                </p>
-              </div>
+          <PageHeader
+            title="Tablero de Tareas"
+            subtitle={`${tasks.length} tareas · ${doneTasks.length} completadas`}
+            actions={
               <button onClick={handleNewTask} className="btn-primary flex items-center gap-2">
                 <PlusIcon size={18} />
                 <span>Nueva Tarea</span>
               </button>
+            }
+          />
+
+          {/* Error banner when refresh fails but tasks are already loaded */}
+          {error && tasks.length > 0 && (
+            <div className="mx-8 mt-4 flex items-center gap-3 p-4 rounded-xl bg-danger/5 border border-danger/20">
+              <KiroIllustration mood="error" size={40} animated={false} />
+              <p className="text-sm text-danger-400 flex-1">{error}</p>
+              <button
+                onClick={loadData}
+                className="btn-danger text-sm"
+                aria-label="Reintentar carga de tareas"
+              >
+                Reintentar
+              </button>
             </div>
-          </header>
+          )}
 
           {/* Stats Bar */}
           <div className="px-8 py-5">
@@ -277,6 +329,16 @@ export default function App() {
             </div>
           </div>
 
+          {/* Celebration: all tasks completed */}
+          {tasks.length > 0 && todoTasks.length === 0 && inProgressTasks.length === 0 && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <KiroIllustration mood="celebrando" size={100} />
+              <p className="text-sm text-success-400 font-medium">
+                ¡Felicidades! Todas las tareas están completadas 🎉
+              </p>
+            </div>
+          )}
+
           {/* Kanban Board */}
           <main className="flex-1 px-8 pb-8">
             <div className="flex gap-6 overflow-x-auto pb-4">
@@ -285,6 +347,7 @@ export default function App() {
                 status="todo"
                 tasks={todoTasks}
                 color="accent"
+                executions={executions}
                 onViewTask={handleViewTask}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteRequest}
@@ -296,6 +359,7 @@ export default function App() {
                 status="in_progress"
                 tasks={inProgressTasks}
                 color="warning"
+                executions={executions}
                 onViewTask={handleViewTask}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteRequest}
@@ -307,6 +371,7 @@ export default function App() {
                 status="done"
                 tasks={doneTasks}
                 color="success"
+                executions={executions}
                 onViewTask={handleViewTask}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteRequest}
@@ -353,6 +418,7 @@ export default function App() {
           }}
           onDelete={(task) => handleDeleteRequest(task)}
           onStatusChange={handleStatusChange}
+          onExecutionChanged={loadData}
         />
       )}
 

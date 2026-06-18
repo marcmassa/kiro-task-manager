@@ -8,6 +8,8 @@ import {
   CalendarIcon,
 } from "../Icons";
 import { KiroMascot } from "./KiroMascot";
+import { KiroIllustration } from "./KiroIllustration";
+import { PageHeader } from "./ui/PageHeader";
 
 interface HomePageProps {
   tasks: Task[];
@@ -36,15 +38,10 @@ export function HomePage({
 
   return (
     <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-surface-600/80 backdrop-blur-xl border-b border-white/5">
-        <div className="px-8 py-6">
-          <h1 className="text-2xl font-bold text-white">Bienvenido de vuelta</h1>
-          <p className="text-sm text-muted-400 mt-1">
-            Aquí tienes un resumen de tu espacio de trabajo
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Bienvenido de vuelta"
+        subtitle="Aquí tienes un resumen de tu espacio de trabajo"
+      />
 
       <main className="flex-1 px-8 py-6 space-y-8">
         {/* Hero Section */}
@@ -166,7 +163,7 @@ export function HomePage({
             <div className="space-y-2">
               {recentTasks.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-6">
-                  <KiroMascot size={48} variant="compact" className="opacity-60" />
+                  <KiroIllustration mood="vacio" size={56} className="opacity-80" />
                   <p className="text-sm text-muted-400 text-center">
                     No hay tareas aún. ¡Crea tu primera tarea!
                   </p>
@@ -178,20 +175,14 @@ export function HomePage({
                     className="flex items-center gap-3 p-3 rounded-xl bg-surface-400/30 border border-white/5 hover:border-white/10 transition-colors"
                   >
                     <div
-                      className="w-1 h-8 rounded-full"
+                      className="w-1 h-8 rounded-full shrink-0"
                       style={{ backgroundColor: task.priority_color }}
-                    ></div>
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-200 truncate">{task.title}</p>
                       <p className="text-xs text-muted-500">{task.category_name}</p>
                     </div>
-                    <span
-                      className="badge text-[10px]"
-                      style={{
-                        backgroundColor: task.priority_color + "20",
-                        color: task.priority_color,
-                      }}
-                    >
+                    <span className="badge text-[10px] bg-surface-400/60 text-muted-300 border border-white/10">
                       {task.priority_name}
                     </span>
                   </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Task, TaskStatus } from "../types";
+import { Task, TaskStatus, AgentExecution } from "../types";
 import {
   PencilIcon,
   TrashIcon,
@@ -8,10 +8,13 @@ import {
   CalendarIcon,
   FireIcon,
   TargetIcon,
+  RobotIcon,
 } from "../Icons";
+import { agentStateDisplay } from "../utils/agentStateDisplay";
 
 interface TaskCardProps {
   task: Task;
+  execution?: AgentExecution | null;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -51,7 +54,14 @@ function getPriorityIcon(level: number) {
   return null;
 }
 
-export function TaskCard({ task, onView, onEdit, onDelete, onStatusChange }: TaskCardProps) {
+export function TaskCard({
+  task,
+  execution,
+  onView,
+  onEdit,
+  onDelete,
+  onStatusChange,
+}: TaskCardProps) {
   const [isDragging, setIsDragging] = useState(false);
   const nextStatus = getNextStatus(task.status);
   const overdue = task.status !== "done" && isOverdue(task.due_date);
@@ -111,6 +121,18 @@ export function TaskCard({ task, onView, onEdit, onDelete, onStatusChange }: Tas
       <h3 className="font-medium text-gray-100 text-sm mb-2 line-clamp-2 leading-relaxed">
         {task.title}
       </h3>
+
+      {/* Agent execution state (R21) */}
+      {execution && (
+        <div className="mb-3">
+          <span
+            className={`badge text-[10px] inline-flex items-center gap-1.5 ${agentStateDisplay(execution.state).badge}`}
+          >
+            <RobotIcon size={11} />
+            {agentStateDisplay(execution.state).label}
+          </span>
+        </div>
+      )}
 
       {/* Due date */}
       {task.due_date && (

@@ -1,6 +1,18 @@
-import { useState, useEffect } from "react";
-import { Task, TaskStatus, Comment } from "../types";
-import { fetchComments, addComment } from "../api";
+import { useState, useEffect, useRef } from "react";
+import { Task, TaskStatus, Comment, Agent, AgentExecution, TaskAttachment } from "../types";
+import {
+  fetchComments,
+  addComment,
+  fetchAgents,
+  assignAgent,
+  getExecution,
+  approveExecution,
+  requestChanges,
+  listAttachments,
+  uploadAttachment,
+  deleteAttachment,
+  attachmentDownloadUrl,
+} from "../api";
 import {
   XIcon,
   PencilIcon,
@@ -9,7 +21,14 @@ import {
   CalendarIcon,
   ChatIcon,
   ClockIcon,
+  RobotIcon,
+  PaperclipIcon,
+  DownloadIcon,
 } from "../Icons";
+import { agentStateDisplay } from "../utils/agentStateDisplay";
+import { CommentItem } from "./CommentItem";
+import { ActivityIndicator } from "./ActivityIndicator";
+import { isAgentComment, shouldShowActivityIndicator } from "../utils/commentUtils";
 
 interface TaskDetailModalProps {
   task: Task;
@@ -17,6 +36,8 @@ interface TaskDetailModalProps {
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onStatusChange: (task: Task, status: TaskStatus) => void;
+  /** Notifies the parent that an execution changed so the board can refresh. */
+  onExecutionChanged?: () => void;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -55,15 +76,38 @@ export function TaskDetailModal({
   onEdit,
   onDelete,
   onStatusChange,
+  onExecutionChanged,
 }: TaskDetailModalProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [commentAuthor, setCommentAuthor] = useState("Usuario");
   const [loadingComments, setLoadingComments] = useState(true);
+  const [agentNames, setAgentNames] = useState<string[]>([]);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  // Agent orchestration state
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [execution, setExecution] = useState<AgentExecution | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState("");
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // Attachments state
+  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadComments();
+    loadAgentData();
+    loadAttachments();
   }, [task.id]);
+
+  useEffect(() => {
+    commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [comments]);
 
   async function loadComments() {
     try {
@@ -76,11 +120,109 @@ export function TaskDetailModal({
     }
   }
 
+  async function loadAgentData() {
+    try {
+      const [ags, exec] = await Promise.all([fetchAgents(), getExecution(task.id)]);
+      setAgents(ags);
+      setAgentNames(ags.map((a) => a.name));
+      setExecution(exec);
+      if (ags.length > 0) setSelectedAgent(ags[0].id);
+    } catch (err) {
+      console.error("Error loading agent data:", err);
+      setAgentNames([]); // graceful degradation
+    }
+  }
+
+  async function loadAttachments() {
+    try {
+      setAttachments(await listAttachments(task.id));
+    } catch (err) {
+      console.error("Error loading attachments:", err);
+    }
+  }
+
+  async function handleAssign() {
+    if (!selectedAgent) return;
+    setAgentBusy(true);
+    setAgentError(null);
+    try {
+      const exec = await assignAgent(task.id, selectedAgent);
+      setExecution(exec);
+      onExecutionChanged?.();
+    } catch {
+      setAgentError("No se pudo asignar el agente.");
+    } finally {
+      setAgentBusy(false);
+    }
+  }
+
+  async function handleApprove() {
+    setAgentBusy(true);
+    setAgentError(null);
+    try {
+      const exec = await approveExecution(task.id);
+      setExecution(exec);
+      onExecutionChanged?.();
+    } catch {
+      setAgentError("No se pudo aprobar.");
+    } finally {
+      setAgentBusy(false);
+    }
+  }
+
+  async function handleRequestChanges() {
+    if (!feedbackText.trim()) return;
+    setAgentBusy(true);
+    setAgentError(null);
+    try {
+      const exec = await requestChanges(task.id, feedbackText.trim());
+      setExecution(exec);
+      setFeedbackText("");
+      setShowFeedback(false);
+      onExecutionChanged?.();
+    } catch {
+      setAgentError("No se pudieron solicitar cambios.");
+    } finally {
+      setAgentBusy(false);
+    }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setAttachError(null);
+    try {
+      await uploadAttachment(task.id, file);
+      await loadAttachments();
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : "No se pudo subir el archivo.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleDeleteAttachment(id: number) {
+    try {
+      await deleteAttachment(id);
+      await loadAttachments();
+    } catch {
+      setAttachError("No se pudo eliminar el adjunto.");
+    }
+  }
+
+  function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
   async function handleAddComment(e: React.FormEvent) {
     e.preventDefault();
     if (!newComment.trim()) return;
     const comment = await addComment(task.id, newComment, commentAuthor);
-    setComments([comment, ...comments]);
+    setComments([...comments, comment]);
     setNewComment("");
   }
 
@@ -175,6 +317,196 @@ export function TaskDetailModal({
             </button>
           </div>
 
+          {/* ── Agent panel (R22) ─────────────────────────────────── */}
+          <div className="border-t border-white/10 pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <RobotIcon size={18} className="text-accent-400" />
+              <h3 className="text-sm font-semibold text-gray-300">Agente IA</h3>
+              {execution && (
+                <span
+                  className={`badge text-[10px] inline-flex items-center gap-1.5 ml-auto ${agentStateDisplay(execution.state).badge}`}
+                >
+                  {agentStateDisplay(execution.state).label}
+                </span>
+              )}
+            </div>
+
+            {!execution ? (
+              // Unassigned: pick an agent + assign
+              <div className="flex items-end gap-2 flex-wrap">
+                <label className="flex-1 min-w-[160px]">
+                  <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+                    Asignar a un agente
+                  </span>
+                  <select
+                    value={selectedAgent}
+                    onChange={(e) => setSelectedAgent(e.target.value)}
+                    className="input-field"
+                    aria-label="Seleccionar agente"
+                  >
+                    {agents.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  onClick={handleAssign}
+                  disabled={agentBusy || !selectedAgent}
+                  className="btn-primary text-sm"
+                  aria-label="Asignar agente a la tarea"
+                >
+                  Asignar
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-surface-400/40 border border-white/5 p-3">
+                  <p className="text-xs text-muted-400">
+                    Agente: <span className="text-gray-200 font-medium">{execution.agent_id}</span>
+                  </p>
+                  {execution.agent_summary && (
+                    <p className="text-xs text-muted-300 mt-2">
+                      <span className="text-muted-500">Resumen del agente:</span>{" "}
+                      {execution.agent_summary}
+                    </p>
+                  )}
+                  {execution.review_feedback && (
+                    <p className="text-xs text-danger-300 mt-2">
+                      <span className="text-muted-500">Cambios solicitados:</span>{" "}
+                      {execution.review_feedback}
+                    </p>
+                  )}
+                </div>
+
+                {/* Human approval gate — only in pending_review (R22) */}
+                {execution.state === "pending_review" && !showFeedback && (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={handleApprove}
+                      disabled={agentBusy}
+                      className="btn-primary flex items-center gap-2 text-sm"
+                      aria-label="Aprobar el trabajo del agente"
+                    >
+                      <CheckCircleIcon size={16} />
+                      Aprobar
+                    </button>
+                    <button
+                      onClick={() => setShowFeedback(true)}
+                      disabled={agentBusy}
+                      className="btn-secondary text-sm"
+                      aria-label="Solicitar cambios al agente"
+                    >
+                      Solicitar cambios
+                    </button>
+                  </div>
+                )}
+
+                {/* Feedback form for request-changes */}
+                {execution.state === "pending_review" && showFeedback && (
+                  <div className="space-y-2">
+                    <textarea
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)}
+                      className="input-field text-sm resize-none"
+                      rows={3}
+                      placeholder="Describe los cambios necesarios..."
+                      aria-label="Feedback de cambios"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleRequestChanges}
+                        disabled={agentBusy || !feedbackText.trim()}
+                        className="btn-danger text-sm"
+                      >
+                        Enviar feedback
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowFeedback(false);
+                          setFeedbackText("");
+                        }}
+                        className="btn-ghost text-sm"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {agentError && (
+              <p role="alert" className="text-xs text-danger-400 mt-2">
+                {agentError}
+              </p>
+            )}
+          </div>
+
+          {/* ── Attachments (R23) ─────────────────────────────────── */}
+          <div className="border-t border-white/10 pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <PaperclipIcon size={18} className="text-muted-400" />
+              <h3 className="text-sm font-semibold text-gray-300">
+                Archivos adjuntos ({attachments.length})
+              </h3>
+              <label className="ml-auto btn-secondary text-sm cursor-pointer flex items-center gap-2">
+                <PaperclipIcon size={14} />
+                <span>{uploading ? "Subiendo..." : "Adjuntar"}</span>
+                <input
+                  type="file"
+                  className="sr-only"
+                  onChange={handleUpload}
+                  disabled={uploading}
+                  aria-label="Subir un archivo adjunto"
+                />
+              </label>
+            </div>
+
+            {attachError && (
+              <p role="alert" className="text-xs text-danger-400 mb-2">
+                {attachError}
+              </p>
+            )}
+
+            {attachments.length === 0 ? (
+              <p className="text-sm text-muted-400">No hay archivos adjuntos.</p>
+            ) : (
+              <div className="space-y-2">
+                {attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-surface-400/30 border border-white/5"
+                  >
+                    <PaperclipIcon size={14} className="text-muted-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-200 truncate">{att.filename}</p>
+                      <p className="text-xs text-muted-500">{formatBytes(att.size_bytes)}</p>
+                    </div>
+                    <a
+                      href={attachmentDownloadUrl(att.id)}
+                      download={att.filename}
+                      className="p-1.5 rounded-lg hover:bg-white/10 text-muted-400 hover:text-accent-300 transition-colors"
+                      aria-label={`Descargar ${att.filename}`}
+                      title="Descargar"
+                    >
+                      <DownloadIcon size={15} />
+                    </a>
+                    <button
+                      onClick={() => handleDeleteAttachment(att.id)}
+                      className="p-1.5 rounded-lg hover:bg-danger/10 text-muted-400 hover:text-danger-400 transition-colors"
+                      aria-label={`Eliminar ${att.filename}`}
+                      title="Eliminar"
+                    >
+                      <TrashIcon size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Comments Section */}
           <div className="border-t border-white/10 pt-6">
             <div className="flex items-center gap-2 mb-4">
@@ -215,20 +547,18 @@ export function TaskDetailModal({
                 <p className="text-sm text-muted-400">No hay comentarios aún.</p>
               ) : (
                 comments.map((comment) => (
-                  <div
+                  <CommentItem
                     key={comment.id}
-                    className="bg-surface-400/50 rounded-xl p-3 border border-white/5"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-300">{comment.author}</span>
-                      <span className="text-xs text-muted-500">
-                        {formatDateTime(comment.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-300">{comment.content}</p>
-                  </div>
+                    comment={comment}
+                    isAgent={isAgentComment(comment.author, agentNames)}
+                    agentState={execution?.state ?? null}
+                  />
                 ))
               )}
+              {shouldShowActivityIndicator(comments, agentNames, execution?.state ?? null) && (
+                <ActivityIndicator agentName={agentNames[0] ?? "Agente"} />
+              )}
+              <div ref={commentsEndRef} />
             </div>
           </div>
         </div>
