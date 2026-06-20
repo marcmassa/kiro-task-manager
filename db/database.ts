@@ -150,6 +150,18 @@ db.exec(`
     created_at                  TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at                  TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- FEAT-010: configuración del motor de agente (singleton).
+  CREATE TABLE IF NOT EXISTS agent_engine_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    auto_start INTEGER NOT NULL DEFAULT 0,
+    poll_interval_ms INTEGER NOT NULL DEFAULT 30000,
+    max_iterations INTEGER NOT NULL DEFAULT 50,
+    max_retries INTEGER NOT NULL DEFAULT 3,
+    tool_timeout_ms INTEGER NOT NULL DEFAULT 30000,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 // FEAT-005: ensure the singleton workspace_settings row exists with defaults.
@@ -157,6 +169,9 @@ db.exec("INSERT OR IGNORE INTO workspace_settings (id) VALUES (1)");
 
 // FEAT-006: seed the default Kiro agent (idempotent).
 db.exec("INSERT OR IGNORE INTO agents (id, name, kind) VALUES ('kiro', 'Kiro', 'mcp')");
+
+// FEAT-010: seed the singleton agent engine config row (idempotent).
+db.exec("INSERT OR IGNORE INTO agent_engine_config (id) VALUES (1)");
 
 // Seed priorities
 const priorityCount = db.query("SELECT COUNT(*) as count FROM priorities").get() as {

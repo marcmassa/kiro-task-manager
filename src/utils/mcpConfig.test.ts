@@ -104,7 +104,7 @@ describe("Property-Based Tests — mcpConfig", () => {
       fc.property(arbitraryStdioServer(), (server) => {
         const result = buildMcpJson([server]);
         const entry = result.mcpServers[server.name];
-        expect(entry.command).toBe(server.command);
+        expect(entry.command).toBe(server.command!);
         expect(entry.args).toEqual(server.args);
       }),
       { numRuns: 100 },
@@ -116,7 +116,7 @@ describe("Property-Based Tests — mcpConfig", () => {
       fc.property(arbitraryHttpServer(), (server) => {
         const result = buildMcpJson([server]);
         const entry = result.mcpServers[server.name];
-        expect(entry.url).toBe(server.url);
+        expect(entry.url).toBe(server.url!);
       }),
       { numRuns: 100 },
     );

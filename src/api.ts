@@ -20,6 +20,9 @@ import type {
   AiProviderSaveInput,
   AiConnectionTestResult,
   AiProviderMeta,
+  AgentStatusResponse,
+  AgentEngineConfig,
+  AgentRunResult,
 } from "./types";
 
 const BASE_URL = "/api";
@@ -347,4 +350,34 @@ export async function testAiProviderConnection(
 /** GET /api/ai-provider/registry — available providers list. */
 export async function fetchAiProviderRegistry(): Promise<AiProviderMeta[]> {
   return request<AiProviderMeta[]>(`${BASE_URL}/ai-provider/registry`);
+}
+
+// ── FEAT-010: Agent Engine ───────────────────────────────────────────────
+
+/** GET /api/agent/status — current agent engine status. */
+export async function fetchAgentStatus(): Promise<AgentStatusResponse> {
+  return request<AgentStatusResponse>(`${BASE_URL}/agent/status`);
+}
+
+/** GET /api/agent/config — current agent engine configuration. */
+export async function fetchAgentConfig(): Promise<AgentEngineConfig> {
+  return request<AgentEngineConfig>(`${BASE_URL}/agent/config`);
+}
+
+/** PUT /api/agent/config — update agent engine configuration. */
+export async function updateAgentConfig(
+  data: Partial<AgentEngineConfig>,
+): Promise<AgentEngineConfig> {
+  return request<AgentEngineConfig>(`${BASE_URL}/agent/config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+/** POST /api/agent/run — trigger a single agent cycle manually. */
+export async function triggerAgentRun(): Promise<AgentRunResult> {
+  return request<AgentRunResult>(`${BASE_URL}/agent/run`, {
+    method: "POST",
+  });
 }

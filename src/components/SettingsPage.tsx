@@ -7,6 +7,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { IntegrationCard } from "./IntegrationCard";
 import { McpServersSection, McpServerForm } from "./McpServersSection";
 import { AiProviderSection } from "./AiProviderSection";
+import { AgentEngineSection } from "./AgentEngineSection";
 import {
   fetchSettings,
   updateWorkspaceSettings,
@@ -577,7 +578,15 @@ export function SettingsPage({
           </div>
         </section>
 
-        {/* ── 5. Proveedor de IA ─────────────────────────────────── */}
+        {/* ── 5. Motor de Agente ──────────────────────────────────── */}
+        <section aria-label="Motor de Agente">
+          <SectionHeader label="Motor de Agente" dotColor="bg-accent" />
+          <div className="home-card">
+            <AgentEngineSection />
+          </div>
+        </section>
+
+        {/* ── 6. Proveedor de IA ─────────────────────────────────── */}
         <section aria-label="Proveedor de IA">
           <SectionHeader label="Proveedor de IA" dotColor="bg-warning" />
           <div className="home-card">
@@ -593,7 +602,7 @@ export function SettingsPage({
           </div>
         </section>
 
-        {/* ── 6. Servidores MCP ──────────────────────────────────── */}
+        {/* ── 7. Servidores MCP ──────────────────────────────────── */}
         <section aria-label="Servidores MCP">
           <SectionHeader label="Servidores MCP" dotColor="bg-accent" />
           <div className="home-card space-y-4">

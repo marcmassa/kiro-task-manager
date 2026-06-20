@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import db from "./db/database";
 import path from "path";
+import { AgentEngine } from "./src/agent/engine";
 import {
   getSettings,
   patchWorkspaceSettings,
@@ -46,6 +47,8 @@ import { decryptApiKey } from "./src/utils/crypto";
 
 const PUBLIC_DIR = path.resolve(import.meta.dir, "public");
 const PACKAGE_ROOT = import.meta.dir;
+
+const agentEngine = new AgentEngine(db);
 
 const app = new Elysia()
   .use(cors())
@@ -396,6 +399,34 @@ const app = new Elysia()
     return result;
   })
 
+  // ── FEAT-010: Agent Engine routes ─────────────────────────────────────────
+
+  .get("/api/agent/status", () => {
+    return agentEngine.getStatus();
+  })
+
+  .get("/api/agent/config", () => {
+    return agentEngine.getConfig();
+  })
+
+  .put("/api/agent/config", async ({ body, set }) => {
+    try {
+      agentEngine.updateConfig(body as Partial<import("./src/agent/types").AgentEngineConfig>);
+      return agentEngine.getConfig();
+    } catch (error) {
+      set.status = 400;
+      return { error: error instanceof Error ? error.message : "Error al actualizar config" };
+    }
+  })
+
+  .post("/api/agent/run", async ({ set }) => {
+    const result = await agentEngine.runCycle();
+    if (!result.ok) {
+      set.status = result.taskId ? 500 : 409;
+    }
+    return result;
+  })
+
   // Serve index.html for all non-API routes (SPA fallback)
   .get("/*", ({ request }) => {
     const url = new URL(request.url);
@@ -412,6 +443,11 @@ const app = new Elysia()
 if (import.meta.main) {
   app.listen(3000);
   console.log(`🚀 Task Manager running at http://localhost:3000`);
+
+  // FEAT-010: Initialize agent engine (connects MCP, starts loop if configured)
+  agentEngine.init().catch((err) => {
+    console.error("⚠️ Agent engine initialization failed:", err.message);
+  });
 }
 
 export { app };

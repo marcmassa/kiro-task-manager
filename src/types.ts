@@ -216,3 +216,33 @@ export interface AiConnectionTestResult {
   errorKind?: "timeout" | "auth_error" | "network_error" | "provider_error";
   message?: string;
 }
+
+// ── FEAT-010: Agent Engine types ──────────────────────────────────────────
+
+/** Estado del motor de agente. */
+export type AgentEngineStatus = "idle" | "working" | "error" | "disabled";
+
+/** Respuesta de GET /api/agent/status. */
+export interface AgentStatusResponse {
+  status: AgentEngineStatus;
+  currentTaskId: number | null;
+  currentTaskTitle: string | null;
+  lastError: string | null;
+  lastCycleAt: string | null;
+}
+
+/** Configuración del agent engine (GET/PUT /api/agent/config). */
+export interface AgentEngineConfig {
+  autoStart: boolean;
+  pollIntervalMs: number;
+  maxIterations: number;
+  maxRetries: number;
+  toolTimeoutMs: number;
+}
+
+/** Resultado de POST /api/agent/run. */
+export interface AgentRunResult {
+  ok: boolean;
+  taskId?: number;
+  message: string;
+}
