@@ -1,11 +1,17 @@
 import type { TaskContext, ToolDefinition } from "./types";
+import type { RepoPromptContext } from "../utils/gitTypes";
 
 /**
  * Función pura: construye el system prompt para el agente.
- * Recibe contexto de tarea + lista de herramientas → produce el system prompt string.
+ * Recibe contexto de tarea + lista de herramientas + contexto de repo opcional
+ * → produce el system prompt string.
  * Sin side effects, testeable en aislamiento.
  */
-export function buildSystemPrompt(task: TaskContext, tools: ToolDefinition[]): string {
+export function buildSystemPrompt(
+  task: TaskContext,
+  tools: ToolDefinition[],
+  repoContext?: RepoPromptContext,
+): string {
   const sections: string[] = [];
 
   // 1. Rol del agente
@@ -17,6 +23,28 @@ export function buildSystemPrompt(task: TaskContext, tools: ToolDefinition[]): s
   sections.push(
     `## Reglas de Comportamiento\n\n- Usa las herramientas disponibles cuando necesites información o realizar acciones.\n- Reporta tu progreso publicando comentarios en la tarea.\n- No inventes información: si no tienes datos suficientes, indica qué falta.\n- Publica un comentario de progreso al INICIO indicando que comenzaste a trabajar.\n- Publica un comentario resumen al FINAL con lo que lograste o los problemas encontrados.`,
   );
+
+  // 2.5. Contexto del repositorio (solo si está configurado)
+  if (repoContext) {
+    const repoLines = [
+      `## Repositorio de Trabajo`,
+      ``,
+      `Estás trabajando en el repositorio local: ${repoContext.workingDir}`,
+      `Rama actual: ${repoContext.currentBranch}`,
+      ``,
+      `### Estructura del proyecto (primer nivel)`,
+      repoContext.directoryTree,
+    ];
+
+    if (repoContext.contextFiles.length > 0) {
+      repoLines.push(``);
+      repoLines.push(`### Ficheros de contexto relevantes`);
+      repoLines.push(``);
+      repoLines.push(...repoContext.contextFiles.map((f) => `- ${f}`));
+    }
+
+    sections.push(repoLines.join("\n"));
+  }
 
   // 3. Feedback de revisión anterior (posición prioritaria, antes del detalle de tarea)
   if (task.reviewFeedback !== null) {

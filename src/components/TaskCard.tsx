@@ -15,6 +15,7 @@ import { agentStateDisplay } from "../utils/agentStateDisplay";
 interface TaskCardProps {
   task: Task;
   execution?: AgentExecution | null;
+  fileChangesCount?: number;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -57,6 +58,7 @@ function getPriorityIcon(level: number) {
 export function TaskCard({
   task,
   execution,
+  fileChangesCount = 0,
   onView,
   onEdit,
   onDelete,
@@ -130,6 +132,19 @@ export function TaskCard({
           >
             <RobotIcon size={11} />
             {agentStateDisplay(execution.state).label}
+          </span>
+        </div>
+      )}
+
+      {/* File changes badge (R7.4) */}
+      {fileChangesCount > 0 && (
+        <div className="mb-3">
+          <span
+            className="badge text-[10px] inline-flex items-center gap-1 bg-accent/10 border border-accent/20 text-accent-300"
+            aria-label={`${fileChangesCount} ficheros modificados`}
+          >
+            <span aria-hidden="true">📄</span>
+            {fileChangesCount}
           </span>
         </div>
       )}

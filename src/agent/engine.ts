@@ -10,12 +10,15 @@ import type {
 import type { McpClientPool } from "./mcpClientPool";
 import type { ToolRouter } from "./toolRouter";
 import type { ProviderAdapter } from "./providerAdapter";
+import type { RepoPromptContext } from "../utils/gitTypes";
 import { createProviderAdapter } from "./providerAdapter";
 import { createToolRouter } from "./toolRouter";
 import { createMcpClientPool } from "./mcpClientPool";
 import { buildSystemPrompt } from "./systemPrompt";
 import { getActiveProviderConfig } from "../utils/aiProviderHandlers";
 import { claimTask, postComment, submitForReview, getTask, getTaskComments } from "../mcp/handlers";
+import { readdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Función pura: calcula el delay de reintento con backoff exponencial.
@@ -40,6 +43,17 @@ function isAuthError(error: unknown): boolean {
   }
   return false;
 }
+
+/** Directorios ignorados al construir el árbol de primer nivel del repo. */
+const IGNORED_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  "__pycache__",
+  ".next",
+  ".cache",
+]);
 
 /**
  * Motor principal del agente autónomo.
@@ -92,6 +106,8 @@ export class AgentEngine {
       if (this.pollCycleCount % 5 === 0) {
         await this.mcpPool.reconnectFailed();
       }
+      // Verificar salud del repositorio
+      this.checkRepoHealth();
     }, this.config.pollIntervalMs);
   }
 
@@ -240,29 +256,91 @@ export class AgentEngine {
     // 1. Cargar contexto completo de la tarea
     const taskContext = this.loadTaskContext(taskId);
 
-    // 2. Obtener herramientas disponibles
-    const tools: ToolDefinition[] = this.toolRouter ? this.toolRouter.getAvailableTools() : [];
+    // 2. Check repo configuration
+    let repoConfig: { workingDir: string; taskId: number; executionId: number | null } | undefined;
+    let repoContext: RepoPromptContext | undefined;
 
-    // 3. Construir system prompt
-    const systemPrompt = buildSystemPrompt(taskContext, tools);
+    const repoRow = this.db
+      .query(
+        "SELECT repo_path, repo_status, repo_current_branch FROM workspace_settings WHERE id = 1",
+      )
+      .get() as {
+      repo_path: string | null;
+      repo_status: string | null;
+      repo_current_branch: string | null;
+    } | null;
 
-    // 4. Publicar comentario de inicio
+    if (repoRow?.repo_status === "connected" && repoRow?.repo_path) {
+      // Get current execution id
+      const execRow = this.db
+        .query(
+          "SELECT id FROM agent_executions WHERE task_id = ? AND state = 'agent_working' ORDER BY created_at DESC LIMIT 1",
+        )
+        .get(taskId) as { id: number } | null;
+
+      repoConfig = {
+        workingDir: repoRow.repo_path,
+        taskId,
+        executionId: execRow?.id ?? null,
+      };
+
+      // Build directory tree (first level)
+      try {
+        const entries = readdirSync(repoRow.repo_path, { withFileTypes: true })
+          .filter((e) => !IGNORED_DIRS.has(e.name))
+          .map((e) => (e.isDirectory() ? `${e.name}/` : e.name))
+          .sort()
+          .join("\n");
+
+        // Get context file references
+        const contextFiles = this.db
+          .query(
+            "SELECT file_path FROM task_file_references WHERE task_id = ? AND reference_type = 'context'",
+          )
+          .all(taskId) as Array<{ file_path: string }>;
+
+        repoContext = {
+          workingDir: repoRow.repo_path,
+          currentBranch: repoRow.repo_current_branch ?? "main",
+          directoryTree: entries,
+          contextFiles: contextFiles.map((f) => f.file_path),
+        };
+      } catch {
+        // If we can't read the directory, skip repo context
+      }
+    }
+
+    // 3. Create tool router with repoConfig
+    const toolRouter = createToolRouter(
+      this.db,
+      this.mcpPool,
+      { toolTimeoutMs: this.config.toolTimeoutMs },
+      repoConfig,
+    );
+
+    // 4. Obtener herramientas disponibles
+    const tools: ToolDefinition[] = toolRouter.getAvailableTools();
+
+    // 5. Construir system prompt
+    const systemPrompt = buildSystemPrompt(taskContext, tools, repoContext);
+
+    // 6. Publicar comentario de inicio
     postComment(this.db, taskId, "🤖 Comenzando a trabajar en la tarea...");
 
-    // 5. Crear mensajes iniciales
+    // 7. Crear mensajes iniciales
     const messages: Message[] = [
       { role: "system", content: systemPrompt },
       { role: "user", content: "Ejecuta la tarea descrita en el system prompt." },
     ];
 
-    // 6. Crear provider adapter
+    // 8. Crear provider adapter
     const providerConfig = await getActiveProviderConfig(this.db);
     if (!providerConfig) {
       throw new Error("Proveedor de IA no configurado");
     }
     const adapter: ProviderAdapter = createProviderAdapter(providerConfig);
 
-    // 7. Tool-use loop
+    // 9. Tool-use loop
     let summary = "";
     for (let i = 0; i < this.config.maxIterations; i++) {
       // Llamada al LLM con reintentos
@@ -283,9 +361,7 @@ export class AgentEngine {
 
       // Ejecutar cada herramienta y agregar resultados
       for (const toolCall of response.toolCalls) {
-        const result = this.toolRouter
-          ? await this.toolRouter.executeTool(toolCall)
-          : { toolCallId: toolCall.id, content: "Router no disponible", isError: true };
+        const result = await toolRouter.executeTool(toolCall);
 
         messages.push({
           role: "tool",
@@ -300,10 +376,10 @@ export class AgentEngine {
       summary = "Se alcanzó el límite de iteraciones";
     }
 
-    // 8. Publicar comentario resumen
+    // 10. Publicar comentario resumen
     postComment(this.db, taskId, summary);
 
-    // 9. Enviar a revisión
+    // 11. Enviar a revisión
     const reviewResult = submitForReview(this.db, taskId, summary);
     if (!reviewResult.ok) {
       postComment(this.db, taskId, `⚠️ No se pudo enviar a revisión: ${reviewResult.error}`);
@@ -438,5 +514,34 @@ export class AgentEngine {
       })),
       reviewFeedback: execution?.review_feedback ?? null,
     };
+  }
+
+  /**
+   * Verifica la salud del repositorio configurado.
+   * Si está "connected" pero el path no existe o no es Git → "disconnected".
+   * Si está "disconnected" pero el path vuelve a ser accesible → "connected".
+   */
+  private checkRepoHealth(): void {
+    try {
+      const repoRow = this.db
+        .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+        .get() as { repo_path: string | null; repo_status: string | null } | null;
+
+      if (repoRow?.repo_status === "connected" && repoRow?.repo_path) {
+        if (!existsSync(repoRow.repo_path) || !existsSync(join(repoRow.repo_path, ".git"))) {
+          this.db
+            .prepare("UPDATE workspace_settings SET repo_status = 'disconnected' WHERE id = 1")
+            .run();
+        }
+      } else if (repoRow?.repo_status === "disconnected" && repoRow?.repo_path) {
+        if (existsSync(repoRow.repo_path) && existsSync(join(repoRow.repo_path, ".git"))) {
+          this.db
+            .prepare("UPDATE workspace_settings SET repo_status = 'connected' WHERE id = 1")
+            .run();
+        }
+      }
+    } catch {
+      /* ignore monitoring errors */
+    }
   }
 }

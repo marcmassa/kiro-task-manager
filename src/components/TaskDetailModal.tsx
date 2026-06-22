@@ -12,6 +12,7 @@ import {
   uploadAttachment,
   deleteAttachment,
   attachmentDownloadUrl,
+  fetchRepoConfig,
 } from "../api";
 import {
   XIcon,
@@ -29,6 +30,7 @@ import { agentStateDisplay } from "../utils/agentStateDisplay";
 import { CommentItem } from "./CommentItem";
 import { ActivityIndicator } from "./ActivityIndicator";
 import { isAgentComment, shouldShowActivityIndicator } from "../utils/commentUtils";
+import { FilesTab } from "./FilesTab";
 
 interface TaskDetailModalProps {
   task: Task;
@@ -99,10 +101,15 @@ export function TaskDetailModal({
   const [attachError, setAttachError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"comentarios" | "archivos">("comentarios");
+  const [repoConfigured, setRepoConfigured] = useState(false);
+
   useEffect(() => {
     loadComments();
     loadAgentData();
     loadAttachments();
+    loadRepoStatus();
   }, [task.id]);
 
   useEffect(() => {
@@ -138,6 +145,15 @@ export function TaskDetailModal({
       setAttachments(await listAttachments(task.id));
     } catch (err) {
       console.error("Error loading attachments:", err);
+    }
+  }
+
+  async function loadRepoStatus() {
+    try {
+      const config = await fetchRepoConfig();
+      setRepoConfigured(config.repoStatus === "connected");
+    } catch {
+      setRepoConfigured(false);
     }
   }
 
@@ -317,250 +333,297 @@ export function TaskDetailModal({
             </button>
           </div>
 
-          {/* ── Agent panel (R22) ─────────────────────────────────── */}
-          <div className="border-t border-white/10 pt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <RobotIcon size={18} className="text-accent-400" />
-              <h3 className="text-sm font-semibold text-gray-300">Agente IA</h3>
-              {execution && (
-                <span
-                  className={`badge text-[10px] inline-flex items-center gap-1.5 ml-auto ${agentStateDisplay(execution.state).badge}`}
-                >
-                  {agentStateDisplay(execution.state).label}
-                </span>
-              )}
+          {/* Tab switcher */}
+          <div className="border-t border-white/10 pt-4">
+            <div className="flex gap-1 p-1 rounded-lg bg-surface-400/30 border border-white/5 w-fit">
+              <button
+                onClick={() => setActiveTab("comentarios")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  activeTab === "comentarios"
+                    ? "bg-accent/15 text-accent-300"
+                    : "text-muted-400 hover:text-muted-300"
+                }`}
+                aria-label="Ver pestaña Comentarios"
+              >
+                Comentarios
+              </button>
+              <button
+                onClick={() => setActiveTab("archivos")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  activeTab === "archivos"
+                    ? "bg-accent/15 text-accent-300"
+                    : "text-muted-400 hover:text-muted-300"
+                }`}
+                aria-label="Ver pestaña Archivos"
+              >
+                Archivos
+              </button>
             </div>
+          </div>
 
-            {!execution ? (
-              // Unassigned: pick an agent + assign
-              <div className="flex items-end gap-2 flex-wrap">
-                <label className="flex-1 min-w-[160px]">
-                  <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                    Asignar a un agente
-                  </span>
-                  <select
-                    value={selectedAgent}
-                    onChange={(e) => setSelectedAgent(e.target.value)}
-                    className="input-field"
-                    aria-label="Seleccionar agente"
-                  >
-                    {agents.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  onClick={handleAssign}
-                  disabled={agentBusy || !selectedAgent}
-                  className="btn-primary text-sm"
-                  aria-label="Asignar agente a la tarea"
-                >
-                  Asignar
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="rounded-xl bg-surface-400/40 border border-white/5 p-3">
-                  <p className="text-xs text-muted-400">
-                    Agente: <span className="text-gray-200 font-medium">{execution.agent_id}</span>
-                  </p>
-                  {execution.agent_summary && (
-                    <p className="text-xs text-muted-300 mt-2">
-                      <span className="text-muted-500">Resumen del agente:</span>{" "}
-                      {execution.agent_summary}
-                    </p>
-                  )}
-                  {execution.review_feedback && (
-                    <p className="text-xs text-danger-300 mt-2">
-                      <span className="text-muted-500">Cambios solicitados:</span>{" "}
-                      {execution.review_feedback}
-                    </p>
+          {/* Tab content: Archivos */}
+          {activeTab === "archivos" && (
+            <FilesTab
+              taskId={task.id}
+              executionState={execution?.state}
+              repoConfigured={repoConfigured}
+            />
+          )}
+
+          {/* Tab content: Comentarios (existing sections) */}
+          {activeTab === "comentarios" && (
+            <>
+              {/* ── Agent panel (R22) ─────────────────────────────────── */}
+              <div className="border-t border-white/10 pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <RobotIcon size={18} className="text-accent-400" />
+                  <h3 className="text-sm font-semibold text-gray-300">Agente IA</h3>
+                  {execution && (
+                    <span
+                      className={`badge text-[10px] inline-flex items-center gap-1.5 ml-auto ${agentStateDisplay(execution.state).badge}`}
+                    >
+                      {agentStateDisplay(execution.state).label}
+                    </span>
                   )}
                 </div>
 
-                {/* Human approval gate — only in pending_review (R22) */}
-                {execution.state === "pending_review" && !showFeedback && (
-                  <div className="flex gap-2 flex-wrap">
+                {!execution ? (
+                  // Unassigned: pick an agent + assign
+                  <div className="flex items-end gap-2 flex-wrap">
+                    <label className="flex-1 min-w-[160px]">
+                      <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+                        Asignar a un agente
+                      </span>
+                      <select
+                        value={selectedAgent}
+                        onChange={(e) => setSelectedAgent(e.target.value)}
+                        className="input-field"
+                        aria-label="Seleccionar agente"
+                      >
+                        {agents.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <button
-                      onClick={handleApprove}
-                      disabled={agentBusy}
-                      className="btn-primary flex items-center gap-2 text-sm"
-                      aria-label="Aprobar el trabajo del agente"
+                      onClick={handleAssign}
+                      disabled={agentBusy || !selectedAgent}
+                      className="btn-primary text-sm"
+                      aria-label="Asignar agente a la tarea"
                     >
-                      <CheckCircleIcon size={16} />
-                      Aprobar
+                      Asignar
                     </button>
-                    <button
-                      onClick={() => setShowFeedback(true)}
-                      disabled={agentBusy}
-                      className="btn-secondary text-sm"
-                      aria-label="Solicitar cambios al agente"
-                    >
-                      Solicitar cambios
-                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="rounded-xl bg-surface-400/40 border border-white/5 p-3">
+                      <p className="text-xs text-muted-400">
+                        Agente:{" "}
+                        <span className="text-gray-200 font-medium">{execution.agent_id}</span>
+                      </p>
+                      {execution.agent_summary && (
+                        <p className="text-xs text-muted-300 mt-2">
+                          <span className="text-muted-500">Resumen del agente:</span>{" "}
+                          {execution.agent_summary}
+                        </p>
+                      )}
+                      {execution.review_feedback && (
+                        <p className="text-xs text-danger-300 mt-2">
+                          <span className="text-muted-500">Cambios solicitados:</span>{" "}
+                          {execution.review_feedback}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Human approval gate — only in pending_review (R22) */}
+                    {execution.state === "pending_review" && !showFeedback && (
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={handleApprove}
+                          disabled={agentBusy}
+                          className="btn-primary flex items-center gap-2 text-sm"
+                          aria-label="Aprobar el trabajo del agente"
+                        >
+                          <CheckCircleIcon size={16} />
+                          Aprobar
+                        </button>
+                        <button
+                          onClick={() => setShowFeedback(true)}
+                          disabled={agentBusy}
+                          className="btn-secondary text-sm"
+                          aria-label="Solicitar cambios al agente"
+                        >
+                          Solicitar cambios
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Feedback form for request-changes */}
+                    {execution.state === "pending_review" && showFeedback && (
+                      <div className="space-y-2">
+                        <textarea
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          className="input-field text-sm resize-none"
+                          rows={3}
+                          placeholder="Describe los cambios necesarios..."
+                          aria-label="Feedback de cambios"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleRequestChanges}
+                            disabled={agentBusy || !feedbackText.trim()}
+                            className="btn-danger text-sm"
+                          >
+                            Enviar feedback
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowFeedback(false);
+                              setFeedbackText("");
+                            }}
+                            className="btn-ghost text-sm"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Feedback form for request-changes */}
-                {execution.state === "pending_review" && showFeedback && (
-                  <div className="space-y-2">
-                    <textarea
-                      value={feedbackText}
-                      onChange={(e) => setFeedbackText(e.target.value)}
-                      className="input-field text-sm resize-none"
-                      rows={3}
-                      placeholder="Describe los cambios necesarios..."
-                      aria-label="Feedback de cambios"
+                {agentError && (
+                  <p role="alert" className="text-xs text-danger-400 mt-2">
+                    {agentError}
+                  </p>
+                )}
+              </div>
+
+              {/* ── Attachments (R23) ─────────────────────────────────── */}
+              <div className="border-t border-white/10 pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <PaperclipIcon size={18} className="text-muted-400" />
+                  <h3 className="text-sm font-semibold text-gray-300">
+                    Archivos adjuntos ({attachments.length})
+                  </h3>
+                  <label className="ml-auto btn-secondary text-sm cursor-pointer flex items-center gap-2">
+                    <PaperclipIcon size={14} />
+                    <span>{uploading ? "Subiendo..." : "Adjuntar"}</span>
+                    <input
+                      type="file"
+                      className="sr-only"
+                      onChange={handleUpload}
+                      disabled={uploading}
+                      aria-label="Subir un archivo adjunto"
                     />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleRequestChanges}
-                        disabled={agentBusy || !feedbackText.trim()}
-                        className="btn-danger text-sm"
+                  </label>
+                </div>
+
+                {attachError && (
+                  <p role="alert" className="text-xs text-danger-400 mb-2">
+                    {attachError}
+                  </p>
+                )}
+
+                {attachments.length === 0 ? (
+                  <p className="text-sm text-muted-400">No hay archivos adjuntos.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {attachments.map((att) => (
+                      <div
+                        key={att.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-surface-400/30 border border-white/5"
                       >
-                        Enviar feedback
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowFeedback(false);
-                          setFeedbackText("");
-                        }}
-                        className="btn-ghost text-sm"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
+                        <PaperclipIcon size={14} className="text-muted-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-200 truncate">{att.filename}</p>
+                          <p className="text-xs text-muted-500">{formatBytes(att.size_bytes)}</p>
+                        </div>
+                        <a
+                          href={attachmentDownloadUrl(att.id)}
+                          download={att.filename}
+                          className="p-1.5 rounded-lg hover:bg-white/10 text-muted-400 hover:text-accent-300 transition-colors"
+                          aria-label={`Descargar ${att.filename}`}
+                          title="Descargar"
+                        >
+                          <DownloadIcon size={15} />
+                        </a>
+                        <button
+                          onClick={() => handleDeleteAttachment(att.id)}
+                          className="p-1.5 rounded-lg hover:bg-danger/10 text-muted-400 hover:text-danger-400 transition-colors"
+                          aria-label={`Eliminar ${att.filename}`}
+                          title="Eliminar"
+                        >
+                          <TrashIcon size={15} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
-            )}
 
-            {agentError && (
-              <p role="alert" className="text-xs text-danger-400 mt-2">
-                {agentError}
-              </p>
-            )}
-          </div>
+              {/* Comments Section */}
+              <div className="border-t border-white/10 pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <ChatIcon size={18} className="text-muted-400" />
+                  <h3 className="text-sm font-semibold text-gray-300">
+                    Comentarios ({comments.length})
+                  </h3>
+                </div>
 
-          {/* ── Attachments (R23) ─────────────────────────────────── */}
-          <div className="border-t border-white/10 pt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <PaperclipIcon size={18} className="text-muted-400" />
-              <h3 className="text-sm font-semibold text-gray-300">
-                Archivos adjuntos ({attachments.length})
-              </h3>
-              <label className="ml-auto btn-secondary text-sm cursor-pointer flex items-center gap-2">
-                <PaperclipIcon size={14} />
-                <span>{uploading ? "Subiendo..." : "Adjuntar"}</span>
-                <input
-                  type="file"
-                  className="sr-only"
-                  onChange={handleUpload}
-                  disabled={uploading}
-                  aria-label="Subir un archivo adjunto"
-                />
-              </label>
-            </div>
-
-            {attachError && (
-              <p role="alert" className="text-xs text-danger-400 mb-2">
-                {attachError}
-              </p>
-            )}
-
-            {attachments.length === 0 ? (
-              <p className="text-sm text-muted-400">No hay archivos adjuntos.</p>
-            ) : (
-              <div className="space-y-2">
-                {attachments.map((att) => (
-                  <div
-                    key={att.id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-surface-400/30 border border-white/5"
-                  >
-                    <PaperclipIcon size={14} className="text-muted-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-200 truncate">{att.filename}</p>
-                      <p className="text-xs text-muted-500">{formatBytes(att.size_bytes)}</p>
-                    </div>
-                    <a
-                      href={attachmentDownloadUrl(att.id)}
-                      download={att.filename}
-                      className="p-1.5 rounded-lg hover:bg-white/10 text-muted-400 hover:text-accent-300 transition-colors"
-                      aria-label={`Descargar ${att.filename}`}
-                      title="Descargar"
-                    >
-                      <DownloadIcon size={15} />
-                    </a>
-                    <button
-                      onClick={() => handleDeleteAttachment(att.id)}
-                      className="p-1.5 rounded-lg hover:bg-danger/10 text-muted-400 hover:text-danger-400 transition-colors"
-                      aria-label={`Eliminar ${att.filename}`}
-                      title="Eliminar"
-                    >
-                      <TrashIcon size={15} />
-                    </button>
+                {/* Add Comment Form */}
+                <form onSubmit={handleAddComment} className="mb-4">
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      className="input-field text-sm flex-1"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Escribe un comentario..."
+                    />
+                    <input
+                      type="text"
+                      className="input-field text-sm w-28"
+                      value={commentAuthor}
+                      onChange={(e) => setCommentAuthor(e.target.value)}
+                      placeholder="Tu nombre"
+                    />
                   </div>
-                ))}
+                  <button
+                    type="submit"
+                    className="btn-primary text-sm"
+                    disabled={!newComment.trim()}
+                  >
+                    Comentar
+                  </button>
+                </form>
+
+                {/* Comments List */}
+                <div className="space-y-3 max-h-48 overflow-y-auto">
+                  {loadingComments ? (
+                    <p className="text-sm text-muted-400">Cargando comentarios...</p>
+                  ) : comments.length === 0 ? (
+                    <p className="text-sm text-muted-400">No hay comentarios aún.</p>
+                  ) : (
+                    comments.map((comment) => (
+                      <CommentItem
+                        key={comment.id}
+                        comment={comment}
+                        isAgent={isAgentComment(comment.author, agentNames)}
+                        agentState={execution?.state ?? null}
+                      />
+                    ))
+                  )}
+                  {shouldShowActivityIndicator(comments, agentNames, execution?.state ?? null) && (
+                    <ActivityIndicator agentName={agentNames[0] ?? "Agente"} />
+                  )}
+                  <div ref={commentsEndRef} />
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* Comments Section */}
-          <div className="border-t border-white/10 pt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <ChatIcon size={18} className="text-muted-400" />
-              <h3 className="text-sm font-semibold text-gray-300">
-                Comentarios ({comments.length})
-              </h3>
-            </div>
-
-            {/* Add Comment Form */}
-            <form onSubmit={handleAddComment} className="mb-4">
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  className="input-field text-sm flex-1"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Escribe un comentario..."
-                />
-                <input
-                  type="text"
-                  className="input-field text-sm w-28"
-                  value={commentAuthor}
-                  onChange={(e) => setCommentAuthor(e.target.value)}
-                  placeholder="Tu nombre"
-                />
-              </div>
-              <button type="submit" className="btn-primary text-sm" disabled={!newComment.trim()}>
-                Comentar
-              </button>
-            </form>
-
-            {/* Comments List */}
-            <div className="space-y-3 max-h-48 overflow-y-auto">
-              {loadingComments ? (
-                <p className="text-sm text-muted-400">Cargando comentarios...</p>
-              ) : comments.length === 0 ? (
-                <p className="text-sm text-muted-400">No hay comentarios aún.</p>
-              ) : (
-                comments.map((comment) => (
-                  <CommentItem
-                    key={comment.id}
-                    comment={comment}
-                    isAgent={isAgentComment(comment.author, agentNames)}
-                    agentState={execution?.state ?? null}
-                  />
-                ))
-              )}
-              {shouldShowActivityIndicator(comments, agentNames, execution?.state ?? null) && (
-                <ActivityIndicator agentName={agentNames[0] ?? "Agente"} />
-              )}
-              <div ref={commentsEndRef} />
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

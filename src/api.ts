@@ -23,6 +23,12 @@ import type {
   AgentStatusResponse,
   AgentEngineConfig,
   AgentRunResult,
+  RepoConfig,
+  FileReference,
+  FileReferenceType,
+  FileChange,
+  FileContentResponse,
+  DirectoryEntry,
 } from "./types";
 
 const BASE_URL = "/api";
@@ -380,4 +386,81 @@ export async function triggerAgentRun(): Promise<AgentRunResult> {
   return request<AgentRunResult>(`${BASE_URL}/agent/run`, {
     method: "POST",
   });
+}
+
+// ── FEAT-011: Workspace Git ──────────────────────────────────────────────
+
+/** GET /api/workspace/repo — current repo configuration. */
+export async function fetchRepoConfig(): Promise<RepoConfig> {
+  return request<RepoConfig>(`${BASE_URL}/workspace/repo`);
+}
+
+/** PUT /api/workspace/repo — update repo configuration. */
+export async function updateRepoConfig(data: Partial<RepoConfig>): Promise<RepoConfig> {
+  return request<RepoConfig>(`${BASE_URL}/workspace/repo`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+/** POST /api/workspace/repo/validate — validate a repo path without saving. */
+export async function validateRepoPath(repoPath: string): Promise<{
+  ok: boolean;
+  repoPath?: string;
+  currentBranch?: string;
+  code?: string;
+  message?: string;
+}> {
+  return request(`${BASE_URL}/workspace/repo/validate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repoPath }),
+  });
+}
+
+/** GET /api/tasks/:id/files — list file references for a task. */
+export async function fetchTaskFiles(taskId: number): Promise<FileReference[]> {
+  return request<FileReference[]>(`${BASE_URL}/tasks/${taskId}/files`);
+}
+
+/** POST /api/tasks/:id/files — add a file reference to a task. */
+export async function addTaskFile(
+  taskId: number,
+  filePath: string,
+  referenceType: FileReferenceType = "context",
+): Promise<FileReference> {
+  return request<FileReference>(`${BASE_URL}/tasks/${taskId}/files`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filePath, referenceType }),
+  });
+}
+
+/** DELETE /api/tasks/:id/files/:fileId — remove a file reference. */
+export async function removeTaskFile(taskId: number, fileId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/tasks/${taskId}/files/${fileId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+}
+
+/** GET /api/tasks/:id/changes — list file changes for a task. */
+export async function fetchTaskChanges(
+  taskId: number,
+  executionId?: number,
+): Promise<FileChange[]> {
+  const params = executionId ? `?execution_id=${executionId}` : "";
+  return request<FileChange[]>(`${BASE_URL}/tasks/${taskId}/changes${params}`);
+}
+
+/** GET /api/workspace/file?path=<rel> — read file content from workspace. */
+export async function fetchFileContent(path: string): Promise<FileContentResponse> {
+  return request<FileContentResponse>(
+    `${BASE_URL}/workspace/file?path=${encodeURIComponent(path)}`,
+  );
+}
+
+/** GET /api/workspace/tree?path=<rel> — list directory in workspace. */
+export async function fetchDirectoryTree(path?: string): Promise<{ entries: DirectoryEntry[] }> {
+  const params = path ? `?path=${encodeURIComponent(path)}` : "";
+  return request<{ entries: DirectoryEntry[] }>(`${BASE_URL}/workspace/tree${params}`);
 }

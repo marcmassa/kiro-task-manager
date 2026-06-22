@@ -8,6 +8,7 @@ import { IntegrationCard } from "./IntegrationCard";
 import { McpServersSection, McpServerForm } from "./McpServersSection";
 import { AiProviderSection } from "./AiProviderSection";
 import { AgentEngineSection } from "./AgentEngineSection";
+import { RepoSection } from "./RepoSection";
 import {
   fetchSettings,
   updateWorkspaceSettings,
@@ -482,6 +483,14 @@ export function SettingsPage({
                 Guardar
               </button>
             </div>
+          </div>
+        </section>
+
+        {/* ── 1b. Repositorio ────────────────────────────────────── */}
+        <section aria-label="Repositorio">
+          <SectionHeader label="Repositorio" dotColor="bg-accent" />
+          <div className="home-card">
+            <RepoSection />
           </div>
         </section>
 

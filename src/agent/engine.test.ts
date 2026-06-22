@@ -95,10 +95,35 @@ function createTestDb(): Database {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE workspace_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      workspace_name TEXT NOT NULL DEFAULT 'Mi Workspace',
+      repo_path TEXT DEFAULT NULL,
+      repo_remote_url TEXT DEFAULT NULL,
+      repo_default_branch TEXT NOT NULL DEFAULT 'main',
+      repo_status TEXT NOT NULL DEFAULT 'not_configured',
+      repo_current_branch TEXT DEFAULT NULL
+    );
+    CREATE TABLE task_file_references (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL,
+      file_path TEXT NOT NULL,
+      reference_type TEXT NOT NULL DEFAULT 'context',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE task_file_changes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL,
+      file_path TEXT NOT NULL,
+      change_type TEXT NOT NULL,
+      agent_execution_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     INSERT INTO priorities (id, name, level, color) VALUES (1, 'Media', 2, '#FF9900');
     INSERT INTO categories (id, name, color) VALUES (1, 'General', '#6366f1');
     INSERT INTO agents (id, name) VALUES ('kiro', 'Kiro');
     INSERT INTO agent_engine_config (id) VALUES (1);
+    INSERT INTO workspace_settings (id) VALUES (1);
   `);
   return db;
 }

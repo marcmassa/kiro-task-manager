@@ -246,3 +246,56 @@ export interface AgentRunResult {
   taskId?: number;
   message: string;
 }
+
+// ── FEAT-011: Workspace Git types ─────────────────────────────────────────
+
+/** Estado de conexión del repositorio. */
+export type RepoStatus = "connected" | "disconnected" | "error" | "not_configured";
+
+/** Tipo de referencia de fichero a tarea. */
+export type FileReferenceType = "context" | "output" | "modified";
+
+/** Tipo de cambio registrado por el agente. */
+export type FileChangeType = "created" | "modified" | "deleted";
+
+/** Configuración del repositorio (desde GET /api/workspace/repo). */
+export interface RepoConfig {
+  repoPath: string | null;
+  repoRemoteUrl: string | null;
+  repoDefaultBranch: string;
+  repoStatus: RepoStatus;
+  currentBranch: string | null;
+}
+
+/** Referencia de fichero asociada a una tarea. */
+export interface FileReference {
+  id: number;
+  taskId: number;
+  filePath: string;
+  referenceType: FileReferenceType;
+  createdAt: string;
+}
+
+/** Cambio de fichero registrado por el agente durante ejecución. */
+export interface FileChange {
+  id: number;
+  taskId: number;
+  filePath: string;
+  changeType: FileChangeType;
+  agentExecutionId: number | null;
+  createdAt: string;
+}
+
+/** Entrada del árbol de directorio (desde GET /api/workspace/tree). */
+export interface DirectoryEntry {
+  name: string;
+  type: "file" | "directory";
+  size: number;
+}
+
+/** Respuesta del visor de contenido (desde GET /api/workspace/file). */
+export interface FileContentResponse {
+  content: string;
+  size: number;
+  language: string;
+}

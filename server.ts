@@ -2,7 +2,13 @@ import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import db from "./db/database";
 import path from "path";
+import { existsSync, statSync, readdirSync } from "node:fs";
 import { AgentEngine } from "./src/agent/engine";
+import {
+  validateRepoPath,
+  validateFilePath,
+  resolveInSandbox,
+} from "./src/utils/gitPathValidation";
 import {
   getSettings,
   patchWorkspaceSettings,
@@ -397,6 +403,250 @@ const app = new Elysia()
       url: row.url,
     });
     return result;
+  })
+
+  // ── FEAT-011: Workspace Git routes ────────────────────────────────────────
+
+  .get("/api/workspace/repo", () => {
+    const row = db
+      .query(
+        "SELECT repo_path, repo_remote_url, repo_default_branch, repo_status, repo_current_branch FROM workspace_settings WHERE id = 1",
+      )
+      .get() as any;
+    return {
+      repoPath: row?.repo_path ?? null,
+      repoRemoteUrl: row?.repo_remote_url ?? null,
+      repoDefaultBranch: row?.repo_default_branch ?? "main",
+      repoStatus: row?.repo_status ?? "not_configured",
+      currentBranch: row?.repo_current_branch ?? null,
+    };
+  })
+
+  .put("/api/workspace/repo", ({ body, set }) => {
+    const { repoPath, repoRemoteUrl, repoDefaultBranch } = body as any;
+
+    if (repoPath === null || repoPath === undefined || repoPath.trim() === "") {
+      // Disconnect / clear config
+      db.prepare(
+        "UPDATE workspace_settings SET repo_path = NULL, repo_remote_url = ?, repo_default_branch = ?, repo_status = 'not_configured', repo_current_branch = NULL WHERE id = 1",
+      ).run(repoRemoteUrl ?? null, repoDefaultBranch ?? "main");
+      return {
+        repoPath: null,
+        repoRemoteUrl: repoRemoteUrl ?? null,
+        repoDefaultBranch: repoDefaultBranch ?? "main",
+        repoStatus: "not_configured",
+        currentBranch: null,
+      };
+    }
+
+    // Validate
+    const result = validateRepoPath(repoPath);
+    if (!result.ok) {
+      set.status = 422;
+      return { code: result.code, message: result.message };
+    }
+
+    // Save
+    db.prepare(
+      "UPDATE workspace_settings SET repo_path = ?, repo_remote_url = ?, repo_default_branch = ?, repo_status = 'connected', repo_current_branch = ? WHERE id = 1",
+    ).run(
+      result.repoPath,
+      repoRemoteUrl ?? null,
+      repoDefaultBranch ?? "main",
+      result.currentBranch,
+    );
+
+    return {
+      repoPath: result.repoPath,
+      repoRemoteUrl: repoRemoteUrl ?? null,
+      repoDefaultBranch: repoDefaultBranch ?? "main",
+      repoStatus: "connected",
+      currentBranch: result.currentBranch,
+    };
+  })
+
+  .post("/api/workspace/repo/validate", ({ body, set }) => {
+    const { repoPath } = body as any;
+    if (!repoPath) {
+      set.status = 422;
+      return {
+        ok: false,
+        code: "EMPTY_PATH",
+        message: "La ruta del repositorio no puede estar vacía",
+      };
+    }
+    return validateRepoPath(repoPath);
+  })
+
+  .get("/api/tasks/:id/files", ({ params, set }) => {
+    const ws = db.query("SELECT repo_status FROM workspace_settings WHERE id = 1").get() as any;
+    if (!ws || ws.repo_status === "not_configured") {
+      set.status = 422;
+      return { error: "Se requiere configurar un repositorio en Configuración" };
+    }
+    const files = db
+      .query(
+        "SELECT id, task_id, file_path, reference_type, created_at FROM task_file_references WHERE task_id = ? ORDER BY created_at",
+      )
+      .all(Number(params.id));
+    return (files as any[]).map((f) => ({
+      id: f.id,
+      taskId: f.task_id,
+      filePath: f.file_path,
+      referenceType: f.reference_type,
+      createdAt: f.created_at,
+    }));
+  })
+
+  .post("/api/tasks/:id/files", ({ params, body, set }) => {
+    const ws = db.query("SELECT repo_status FROM workspace_settings WHERE id = 1").get() as any;
+    if (!ws || ws.repo_status === "not_configured") {
+      set.status = 422;
+      return { error: "Se requiere configurar un repositorio en Configuración" };
+    }
+    const { filePath, referenceType } = body as any;
+    const validation = validateFilePath(filePath ?? "");
+    if (!validation.ok) {
+      set.status = 422;
+      return { code: validation.code, message: validation.message };
+    }
+    const stmt = db.prepare(
+      "INSERT INTO task_file_references (task_id, file_path, reference_type) VALUES (?, ?, ?)",
+    );
+    stmt.run(Number(params.id), validation.normalizedPath, referenceType ?? "context");
+    const id = (db.query("SELECT last_insert_rowid() AS id").get() as any).id;
+    const row = db.query("SELECT * FROM task_file_references WHERE id = ?").get(id) as any;
+    return {
+      id: row.id,
+      taskId: row.task_id,
+      filePath: row.file_path,
+      referenceType: row.reference_type,
+      createdAt: row.created_at,
+    };
+  })
+
+  .delete("/api/tasks/:id/files/:fileId", ({ params, set }) => {
+    const result = db
+      .prepare("DELETE FROM task_file_references WHERE id = ? AND task_id = ?")
+      .run(Number(params.fileId), Number(params.id));
+    if (result.changes === 0) {
+      set.status = 404;
+      return { error: "Referencia no encontrada" };
+    }
+    return { deleted: true };
+  })
+
+  .get("/api/tasks/:id/changes", ({ params, query }) => {
+    const taskId = Number(params.id);
+    let sql =
+      "SELECT id, task_id, file_path, change_type, agent_execution_id, created_at FROM task_file_changes WHERE task_id = ?";
+    const args: any[] = [taskId];
+    if (query.execution_id) {
+      sql += " AND agent_execution_id = ?";
+      args.push(Number(query.execution_id));
+    }
+    sql += " ORDER BY created_at";
+    const rows = db.query(sql).all(...args);
+    return (rows as any[]).map((r) => ({
+      id: r.id,
+      taskId: r.task_id,
+      filePath: r.file_path,
+      changeType: r.change_type,
+      agentExecutionId: r.agent_execution_id,
+      createdAt: r.created_at,
+    }));
+  })
+
+  .get("/api/workspace/file", async ({ query, set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado" };
+    }
+    const filePath = query.path as string;
+    if (!filePath) {
+      set.status = 422;
+      return { error: "Se requiere el parámetro path" };
+    }
+    const resolved = resolveInSandbox(ws.repo_path, filePath);
+    if (!resolved) {
+      set.status = 422;
+      return { error: "Ruta inválida o fuera del directorio de trabajo" };
+    }
+    if (!existsSync(resolved)) {
+      set.status = 404;
+      return { error: `Fichero no encontrado: ${filePath}` };
+    }
+    const stat = statSync(resolved);
+    if (stat.size > 1024 * 1024) {
+      set.status = 422;
+      return { error: "Fichero demasiado grande (máximo 1 MB)" };
+    }
+    const content = await Bun.file(resolved).text();
+    const ext = filePath.split(".").pop() ?? "";
+    const languageMap: Record<string, string> = {
+      ts: "typescript",
+      tsx: "typescript",
+      js: "javascript",
+      jsx: "javascript",
+      css: "css",
+      json: "json",
+      md: "markdown",
+      html: "html",
+      py: "python",
+      rs: "rust",
+      go: "go",
+    };
+    return { content, size: stat.size, language: languageMap[ext] ?? "plaintext" };
+  })
+
+  .get("/api/workspace/tree", ({ query, set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado" };
+    }
+    const dirPath = (query.path as string) || "";
+    let targetDir: string;
+    if (dirPath) {
+      const resolved = resolveInSandbox(ws.repo_path, dirPath);
+      if (!resolved) {
+        set.status = 422;
+        return { error: "Ruta inválida o fuera del directorio de trabajo" };
+      }
+      targetDir = resolved;
+    } else {
+      targetDir = ws.repo_path;
+    }
+    if (!existsSync(targetDir) || !statSync(targetDir).isDirectory()) {
+      set.status = 404;
+      return { error: "Directorio no encontrado" };
+    }
+    const IGNORED = new Set([
+      "node_modules",
+      ".git",
+      "dist",
+      "build",
+      "__pycache__",
+      ".next",
+      ".cache",
+    ]);
+    const entries = readdirSync(targetDir, { withFileTypes: true })
+      .filter((e) => !IGNORED.has(e.name))
+      .map((e) => ({
+        name: e.name,
+        type: e.isDirectory() ? "directory" : "file",
+        size: e.isDirectory() ? 0 : statSync(path.join(targetDir, e.name)).size,
+      }))
+      .sort((a, b) => {
+        if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+    return { entries };
   })
 
   // ── FEAT-010: Agent Engine routes ─────────────────────────────────────────

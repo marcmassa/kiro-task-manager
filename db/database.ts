@@ -312,4 +312,49 @@ if (taskCount.count === 0) {
   insertComment.run(idPerf, "Las consultas más lentas están en el endpoint de búsqueda.", "Ana");
 }
 
+// FEAT-011: workspace-git — add repo columns to workspace_settings (idempotent)
+try {
+  db.exec("ALTER TABLE workspace_settings ADD COLUMN repo_path TEXT DEFAULT NULL");
+} catch {}
+try {
+  db.exec("ALTER TABLE workspace_settings ADD COLUMN repo_remote_url TEXT DEFAULT NULL");
+} catch {}
+try {
+  db.exec(
+    "ALTER TABLE workspace_settings ADD COLUMN repo_default_branch TEXT NOT NULL DEFAULT 'main'",
+  );
+} catch {}
+try {
+  db.exec(
+    "ALTER TABLE workspace_settings ADD COLUMN repo_status TEXT NOT NULL DEFAULT 'not_configured'",
+  );
+} catch {}
+try {
+  db.exec("ALTER TABLE workspace_settings ADD COLUMN repo_current_branch TEXT DEFAULT NULL");
+} catch {}
+
+// FEAT-011: workspace-git — file references and changes tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS task_file_references (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    reference_type TEXT NOT NULL DEFAULT 'context'
+      CHECK (reference_type IN ('context', 'output', 'modified')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS task_file_changes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    change_type TEXT NOT NULL CHECK (change_type IN ('created', 'modified', 'deleted')),
+    agent_execution_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY (agent_execution_id) REFERENCES agent_executions(id) ON DELETE SET NULL
+  );
+`);
+
 export default db;
