@@ -335,9 +335,7 @@ try {
 
 // FEAT-011: workspace-git — git token column for push/pull authentication
 try {
-  db.exec(
-    "ALTER TABLE workspace_settings ADD COLUMN git_token_encrypted TEXT NOT NULL DEFAULT ''",
-  );
+  db.exec("ALTER TABLE workspace_settings ADD COLUMN git_token_encrypted TEXT NOT NULL DEFAULT ''");
 } catch {}
 
 // FEAT-011: workspace-git — file references and changes tables

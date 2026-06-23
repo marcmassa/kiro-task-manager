@@ -301,7 +301,6 @@ export interface FileContentResponse {
   language: string;
 }
 
-
 // ── FEAT-011: Git Operations Extension (R16-R20) ────────────────────────────
 
 /** Estado de un fichero en git status. */

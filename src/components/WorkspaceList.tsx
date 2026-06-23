@@ -32,7 +32,10 @@ export function WorkspaceList({ onEdit, onRefresh }: WorkspaceListProps): JSX.El
 
   async function handleDelete(ws: Workspace) {
     if (ws.id === 1) return; // Cannot delete default
-    if (!confirm(`¿Eliminar workspace "${ws.name}"? Las tareas se moverán al workspace por defecto.`)) return;
+    if (
+      !confirm(`¿Eliminar workspace "${ws.name}"? Las tareas se moverán al workspace por defecto.`)
+    )
+      return;
     setDeletingId(ws.id);
     try {
       await deleteWorkspace(ws.id);

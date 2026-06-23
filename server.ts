@@ -135,7 +135,8 @@ const app = new Elysia()
 
   // Create task
   .post("/api/tasks", ({ body }) => {
-    const { title, description, status, priority_id, category_id, due_date, workspace_id } = body as any;
+    const { title, description, status, priority_id, category_id, due_date, workspace_id } =
+      body as any;
     const result = db
       .prepare(
         "INSERT INTO tasks (title, description, status, priority_id, category_id, due_date, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -167,11 +168,20 @@ const app = new Elysia()
 
   // Update task
   .put("/api/tasks/:id", ({ params, body }) => {
-    const { title, description, status, priority_id, category_id, due_date, workspace_id } = body as any;
+    const { title, description, status, priority_id, category_id, due_date, workspace_id } =
+      body as any;
     db.prepare(
       "UPDATE tasks SET title = ?, description = ?, status = ?, priority_id = ?, category_id = ?, due_date = ?, updated_at = datetime('now') WHERE id = ?",
-    ).run(title, description || "", status, priority_id, category_id, due_date || null,
-        workspace_id || 1, params.id);
+    ).run(
+      title,
+      description || "",
+      status,
+      priority_id,
+      category_id,
+      due_date || null,
+      workspace_id || 1,
+      params.id,
+    );
 
     const task = db
       .query(
@@ -456,7 +466,7 @@ const app = new Elysia()
       repoDefaultBranch: row?.repo_default_branch ?? "main",
       repoStatus: row?.repo_status ?? "not_configured",
       currentBranch: row?.repo_current_branch ?? null,
-      gitTokenConfigured: !!(row?.git_token_encrypted),
+      gitTokenConfigured: !!row?.git_token_encrypted,
     };
   })
 
@@ -490,7 +500,7 @@ const app = new Elysia()
         repoDefaultBranch: repoDefaultBranch ?? "main",
         repoStatus: "not_configured",
         currentBranch: null,
-        gitTokenConfigured: !!(tokenRow?.git_token_encrypted),
+        gitTokenConfigured: !!tokenRow?.git_token_encrypted,
       };
     }
 
@@ -520,7 +530,7 @@ const app = new Elysia()
       repoDefaultBranch: repoDefaultBranch ?? "main",
       repoStatus: "connected",
       currentBranch: result.currentBranch,
-      gitTokenConfigured: !!(tokenRow?.git_token_encrypted),
+      gitTokenConfigured: !!tokenRow?.git_token_encrypted,
     };
   })
 
@@ -994,9 +1004,7 @@ const app = new Elysia()
   })
 
   .get("/api/workspaces/:id", ({ params, set }) => {
-    const row = db
-      .query("SELECT * FROM workspaces WHERE id = ?")
-      .get(Number(params.id)) as any;
+    const row = db.query("SELECT * FROM workspaces WHERE id = ?").get(Number(params.id)) as any;
     if (!row) {
       set.status = 404;
       return { error: "Workspace no encontrado" };

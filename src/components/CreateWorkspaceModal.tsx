@@ -7,7 +7,10 @@ interface CreateWorkspaceModalProps {
   onClose: () => void;
 }
 
-export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModalProps): JSX.Element {
+export function CreateWorkspaceModal({
+  onCreated,
+  onClose,
+}: CreateWorkspaceModalProps): JSX.Element {
   const [name, setName] = useState("");
   const [remoteUrl, setRemoteUrl] = useState("");
   const [branch, setBranch] = useState("main");
@@ -34,7 +37,10 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-md mx-4 rounded-xl bg-surface-500 border border-white/10 shadow-xl"
         onClick={(e) => e.stopPropagation()}

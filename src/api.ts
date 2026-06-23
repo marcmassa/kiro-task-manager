@@ -527,9 +527,7 @@ export async function gitUnstageFiles(paths: string[]): Promise<{ ok: boolean }>
 }
 
 /** POST /api/workspace/git/commit — crea un commit con mensaje. */
-export async function gitCommitChanges(
-  message: string,
-): Promise<{ ok: boolean; hash: string }> {
+export async function gitCommitChanges(message: string): Promise<{ ok: boolean; hash: string }> {
   return request<{ ok: boolean; hash: string }>(`${BASE_URL}/workspace/git/commit`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

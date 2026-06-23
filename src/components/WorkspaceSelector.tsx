@@ -8,7 +8,10 @@ interface WorkspaceSelectorProps {
   onWorkspaceChange: (id: number) => void;
 }
 
-export function WorkspaceSelector({ activeWorkspaceId, onWorkspaceChange }: WorkspaceSelectorProps) {
+export function WorkspaceSelector({
+  activeWorkspaceId,
+  onWorkspaceChange,
+}: WorkspaceSelectorProps) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -111,7 +114,9 @@ export function WorkspaceSelector({ activeWorkspaceId, onWorkspaceChange }: Work
                 }}
                 aria-label={`Seleccionar workspace ${ws.name}`}
               >
-                <span className={`w-2 h-2 rounded-full shrink-0 ${statusDotColor(ws.repoStatus)}`} />
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${statusDotColor(ws.repoStatus)}`}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-white truncate">{ws.name}</p>
                   {ws.repoCurrentBranch && (

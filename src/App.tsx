@@ -52,7 +52,6 @@ export default function App() {
     return stored ? Number(stored) : 1;
   });
 
-
   useEffect(() => {
     loadData();
   }, []);
@@ -235,14 +234,14 @@ export default function App() {
           </button>
 
           {/* Spacer to push Configuración to bottom */}
-                  <WorkspaceSelector
-                    activeWorkspaceId={activeWorkspaceId}
-                    onWorkspaceChange={(id) => {
-                      setActiveWorkspaceId(id);
-                      localStorage.setItem("activeWorkspaceId", String(id));
-                    }}
-                  />
-        
+          <WorkspaceSelector
+            activeWorkspaceId={activeWorkspaceId}
+            onWorkspaceChange={(id) => {
+              setActiveWorkspaceId(id);
+              localStorage.setItem("activeWorkspaceId", String(id));
+            }}
+          />
+
           <div className="flex-1" />
 
           <button
