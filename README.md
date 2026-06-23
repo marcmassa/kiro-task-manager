@@ -1,6 +1,21 @@
-# workshop-kiro — Task Manager
+<div align="center">
 
-Aplicación web de gestión de tareas estilo Kanban con interfaz en español. Construida con Bun, Elysia, React y SQLite. Desarrollada como proyecto de taller para demostrar el flujo de trabajo **Harness SDD** con Kiro como IDE principal.
+<img src="public/banner.svg" alt="workshop-kiro — Task Manager" width="820"/>
+
+<br/>
+
+![Bun](https://img.shields.io/badge/Bun-%E2%89%A51.3-black?style=flat-square&logo=bun&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=black)
+![Elysia](https://img.shields.io/badge/Elysia-1.x-7c5cfc?style=flat-square&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-WAL-003b57?style=flat-square&logo=sqlite&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
+
+</div>
+
+---
+
+Aplicación web de gestión de tareas estilo Kanban con agente IA integrado. Interfaz en español. Construida con Bun, Elysia, React y SQLite. Desarrollada como proyecto de taller para demostrar el flujo de trabajo **Harness SDD** con Kiro como IDE principal.
 
 ---
 
@@ -24,38 +39,56 @@ Aplicación web de gestión de tareas estilo Kanban con interfaz en español. Co
 
 ## 1. Vista general
 
-Task Manager es un tablero Kanban monorepositorio de paquete único. El backend (Elysia + SQLite) y el frontend (React + Tailwind CSS) conviven bajo `task-manager/`. No hay un servidor de desarrollo separado: Bun gestiona el build, el runtime y los tests.
+Task Manager es un tablero Kanban monorepositorio de paquete único con un agente IA capaz de ejecutar tareas de forma autónoma. El backend (Elysia + SQLite) y el frontend (React + Tailwind CSS) conviven bajo `task-manager/`. No hay servidor de desarrollo separado: Bun gestiona el build, el runtime y los tests.
 
 ```
 Browser (React SPA) ◄──REST/JSON──► Elysia :3000 ──bun:sqlite──► tasks.db
+                                          │
+                                          └──► Agent Engine (loop interno)
+                                                    │
+                                                    └──► Proveedor IA (Anthropic / OpenAI / …)
 ```
 
 **Tecnologías principales:**
 
-| Capa         | Tecnología                        |
-| ------------ | --------------------------------- |
-| Runtime      | Bun ≥ 1.3                         |
-| Backend      | Elysia 1.x                        |
-| Persistencia | SQLite (`bun:sqlite`, modo WAL)   |
-| Frontend     | React 18 + Tailwind CSS 3         |
-| Build        | `bun build` (sin webpack ni Vite) |
-| Tests        | `bun:test` + `fast-check`         |
-| Lenguaje     | TypeScript modo estricto          |
+| Capa            | Tecnología                        |
+| --------------- | --------------------------------- |
+| Runtime         | Bun ≥ 1.3                         |
+| Backend         | Elysia 1.x                        |
+| Persistencia    | SQLite (`bun:sqlite`, modo WAL)   |
+| Frontend        | React 18 + Tailwind CSS 3         |
+| Build           | `bun build` (sin webpack ni Vite) |
+| Tests           | `bun:test` + `fast-check`         |
+| Lenguaje        | TypeScript modo estricto          |
+| Agente IA       | Loop interno + MCP + tool-use     |
 
 ---
 
 ## 2. Características
 
-- **Tablero Kanban** con tres columnas: _Por Hacer_, _En Progreso_, _Completadas_.
+### Kanban y tareas
+- **Tablero Kanban** con columnas estándar (_Por Hacer_, _En Progreso_, _Completadas_) y columnas personalizadas por workspace.
 - **Drag-and-drop nativo** (HTML5) con rollback optimista en caso de error del servidor.
-- **CRUD completo de tareas**: título, descripción, prioridad, categoría y fecha de vencimiento.
-- **Sistema de comentarios** por tarea.
+- **CRUD completo de tareas**: título, descripción, prioridad, categoría, fecha de vencimiento.
 - **Indicadores visuales de urgencia**: rojo si atrasada, naranja si vence hoy.
+- **Multi-workspace**: espacios de trabajo independientes con su propio tablero, columnas y repositorio Git.
+
+### Agente IA (Kiro)
+- **Motor de agente autónomo** con ciclo SDD multi-fase: _requirements_ → _design_ → _tasks_ → _execution_.
+- **Gate de aprobación humana**: el agente nunca puede marcar `done`; solo el usuario aprueba.
+- **Chat conversacional** en tiempo real con el agente mientras la tarea está activa.
+- **Soporte multi-proveedor**: Anthropic, OpenAI, Google Gemini, AWS Bedrock, Ollama — API key cifrada en reposo.
+- **Tool-use**: herramientas de lectura y escritura de ficheros del repositorio, árbol de directorio, cambios Git.
+- **Registro MCP**: gestión de servidores MCP externos con validación, prueba de conexión y generación de `mcp.json`.
+
+### Estadísticas y configuración
 - **Dashboard de estadísticas** con KPIs, gráficos SVG nativos y cumplimiento de fechas.
-- **Página de configuración**: nombre del workspace, idioma, zona horaria, preferencias de notificación.
-- **Integración con Linear** (conectar, sincronizar, desconectar). Las claves API se almacenan cifradas con AES-GCM + PBKDF2; nunca se devuelven al frontend.
-- **Exportación de datos** del workspace en JSON.
-- **Eliminación masiva** de tareas con diálogo de confirmación accesible.
+- **Explorador de repositorio Git** con árbol de ficheros, visor con syntax highlighting y feed de cambios.
+- **Configuración**: nombre del workspace, idioma, zona horaria, notificaciones, exportación de datos.
+- **Integración con Linear**: conectar, sincronizar y desconectar. API key almacenada cifrada (AES-GCM + PBKDF2).
+
+### Calidad
+- **427 tests** — 0 fallos (`bun:test` + `fast-check` property tests).
 - **Accesibilidad**: HTML semántico, navegación por teclado, `aria-label` en botones de ícono, contraste mínimo 4.5:1.
 
 ---
@@ -65,38 +98,43 @@ Browser (React SPA) ◄──REST/JSON──► Elysia :3000 ──bun:sqlite─
 ### Diagrama de componentes
 
 ```
-┌─────────────────────────────────────┐        ┌───────────────────────────────────┐
-│  Browser — React SPA                │ HTTPS  │  Elysia server (puerto 3000)      │
-│                                     │◄──────►│                                   │
-│  ├── HomePage                       │  JSON  │  /api/tasks           (CRUD)      │
-│  ├── KanbanBoard                    │  REST  │  /api/tasks/:id/comments          │
-│  │     ├── KanbanColumn × 3         │        │  /api/categories                  │
-│  │     └── TaskCard                 │        │  /api/priorities                  │
-│  ├── StatsDashboard                 │        │  /api/settings                    │
-│  │     └── ChartRenderer            │        │  /api/integrations/linear         │
-│  ├── SettingsPage                   │        │  /api/export                      │
-│  │     └── IntegrationCard          │        │  SPA fallback → index.html        │
-│  └── Modales (TaskModal,            │        └──────────────┬────────────────────┘
-│        TaskDetailModal,             │                       │ bun:sqlite
-│        ConfirmDialog)               │                       ▼
-└─────────────────────────────────────┘        ┌───────────────────────────────────┐
-                                               │  tasks.db (WAL mode)              │
-                                               │  ├── tasks                        │
-                                               │  ├── categories                   │
-                                               │  ├── priorities                   │
-                                               │  ├── comments                     │
-                                               │  ├── workspace_settings           │
-                                               │  └── integration_connections      │
-                                               └───────────────────────────────────┘
+┌─────────────────────────────────────────────┐      ┌────────────────────────────────────────┐
+│  Browser — React SPA                        │ HTTP │  Elysia server (puerto 3000)           │
+│                                             │◄────►│                                        │
+│  ├── HomePage                               │ JSON │  /api/tasks           (CRUD + estados) │
+│  ├── KanbanBoard                            │ REST │  /api/tasks/:id/execution  (agente)    │
+│  │     ├── KanbanColumn × N                 │      │  /api/tasks/:id/comments               │
+│  │     └── TaskCard                         │      │  /api/tasks/:id/attachments            │
+│  ├── StatsDashboard                         │      │  /api/ai-provider     (config IA)      │
+│  │     └── ChartRenderer                    │      │  /api/agent/status|config|run           │
+│  ├── SettingsPage                           │      │  /api/mcp-servers                      │
+│  │     ├── AIProviderSection                │      │  /api/workspace/repo|file|tree|git      │
+│  │     ├── AgentEngineSection               │      │  /api/workspaces      (multi-ws)       │
+│  │     └── MCPRegistrySection               │      │  /api/categories|priorities|settings    │
+│  └── Modales (TaskModal, TaskDetailModal,   │      │  /api/integrations/linear              │
+│        ConfirmDialog, CreateWorkspaceModal) │      │  SPA fallback → index.html             │
+└─────────────────────────────────────────────┘      └──────────────┬─────────────────────────┘
+                                                                    │ bun:sqlite
+                                                                    ▼
+                                              ┌─────────────────────────────────────────────┐
+                                              │  tasks.db (WAL mode)                        │
+                                              │  ├── tasks / comments / categories           │
+                                              │  ├── priorities / workspace_settings         │
+                                              │  ├── agent_executions / agents               │
+                                              │  ├── agent_engine_config                     │
+                                              │  ├── ai_provider_config / mcp_servers        │
+                                              │  ├── workspaces / workspace_columns          │
+                                              │  └── integration_connections / attachments   │
+                                              └─────────────────────────────────────────────┘
 ```
 
 ### Principios arquitectónicos
 
-- **Spec-first (Harness SDD):** toda feature con `"sdd": true` pasa por `requirements.md` → `design.md` → `tasks.md` con aprobación humana antes de tocar código. Los specs viven en `.kiro/specs/<feature>/`.
+- **Spec-first (Harness SDD):** toda feature con `"sdd": true` pasa por `requirements.md` → `design.md` → `tasks.md` con aprobación humana antes de tocar código.
 - **Una feature a la vez:** máximo un feature `in_progress` simultáneamente.
-- **Lógica pura separada de React:** los cálculos de dominio (p. ej. `statsCalculator.ts`) son funciones puras sin dependencias de React, testeables con `fast-check`.
-- **Nativo sobre dependencia:** sin librerías de gráficos externas (SVG + Tailwind) ni polyfills de Node (APIs de Bun en todo el stack).
-- **Coherencia visual:** todos los componentes usan la paleta AWS definida en `.kiro/steering/ux-design.md`.
+- **Lógica pura separada de React:** los cálculos de dominio son funciones puras sin dependencias de React, testeables con `fast-check`.
+- **Nativo sobre dependencia:** sin librerías de gráficos externas (SVG + Tailwind) ni polyfills de Node.
+- **Coherencia visual:** todos los componentes usan la paleta definida en `.kiro/steering/ux-design.md`.
 
 ---
 
@@ -105,38 +143,27 @@ Browser (React SPA) ◄──REST/JSON──► Elysia :3000 ──bun:sqlite─
 ```
 workshop-kiro/
 ├── task-manager/                # Aplicación principal (ver §4.1)
-├── infra/                       # CDK Python — fuera de scope (no validado por check.sh)
+├── infra/                       # CDK Python — fuera de scope
 ├── .kiro/
 │   ├── steering/                # Convenciones auto-cargadas por Kiro
-│   │   ├── product.md
-│   │   ├── tech.md
-│   │   ├── structure.md
-│   │   └── ux-design.md
-│   ├── hooks/                   # Pre/post-write hooks (typecheck, format, secrets, review)
-│   ├── skills/frontend-design/  # Skill de diseño frontend (formato Kiro)
-│   └── specs/                   # Specs SDD de features (canónico)
-│       ├── task-manager-home/
-│       ├── kanban-drag-and-drop/
-│       ├── kiro-home-assets/
-│       ├── statistics-dashboard/
-│       └── settings-page/
+│   ├── hooks/                   # Pre/post-write hooks
+│   ├── skills/                  # Skills de Kiro (frontend-design, etc.)
+│   └── specs/                   # Specs SDD de features (FEAT-001 … FEAT-013)
 ├── .agents/                     # Framework Harness SDD
-│   ├── agentic.json             # Manifiesto canónico (sub-agents, skills, commands)
-│   ├── subagents/               # Definiciones de roles (SUBAGENT.md por rol)
-│   ├── commands/                # Cuerpos de slash commands (/spec, /implement, etc.)
-│   ├── adapters/                # Adaptadores CLI (opencode, _common)
-│   └── harness/                 # Documentación operacional del framework
+│   ├── agentic.json
+│   ├── subagents/
+│   ├── commands/
+│   ├── adapters/
+│   └── harness/
 ├── progress/
-│   ├── current.md               # Estado de la sesión activa
-│   ├── handoff.md               # Notas de traspaso entre sesiones
 │   ├── progress.md              # Historial append-only de features completadas
 │   ├── decisions.md             # ADRs ligeros
-│   └── backlog.md               # Items diferidos
-├── AGENTS.md                    # Punto de entrada para cualquier agente
-├── DESIGN.md                    # Arquitectura de alto nivel
-├── feature_list.json            # Lista de features con estado y specDir
-├── check.sh                     # Script de verificación integral
-└── README.md                    # Este archivo
+│   └── impl_*.md                # Logs de trazabilidad R↔test por feature
+├── AGENTS.md
+├── DESIGN.md
+├── feature_list.json            # Manifiesto de features con estado y specDir
+├── check.sh                     # Verificación integral
+└── README.md
 ```
 
 ### 4.1 Estructura de `task-manager/`
@@ -144,41 +171,58 @@ workshop-kiro/
 ```
 task-manager/
 ├── server.ts                    # Servidor Elysia, rutas API, archivos estáticos
-├── config.ts                    # Configuración de entorno
 ├── db/
-│   └── database.ts              # Schema SQLite, seed, instancia db exportada
+│   └── database.ts              # Schema SQLite, seed, migraciones
 ├── src/
-│   ├── index.tsx                # Punto de entrada React (root render)
-│   ├── App.tsx                  # Shell, routing de páginas, modales, estado global
+│   ├── index.tsx                # Punto de entrada React
+│   ├── App.tsx                  # Shell, routing, estado global
 │   ├── types.ts                 # Interfaces TypeScript compartidas
 │   ├── api.ts                   # Cliente REST (una función por endpoint)
 │   ├── Icons.tsx                # Componentes SVG de íconos
 │   ├── styles.css               # Directivas Tailwind + CSS personalizado
 │   ├── components/
-│   │   ├── KanbanColumn.tsx
-│   │   ├── TaskCard.tsx
-│   │   ├── TaskModal.tsx
-│   │   ├── TaskDetailModal.tsx
-│   │   ├── ConfirmDialog.tsx
-│   │   ├── HomePage.tsx
-│   │   ├── KiroMascot.tsx
-│   │   ├── StatsDashboard.tsx
-│   │   ├── ChartRenderer.tsx
-│   │   ├── SettingsPage.tsx
-│   │   ├── IntegrationCard.tsx
-│   │   └── SectionHeader.tsx
+│   │   ├── HomePage.tsx         # Landing: mascota, stats rápidas, accesos
+│   │   ├── KiroMascot.tsx       # Mascota SVG (base + variaciones de estado)
+│   │   ├── KiroIllustration.tsx # Ilustraciones contextuales de Kiro
+│   │   ├── KanbanBoard.tsx      # Board container + columnas
+│   │   ├── KanbanColumn.tsx     # Columna drop target
+│   │   ├── TaskCard.tsx         # Tarjeta con estado de agente + drag
+│   │   ├── TaskModal.tsx        # Formulario creación/edición
+│   │   ├── TaskDetailModal.tsx  # Detalle + comentarios + adjuntos + agente
+│   │   ├── ActivityIndicator.tsx# Indicador de actividad del agente
+│   │   ├── CommentItem.tsx      # Comentario (usuario vs. agente diferenciados)
+│   │   ├── StatsDashboard.tsx   # KPIs + 4 gráficos SVG
+│   │   ├── ChartRenderer.tsx    # Primitivas SVG: barra, donut, línea-área
+│   │   ├── SettingsPage.tsx     # Configuración general (tabs)
+│   │   ├── AIProviderSection.tsx# Config proveedor IA + test de conexión
+│   │   ├── AgentEngineSection.tsx# Motor del agente: toggle, params, ciclo
+│   │   ├── MCPRegistrySection.tsx# Registro servidores MCP
+│   │   ├── WorkspaceGitSection.tsx # Explorador Git + visor de ficheros
+│   │   ├── IntegrationCard.tsx  # Tarjeta reutilizable para integraciones
+│   │   ├── CreateWorkspaceModal.tsx# Modal multi-paso creación de workspace
+│   │   ├── ConfirmDialog.tsx    # Diálogo confirmación accesible
+│   │   └── SectionHeader.tsx    # Cabecera de sección reutilizable
+│   ├── agent/
+│   │   ├── engine.ts            # AgentEngine: loop, runCycle, chat, SDD
+│   │   ├── types.ts             # Tipos del agente (Message, ToolCall, …)
+│   │   ├── systemPrompt.ts      # buildSystemPrompt, buildChatPrompt
+│   │   ├── toolRouter.ts        # Enrutador de herramientas MCP/internas
+│   │   ├── engine.test.ts       # Tests unitarios del engine
+│   │   └── engine.integration.test.ts
 │   └── utils/
 │       ├── helpers.ts
 │       ├── statsCalculator.ts   # Cálculos puros + tests co-localizados
 │       ├── crypto.ts            # AES-GCM + PBKDF2
+│       ├── sddKanban.ts         # effectiveColumn(): lógica de columna Kanban
+│       ├── columnColors.ts      # Tokens de color por columna
 │       ├── linearClient.ts      # Cliente GraphQL Linear
-│       └── settingsHandlers.ts  # Handlers de servidor (testeables de forma aislada)
+│       └── settingsHandlers.ts  # Handlers de servidor (testeables)
 ├── public/
 │   ├── index.html               # Shell SPA
+│   ├── banner.svg               # Banner del README
 │   ├── styles.css               # CSS compilado
-│   └── dist/                    # Bundle frontend generado por bun build
+│   └── dist/                    # Bundle frontend (bun build)
 ├── tailwind.config.js
-├── postcss.config.js
 ├── tsconfig.json
 └── package.json
 ```
@@ -206,16 +250,14 @@ bun run dev
 # Disponible en http://localhost:3000
 ```
 
-El primer arranque crea `tasks.db` automáticamente y siembra datos de ejemplo (tareas, categorías, prioridades y comentarios).
+El primer arranque crea `tasks.db` automáticamente y siembra datos de ejemplo (tareas, categorías, prioridades, comentarios y configuración de workspace).
 
 ### Build del frontend
 
 ```bash
 bun run build
-# Genera public/dist/index.js
+# Genera public/dist/index.js (~2.5 MB)
 ```
-
-El servidor sirve el bundle generado como archivo estático. Tras el build, `bun run dev` sirve la versión compilada.
 
 ---
 
@@ -223,13 +265,13 @@ El servidor sirve el bundle generado como archivo estático. Tras el build, `bun
 
 Todos los comandos se ejecutan desde el directorio `task-manager/`.
 
-| Comando                | Descripción                             |
-| ---------------------- | --------------------------------------- |
-| `bun run dev`          | Arranca el servidor en el puerto 3000   |
-| `bun run build`        | Compila el frontend a `public/dist/`    |
-| `bun test`             | Ejecuta la suite de tests (65 tests)    |
-| `bun run format`       | Formatea con Prettier                   |
-| `bun run format:check` | Verifica formato sin modificar archivos |
+| Comando                | Descripción                                      |
+| ---------------------- | ------------------------------------------------ |
+| `bun run dev`          | Arranca el servidor en el puerto 3000            |
+| `bun run build`        | Compila el frontend a `public/dist/`             |
+| `bun test`             | Ejecuta la suite de tests (427 tests, 0 fallos)  |
+| `bun run format`       | Formatea con Prettier                            |
+| `bun run format:check` | Verifica formato sin modificar archivos          |
 
 Desde la raíz del repositorio:
 
@@ -245,28 +287,17 @@ Base URL: `http://localhost:3000/api`
 
 ### Tareas
 
-| Método   | Ruta                | Descripción                                                |
-| -------- | ------------------- | ---------------------------------------------------------- |
-| `GET`    | `/tasks`            | Lista todas las tareas con prioridad y categoría embebidas |
-| `GET`    | `/tasks/:id`        | Obtiene una tarea por ID                                   |
-| `POST`   | `/tasks`            | Crea una tarea nueva                                       |
-| `PUT`    | `/tasks/:id`        | Actualiza una tarea completa                               |
-| `PATCH`  | `/tasks/:id/status` | Actualiza solo el estado (`todo` / `in_progress` / `done`) |
-| `DELETE` | `/tasks/:id`        | Elimina una tarea y sus comentarios (CASCADE)              |
-| `DELETE` | `/tasks/all`        | Elimina todas las tareas del workspace                     |
-
-**Body de creación/actualización:**
-
-```json
-{
-  "title": "string",
-  "description": "string",
-  "status": "todo | in_progress | done",
-  "priority_id": 1,
-  "category_id": 1,
-  "due_date": "2025-12-31"
-}
-```
+| Método   | Ruta                            | Descripción                                                        |
+| -------- | ------------------------------- | ------------------------------------------------------------------ |
+| `GET`    | `/tasks`                        | Lista todas las tareas con prioridad y categoría embebidas         |
+| `GET`    | `/tasks/:id`                    | Obtiene una tarea por ID                                           |
+| `POST`   | `/tasks`                        | Crea una tarea nueva                                               |
+| `PUT`    | `/tasks/:id`                    | Actualiza una tarea completa                                       |
+| `PATCH`  | `/tasks/:id/status`             | Actualiza el estado (`todo` / `in_progress` / `done`)              |
+| `PATCH`  | `/tasks/:id/column`             | Mueve la tarea a cualquier columna (estándar o personalizada)      |
+| `PUT`    | `/tasks/:id/description`        | Actualiza la descripción (usado por el agente para el checklist)   |
+| `DELETE` | `/tasks/:id`                    | Elimina la tarea y sus datos relacionados (CASCADE)                |
+| `DELETE` | `/tasks/all`                    | Elimina todas las tareas del workspace                             |
 
 ### Comentarios
 
@@ -275,43 +306,108 @@ Base URL: `http://localhost:3000/api`
 | `GET`  | `/tasks/:id/comments` | Lista comentarios de una tarea |
 | `POST` | `/tasks/:id/comments` | Añade un comentario            |
 
-**Body de comentario:**
+### Adjuntos
 
-```json
-{ "content": "Texto del comentario", "author": "Nombre" }
-```
+| Método   | Ruta                        | Descripción                        |
+| -------- | --------------------------- | ---------------------------------- |
+| `GET`    | `/tasks/:id/attachments`    | Lista los adjuntos de una tarea    |
+| `POST`   | `/tasks/:id/attachments`    | Sube un adjunto (multipart)        |
+| `GET`    | `/attachments/:id/download` | Descarga un adjunto                |
+| `DELETE` | `/attachments/:id`          | Elimina un adjunto                 |
 
-### Catálogos
+### Agente IA
 
-| Método | Ruta          | Descripción                      |
-| ------ | ------------- | -------------------------------- |
-| `GET`  | `/categories` | Lista de categorías disponibles  |
-| `GET`  | `/priorities` | Lista de prioridades disponibles |
+| Método  | Ruta                                       | Descripción                                          |
+| ------- | ------------------------------------------ | ---------------------------------------------------- |
+| `GET`   | `/agents`                                  | Lista los agentes registrados                        |
+| `GET`   | `/executions`                              | Lista todas las ejecuciones                          |
+| `POST`  | `/tasks/:id/assign`                        | Asigna la tarea al agente (`assigned`)               |
+| `GET`   | `/tasks/:id/execution`                     | Estado actual de la ejecución                        |
+| `POST`  | `/tasks/:id/execution/approve`             | Aprueba la entrega final → `done`                    |
+| `POST`  | `/tasks/:id/execution/approve-phase`       | Aprueba la fase SDD actual y avanza a la siguiente   |
+| `POST`  | `/tasks/:id/execution/request-changes`     | Solicita cambios al agente con feedback              |
+| `GET`   | `/agent/status`                            | Estado del motor del agente (idle/working/error)     |
+| `GET`   | `/agent/config`                            | Configuración del motor (poll, límites, autoStart)   |
+| `PUT`   | `/agent/config`                            | Actualiza la configuración del motor                 |
+| `POST`  | `/agent/run`                               | Dispara un ciclo del agente manualmente              |
 
-### Configuración
+### Proveedor de IA
 
-| Método  | Ruta                      | Descripción                                       |
-| ------- | ------------------------- | ------------------------------------------------- |
-| `GET`   | `/settings`               | Configuración actual (workspace + notificaciones) |
-| `PATCH` | `/settings/workspace`     | Actualiza nombre, idioma, zona horaria            |
-| `PATCH` | `/settings/notifications` | Actualiza preferencias de notificación            |
+| Método   | Ruta                    | Descripción                                  |
+| -------- | ----------------------- | -------------------------------------------- |
+| `GET`    | `/ai-provider`          | Configuración activa (sin exponer API key)   |
+| `PUT`    | `/ai-provider`          | Guarda proveedor, modelo y API key cifrada   |
+| `DELETE` | `/ai-provider`          | Elimina la configuración del proveedor       |
+| `POST`   | `/ai-provider/test`     | Prueba la conexión con el proveedor          |
+| `GET`    | `/ai-provider/registry` | Lista de proveedores soportados              |
 
-### Integración con Linear
+### Servidores MCP
 
-| Método   | Ruta                           | Descripción                                  |
-| -------- | ------------------------------ | -------------------------------------------- |
-| `GET`    | `/integrations/linear`         | Estado de la conexión (sin exponer la clave) |
-| `POST`   | `/integrations/linear/connect` | Conecta con una API key de Linear            |
-| `POST`   | `/integrations/linear/sync`    | Sincroniza tareas desde Linear               |
-| `DELETE` | `/integrations/linear`         | Desconecta Linear                            |
+| Método   | Ruta                    | Descripción                                      |
+| -------- | ----------------------- | ------------------------------------------------ |
+| `GET`    | `/mcp-servers`          | Lista los servidores MCP registrados             |
+| `POST`   | `/mcp-servers`          | Añade un servidor MCP                            |
+| `PATCH`  | `/mcp-servers/:id`      | Actualiza la configuración de un servidor        |
+| `DELETE` | `/mcp-servers/:id`      | Elimina un servidor                              |
+| `POST`   | `/mcp-servers/:id/toggle` | Activa o desactiva un servidor                 |
+| `POST`   | `/mcp-servers/:id/test` | Prueba la conexión con el servidor               |
+| `POST`   | `/mcp-servers/apply`    | Regenera el fichero `mcp.json`                   |
 
-> **Seguridad:** la API key de Linear nunca aparece en ninguna respuesta. Se almacena cifrada (AES-GCM, clave derivada con PBKDF2) en `integration_connections`. Este invariante está cubierto por un test de propiedad con `fast-check` (R7 en el spec de FEAT-005).
+### Workspace y ficheros
 
-### Exportación
+| Método  | Ruta                          | Descripción                                         |
+| ------- | ----------------------------- | --------------------------------------------------- |
+| `GET`   | `/workspace/repo`             | Configuración del repositorio Git                   |
+| `PUT`   | `/workspace/repo`             | Asocia / actualiza el repositorio Git               |
+| `POST`  | `/workspace/repo/validate`    | Valida que la ruta es un repo Git válido            |
+| `GET`   | `/workspace/tree`             | Árbol de ficheros del repositorio                   |
+| `GET`   | `/workspace/file`             | Contenido de un fichero (con syntax highlighting)   |
+| `PUT`   | `/workspace/file`             | Escribe un fichero                                  |
+| `POST`  | `/workspace/upload`           | Sube un fichero al repositorio                      |
+| `GET`   | `/workspace/changes`          | Feed de cambios del agente                          |
+| `GET`   | `/workspace/git/status`       | Estado Git (`git status`)                           |
+| `POST`  | `/workspace/git/stage`        | Añade ficheros al staging                           |
+| `POST`  | `/workspace/git/unstage`      | Retira ficheros del staging                         |
+| `POST`  | `/workspace/git/commit`       | Crea un commit                                      |
+| `POST`  | `/workspace/git/push`         | Push al remoto                                      |
+| `POST`  | `/workspace/git/pull`         | Pull del remoto                                     |
+| `GET`   | `/workspace/git/branches`     | Lista de ramas                                      |
+| `POST`  | `/workspace/git/checkout`     | Cambia de rama                                      |
+| `GET`   | `/tasks/:id/files`            | Ficheros referenciados por una tarea                |
+| `POST`  | `/tasks/:id/files`            | Asocia un fichero a una tarea                       |
+| `DELETE`| `/tasks/:id/files/:fileId`    | Desasocia un fichero de una tarea                   |
+| `GET`   | `/tasks/:id/changes`          | Cambios del agente en una tarea específica          |
 
-| Método | Ruta      | Descripción                              |
-| ------ | --------- | ---------------------------------------- |
-| `GET`  | `/export` | Descarga el workspace completo como JSON |
+### Multi-workspace
+
+| Método   | Ruta                            | Descripción                             |
+| -------- | ------------------------------- | --------------------------------------- |
+| `GET`    | `/workspaces`                   | Lista todos los workspaces              |
+| `GET`    | `/workspaces/:id`               | Obtiene un workspace por ID             |
+| `POST`   | `/workspaces`                   | Crea un workspace nuevo                 |
+| `PUT`    | `/workspaces/:id`               | Actualiza un workspace                  |
+| `DELETE` | `/workspaces/:id`               | Elimina un workspace                    |
+| `POST`   | `/workspaces/:id/seed`          | Siembra datos de ejemplo en el workspace|
+| `GET`    | `/workspaces/:id/tree`          | Árbol del repositorio del workspace     |
+| `GET`    | `/workspaces/:id/files/*`       | Fichero del repositorio del workspace   |
+| `PUT`    | `/workspaces/:id/files/*`       | Escribe fichero en el workspace         |
+
+### Catálogos y configuración
+
+| Método  | Ruta                        | Descripción                                        |
+| ------- | --------------------------- | -------------------------------------------------- |
+| `GET`   | `/categories`               | Lista de categorías                                |
+| `GET`   | `/priorities`               | Lista de prioridades                               |
+| `GET`   | `/settings`                 | Configuración general                              |
+| `PATCH` | `/settings/workspace`       | Actualiza nombre, idioma, zona horaria             |
+| `PATCH` | `/settings/notifications`   | Actualiza preferencias de notificación             |
+| `GET`   | `/integrations/linear`      | Estado de la conexión con Linear                   |
+| `POST`  | `/integrations/linear/connect` | Conecta con una API key de Linear               |
+| `POST`  | `/integrations/linear/sync` | Sincroniza tareas desde Linear                     |
+| `DELETE`| `/integrations/linear`      | Desconecta Linear                                  |
+| `GET`   | `/export`                   | Descarga el workspace completo como JSON           |
+
+> **Seguridad:** la API key de Linear y la del proveedor de IA nunca aparecen en ninguna respuesta. Se almacenan cifradas (AES-GCM, clave derivada con PBKDF2). Este invariante está cubierto por tests de propiedad con `fast-check`.
 
 ---
 
@@ -319,41 +415,20 @@ Base URL: `http://localhost:3000/api`
 
 SQLite en modo WAL. El archivo `tasks.db` se crea automáticamente al primer arranque. El schema completo vive en `db/database.ts`.
 
-### Tablas
+### Tablas principales
 
-**`categories`**
-
-```sql
-id INTEGER PRIMARY KEY AUTOINCREMENT
-name TEXT NOT NULL UNIQUE
-color TEXT NOT NULL DEFAULT '#6366f1'
-```
-
-Seed: Desarrollo, Diseño, Marketing, Investigación, Personal.
-
-**`priorities`**
-
-```sql
-id INTEGER PRIMARY KEY AUTOINCREMENT
-name TEXT NOT NULL UNIQUE
-level INTEGER NOT NULL      -- 1=Baja, 2=Media, 3=Alta, 4=Urgente
-color TEXT NOT NULL
-```
-
-Seed: Baja (`#037F0C`), Media (`#FF9900`), Alta (`#D91515`), Urgente (`#920B0B`).
-
-**`tasks`**
+**`tasks`** — Tareas del workspace
 
 ```sql
 id INTEGER PRIMARY KEY AUTOINCREMENT
 title TEXT NOT NULL
 description TEXT DEFAULT ''
-status TEXT NOT NULL DEFAULT 'todo'  -- CHECK: todo | in_progress | done
-priority_id INTEGER NOT NULL         -- FK → priorities
-category_id INTEGER NOT NULL         -- FK → categories
-due_date TEXT                        -- ISO 8601 (YYYY-MM-DD)
-created_at TEXT NOT NULL DEFAULT (datetime('now'))
-updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+status TEXT NOT NULL DEFAULT 'todo'   -- CHECK: todo | in_progress | done
+sdd_phase TEXT                         -- fase SDD activa o columna personalizada
+priority_id INTEGER NOT NULL           -- FK → priorities
+category_id INTEGER NOT NULL           -- FK → categories
+due_date TEXT                          -- ISO 8601
+workspace_id INTEGER NOT NULL DEFAULT 1
 ```
 
 **`comments`**
@@ -366,25 +441,70 @@ author TEXT NOT NULL DEFAULT 'Usuario'
 created_at TEXT NOT NULL DEFAULT (datetime('now'))
 ```
 
-**`workspace_settings`** (singleton, `id = 1`)
+**`agent_executions`** — Estado del ciclo de vida del agente
 
 ```sql
-workspace_name TEXT NOT NULL DEFAULT 'Mi Workspace'
-default_language TEXT NOT NULL DEFAULT 'es-ES'
-default_timezone TEXT NOT NULL DEFAULT 'Europe/Madrid'
-notify_on_due INTEGER NOT NULL DEFAULT 1
-notify_on_done INTEGER NOT NULL DEFAULT 0
-notify_daily_digest INTEGER NOT NULL DEFAULT 0
+id INTEGER PRIMARY KEY AUTOINCREMENT
+task_id INTEGER NOT NULL UNIQUE   -- FK → tasks
+agent_id TEXT NOT NULL DEFAULT 'kiro'
+state TEXT NOT NULL                -- assigned | agent_working | pending_review | changes_requested | done
+sdd_phase TEXT                     -- requirements | design | tasks | null
+phase_output TEXT                  -- último output SDD aprobado
+review_feedback TEXT
 ```
 
-**`integration_connections`**
+**`agent_engine_config`** — Singleton de configuración del motor
 
 ```sql
-provider TEXT NOT NULL UNIQUE          -- 'linear'
-api_key_encrypted TEXT NOT NULL        -- AES-GCM cifrado, base64
-account_id/name/email TEXT NOT NULL    -- datos de la cuenta conectada
-last_sync_at TEXT                      -- ISO timestamp
-last_sync_summary TEXT                 -- JSON serializado
+auto_start INTEGER DEFAULT 0
+poll_interval_ms INTEGER DEFAULT 30000
+max_iterations INTEGER DEFAULT 50
+max_retries INTEGER DEFAULT 3
+tool_timeout_ms INTEGER DEFAULT 30000
+max_chat_turns_per_execution INTEGER DEFAULT 10
+```
+
+**`ai_provider_config`**
+
+```sql
+provider TEXT NOT NULL             -- anthropic | openai | google | bedrock | ollama
+model TEXT NOT NULL
+api_key_encrypted TEXT             -- AES-GCM cifrado, base64
+base_url TEXT
+temperature REAL DEFAULT 0.7
+max_tokens INTEGER DEFAULT 4096
+```
+
+**`mcp_servers`**
+
+```sql
+id TEXT PRIMARY KEY                -- UUID
+name TEXT NOT NULL
+command TEXT NOT NULL
+args TEXT NOT NULL DEFAULT '[]'    -- JSON array
+env TEXT NOT NULL DEFAULT '{}'     -- JSON object (cifrado en reposo)
+enabled INTEGER DEFAULT 1
+```
+
+**`workspaces`**
+
+```sql
+id INTEGER PRIMARY KEY AUTOINCREMENT
+name TEXT NOT NULL
+repo_path TEXT
+repo_remote_url TEXT
+repo_default_branch TEXT DEFAULT 'main'
+repo_status TEXT DEFAULT 'not_configured'
+```
+
+**`workspace_columns`** — Columnas personalizadas del Kanban
+
+```sql
+id TEXT PRIMARY KEY
+workspace_id INTEGER NOT NULL
+name TEXT NOT NULL
+position INTEGER NOT NULL
+color TEXT NOT NULL DEFAULT '#7c5cfc'
 ```
 
 ---
@@ -393,47 +513,42 @@ last_sync_summary TEXT                 -- JSON serializado
 
 ### Páginas
 
-| Ruta        | Componente         | Descripción                                                 |
-| ----------- | ------------------ | ----------------------------------------------------------- |
-| `/`         | `HomePage`         | Landing con mascota Kiro, resumen de stats, accesos rápidos |
-| `/kanban`   | `App` (board view) | Tablero Kanban con tres columnas y drag-and-drop            |
-| `/stats`    | `StatsDashboard`   | Dashboard de productividad con KPIs y gráficos              |
-| `/settings` | `SettingsPage`     | Configuración del workspace, Linear, notificaciones y datos |
+| Ruta        | Componente         | Descripción                                                                  |
+| ----------- | ------------------ | ---------------------------------------------------------------------------- |
+| `/`         | `HomePage`         | Landing: mascota Kiro, resumen de stats, workspace activo y accesos rápidos  |
+| `/kanban`   | `KanbanBoard`      | Tablero Kanban con columnas estándar + personalizadas y drag-and-drop        |
+| `/stats`    | `StatsDashboard`   | Dashboard de productividad con KPIs y gráficos                               |
+| `/settings` | `SettingsPage`     | Configuración: workspace, proveedor IA, motor, MCP, Git, Linear, datos       |
 
 El routing es client-side (estado en `App.tsx`); el servidor sirve `index.html` para cualquier ruta no-API.
 
-### Componentes principales
-
-| Componente        | Responsabilidad                                                               |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `App.tsx`         | Shell, estado global, carga de datos, routing de páginas, apertura de modales |
-| `KanbanColumn`    | Columna del tablero; drop target para drag-and-drop                           |
-| `TaskCard`        | Tarjeta de tarea: borde de prioridad, badge de fecha, acciones en hover       |
-| `TaskModal`       | Formulario de creación/edición de tarea                                       |
-| `TaskDetailModal` | Vista de detalle con comentarios                                              |
-| `ConfirmDialog`   | Diálogo de confirmación accesible (foco, Esc, Tab cíclico)                    |
-| `StatsDashboard`  | KPIs, 4 gráficos SVG, sección de cumplimiento de fechas                       |
-| `ChartRenderer`   | Primitivas SVG puras: barra horizontal, donut, barra vertical, línea-área     |
-| `SettingsPage`    | UI de configuración: workspace, integraciones, notificaciones, datos          |
-| `IntegrationCard` | Tarjeta reutilizable para estado/conexión de servicios externos               |
-
 ### Paleta de colores (AWS-inspired)
 
-| Token          | Valor               | Uso                                            |
-| -------------- | ------------------- | ---------------------------------------------- |
-| Primario       | `hsl(264 100% 64%)` | Botones, enlaces, estados activos              |
-| Acento / Hover | `#FF9900`           | Efectos hover, call-to-action, prioridad media |
-| Oscuro         | `#252F3E`           | Navbar, sidebar, footer                        |
-| Alta prioridad | `#D91515`           | Tareas atrasadas, errores, prioridad alta      |
-| Éxito / Bajo   | `#037F0C`           | Tareas completadas, prioridad baja             |
-| Fondo          | `#FAFAFA`           | Fondo de página                                |
-| Cards          | `#FFFFFF`           | Fondos de cards con sombra sutil               |
+| Token           | Valor               | Uso                                                  |
+| --------------- | ------------------- | ---------------------------------------------------- |
+| `accent`        | `#7c5cfc`           | Botones primarios, enlaces, estados activos          |
+| `accent-300`    | `#b4a5fd`           | Sparkles, acentos suaves                             |
+| `aws-orange`    | `#FF9900`           | Hover call-to-action, prioridad media                |
+| `surface`       | `#1a1b26`           | Fondo principal de la app                            |
+| `surface-500`   | `#111219`           | Fondo de modales y paneles secundarios               |
+| `success`       | `#10b981`           | Tareas completadas, prioridad baja, check SDD        |
+| `danger`        | `#ef4444`           | Tareas atrasadas, errores, prioridad alta            |
+| `warning`       | `#f59e0b`           | Prioridad media, estados intermedios                 |
+| `squid`         | `#252F3E`           | Navbar, sidebar, hero gradient                       |
 
-### Gestión de estado
+### Estado del agente en la UI
 
-- Sin librería de estado: todo en `App.tsx` con `useState` / `useEffect`.
-- Las actualizaciones por drag-and-drop son optimistas: el estado local cambia inmediatamente y se revierte si falla la llamada al servidor.
-- Los datos se cargan en paralelo al montar (`fetchTasks`, `fetchCategories`, `fetchPriorities`).
+Las tarjetas del Kanban y el modal de detalle muestran visualmente el estado de la ejecución:
+
+| Estado              | Indicador visual                                              |
+| ------------------- | ------------------------------------------------------------- |
+| `assigned`          | Badge azul "Asignado"                                         |
+| `agent_working`     | Spinner + "Kiro está trabajando…"                             |
+| `pending_review`    | Badge naranja "Revisión pendiente" + botones Aprobar/Cambios  |
+| `changes_requested` | Badge rojo "Cambios solicitados"                              |
+| `done`              | Badge verde "Completado"                                      |
+
+Durante `pending_review` y `agent_working`, el modal de detalle sondea los comentarios cada 4 s para reflejar las respuestas del agente en tiempo real.
 
 ---
 
@@ -444,19 +559,22 @@ El routing es client-side (estado en `App.tsx`); el servidor sirve `index.html` 
 bun test
 ```
 
-Suite actual: **65 tests — 0 fallos**.
+Suite actual: **427 tests — 0 fallos**.
 
-| Archivo                              | Tests | Descripción                                                            |
-| ------------------------------------ | ----- | ---------------------------------------------------------------------- |
-| `statsCalculator.test.ts`            | 38    | 32 unitarios + 6 property tests (fast-check, 100 ejecuciones cada uno) |
-| `crypto.test.ts`                     | 6     | Cifrado/descifrado AES-GCM, derivación de clave PBKDF2                 |
-| `linearClient.test.ts`               | 8     | Cliente GraphQL: retry, timeout, taxonomía de errores                  |
-| `settingsHandlers.connect.test.ts`   | 4     | Conexión/desconexión de Linear (cubre R5–R8)                           |
-| `settingsHandlers.property.test.ts`  | 3     | Invariante de seguridad: la API key nunca aparece en ninguna respuesta |
-| `settingsHandlers.deleteAll.test.ts` | 3     | Eliminación masiva de tareas                                           |
-| `settingsHandlers.export.test.ts`    | 3     | Exportación del workspace                                              |
+| Archivo / Grupo                        | Tests   | Descripción                                                                     |
+| -------------------------------------- | ------- | ------------------------------------------------------------------------------- |
+| `engine.test.ts`                       | ~80     | Motor del agente: runCycle, updateConfig, tryStart, chat, SDD                  |
+| `engine.integration.test.ts`           | ~40     | Tests de integración del engine contra DB en memoria                            |
+| `statsCalculator.test.ts`              | 38      | 32 unitarios + 6 property tests (fast-check, 100 ejecuciones cada uno)         |
+| `toolRouter.test.ts`                   | 9       | Enrutador de herramientas: clasificación, deduplicación, prioridad              |
+| `sddKanban.test.ts`                    | ~25     | `effectiveColumn()`: columnas estándar, SDD, custom, carrera de ejecución       |
+| `crypto.test.ts`                       | 6       | Cifrado/descifrado AES-GCM, derivación de clave PBKDF2                         |
+| `linearClient.test.ts`                 | 8       | Cliente GraphQL: retry, timeout, taxonomía de errores                           |
+| `settingsHandlers.*.test.ts`           | 10      | Conexión/desconexión Linear, eliminación masiva, exportación                    |
+| `tailwind.config.test.ts`             | ~10     | Animaciones y tokens de color del config de Tailwind                            |
+| Otros tests de utilidades y API        | ~200    | Handlers de servidor, validaciones, property tests de invariantes de seguridad  |
 
-Los property tests usan `fast-check` con `numRuns: 100`. El test de propiedad más crítico verifica que para cualquier string con formato `^lin_api_[A-Za-z0-9]{40,}$`, la respuesta JSON nunca contiene ese valor en ningún campo (R7 de FEAT-005).
+Los property tests usan `fast-check` con `numRuns: 100`. El invariante más crítico verifica que para cualquier API key con formato `^lin_api_[A-Za-z0-9]{40,}$`, la respuesta JSON nunca la expone en ningún campo.
 
 ---
 
@@ -466,18 +584,16 @@ Las convenciones detalladas están en `.kiro/steering/`:
 
 - **`tech.md`** — Bun-native, TypeScript strict, Prettier (comillas dobles, 2 espacios, 100 chars), ESM modules.
 - **`structure.md`** — Estructura de directorios, `function` declarations para componentes, named exports, sin barrel files.
-- **`ux-design.md`** — Paleta de colores, border-radius 8px, fuente system-ui, sombra de card, accesibilidad.
+- **`ux-design.md`** — Paleta de colores, border-radius 8px, fuente system-ui/Inter, sombra de card, accesibilidad.
 - **`product.md`** — Interfaz en español, prioridades y categorías predefinidas.
 
 ### Reglas de código clave
 
 - Componentes: `function` declarations con named export (excepto `App.tsx`, que usa default export).
-- Archivos de componentes: PascalCase. Archivos de utilidades: camelCase.
 - Props interfaces co-localizadas con el componente, no en `types.ts`.
 - Tipos compartidos (usados por más de un módulo) en `src/types.ts`.
 - Lógica pura en `utils/`, tests co-localizados junto al módulo (`*.test.ts`).
-- No tocar `infra/` ni `task-manager/server.ts`/`task-manager/db/` salvo que la tarea lo requiera explícitamente.
-- No añadir polyfills de Node ni dependencias con rangos de versión abiertos.
+- Lógica del agente en `src/agent/`, separada de los componentes React.
 
 ---
 
@@ -485,13 +601,21 @@ Las convenciones detalladas están en `.kiro/steering/`:
 
 Todos los features están en estado `done`. Los specs completos (requirements, design, tasks) viven en `.kiro/specs/<feature>/`.
 
-| ID       | Feature                | Descripción                                                                                       |
-| -------- | ---------------------- | ------------------------------------------------------------------------------------------------- |
-| FEAT-001 | `task-manager-home`    | Página de inicio con resumen, accesos rápidos y shell de navegación                               |
-| FEAT-002 | `kanban-drag-and-drop` | Tablero Kanban con drag-and-drop HTML5 y rollback optimista                                       |
-| FEAT-003 | `kiro-home-assets`     | Mascota Kiro animada, gradiente hero y assets visuales de la home                                 |
-| FEAT-004 | `statistics-dashboard` | Dashboard de productividad con KPIs, 4 gráficos SVG nativos y property tests                      |
-| FEAT-005 | `settings-page`        | Configuración del workspace, integración con Linear (cifrada), exportación y eliminación de datos |
+| ID       | Feature                 | Sprint | Descripción resumida                                                              |
+| -------- | ----------------------- | ------ | --------------------------------------------------------------------------------- |
+| FEAT-001 | `task-manager-home`     | S1     | Página de inicio con resumen, accesos rápidos y shell de navegación               |
+| FEAT-002 | `kanban-drag-and-drop`  | S1     | Tablero Kanban con drag-and-drop HTML5 y rollback optimista                       |
+| FEAT-003 | `kiro-home-assets`      | S1     | Mascota Kiro animada, gradiente hero y assets visuales                            |
+| FEAT-004 | `statistics-dashboard`  | S1     | Dashboard de productividad con KPIs, 4 gráficos SVG y property tests             |
+| FEAT-005 | `settings-page`         | S2     | Configuración del workspace, integración Linear cifrada, exportación de datos     |
+| FEAT-006 | `agent-orchestration`   | S3     | Ciclo de vida de ejecución (`assigned → done`) con gate de aprobación humana      |
+| FEAT-007 | `mcp-registry`          | S3     | Registro y configuración de servidores MCP externos desde Settings               |
+| FEAT-008 | `agent-comments`        | S4     | Comunicación bidireccional agente-usuario vía sistema de comentarios              |
+| FEAT-009 | `ai-provider`           | S4     | Configuración de proveedor de IA con API key cifrada y prueba de conexión         |
+| FEAT-010 | `agent-engine`          | S5     | Motor autónomo: poll, tool-use loop, system prompt, reintentos, submit for review |
+| FEAT-011 | `workspace-git`         | S5     | Repositorio Git asociado al workspace: árbol, visor, cambios del agente           |
+| FEAT-012 | `sdd-agent-lifecycle`   | S6     | Ciclo SDD multi-fase: requirements → design → tasks → execution, gates humanos   |
+| FEAT-013 | `agent-chat`            | S7     | Chat conversacional con el agente durante la ejecución activa de tareas           |
 
 ---
 
@@ -500,7 +624,7 @@ Todos los features están en estado `done`. Los specs completos (requirements, d
 Este proyecto implementa el framework **Harness SDD** para el desarrollo dirigido por specs.
 
 ```
-pending → [spec-author] → spec_ready → ⏸ APROBACIÓN HUMANA → in_progress → [implementer → reviewer] → done
+pending → [spec-author] → spec_ready → ⏸ APROBACIÓN HUMANA → in_progress → [implementer] → done
 ```
 
 Para añadir una nueva feature:
@@ -508,11 +632,19 @@ Para añadir una nueva feature:
 1. Añadir la entrada en `feature_list.json` con `"sdd": true` y `"status": "pending"`.
 2. El agente `spec-author` produce `.kiro/specs/<feature>/{requirements,design,tasks}.md` en notación EARS.
 3. El spec pasa a `spec_ready` y espera aprobación humana.
-4. Tras la aprobación, el agente `implementer` (o `frontend-engineer` para trabajo de frontend puro) ejecuta `tasks.md` tarea a tarea.
+4. Tras la aprobación, el agente `implementer` ejecuta `tasks.md` tarea a tarea.
 5. El agente `reviewer` verifica trazabilidad R↔test, ejecuta `./check.sh` y marca `done` si todo pasa.
 
-El manifiesto canónico está en `.agents/agentic.json`. Los roles están en `.agents/subagents/`. Los slash commands están en `.agents/commands/`. Para más detalle, ver `AGENTS.md`.
+El manifiesto canónico está en `.agents/agentic.json`. Para más detalle, ver `AGENTS.md`.
 
 ---
 
-> **Estado actual:** 5/5 features `done`. `./check.sh` verde. Tests: **65 pass / 0 fail**. Build: 1.24 MB.
+<div align="center">
+
+**Estado actual:** 13/13 features `done` &nbsp;·&nbsp; `./check.sh` verde &nbsp;·&nbsp; **427 tests — 0 fallos** &nbsp;·&nbsp; Build: ~2.5 MB
+
+<br/>
+
+<sub>Construido con <a href="https://kiro.dev">Kiro</a> &nbsp;·&nbsp; Harness SDD &nbsp;·&nbsp; Bun + Elysia + React + SQLite</sub>
+
+</div>
