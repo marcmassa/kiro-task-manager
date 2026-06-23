@@ -159,11 +159,36 @@
   .animate-kiro-wave,
   .animate-kiro-think,
   .animate-kiro-pop,
-  .animate-kiro-shake {
+  .animate-kiro-shake,
+  .animate-kiro-slide-right {
     animation: none !important;
     transform: none !important;
     opacity: 1 !important;
   }
+}
+
+/* FEAT-012: Kiro column transition animation */
+@keyframes kiro-slide-right {
+  0% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+  40% {
+    transform: translateX(24px) rotate(8deg);
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(48px) rotate(4deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+.animate-kiro-slide-right {
+  animation: kiro-slide-right 0.8s ease-in-out forwards;
 }
 
 @keyframes pulse-4s {

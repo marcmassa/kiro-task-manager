@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Task,
   Category,
@@ -39,6 +39,9 @@ import {
   LayersIcon,
   CodeIcon,
 } from "./Icons";
+import { effectiveColumn } from "./utils/sddKanban";
+import { KiroColumnTransition } from "./components/KiroColumnTransition";
+import type { SddPhase } from "./utils/sddLifecycle";
 
 type Page = "home" | "kanban" | "workspace" | "stats" | "config";
 
@@ -58,6 +61,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("home");
+
+  // ── SDD animation state ───────────────────────────────────────────────────
+  const [currentSddPhase, setCurrentSddPhase] = useState<SddPhase | null>(null);
+  const prevExecutionsRef = useRef<Map<number, AgentExecution>>(new Map());
 
   // ── Workspace state ──────────────────────────────────────────────────────────
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -89,7 +96,16 @@ export default function App() {
       setPriorities(priosData);
       try {
         const execs = await fetchAllExecutions();
-        setExecutions(new Map(execs.map((e) => [e.task_id, e])));
+        const newMap = new Map(execs.map((e) => [e.task_id, e]));
+        // Detect SDD phase transitions for animation
+        for (const [taskId, exec] of newMap) {
+          const prev = prevExecutionsRef.current.get(taskId);
+          if (prev && prev.sdd_phase !== exec.sdd_phase && exec.sdd_phase) {
+            setCurrentSddPhase(exec.sdd_phase);
+          }
+        }
+        prevExecutionsRef.current = newMap;
+        setExecutions(newMap);
       } catch (execErr) {
         console.error("Error loading executions:", execErr);
       }
@@ -117,9 +133,31 @@ export default function App() {
 
   // ── Derived data ─────────────────────────────────────────────────────────
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
-  const todoTasks = tasks.filter((t) => t.status === "todo");
-  const inProgressTasks = tasks.filter((t) => t.status === "in_progress");
-  const doneTasks = tasks.filter((t) => t.status === "done");
+
+  // SDD columns: only show if there are tasks in SDD phases
+  const hasSddTasks = tasks.some((t) => {
+    const exec = executions.get(t.id) ?? null;
+    return exec && exec.state !== "done" && exec.sdd_phase != null;
+  });
+
+  const todoTasks = tasks.filter(
+    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "todo",
+  );
+  const requirementsTasks = tasks.filter(
+    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "requirements",
+  );
+  const designTasks = tasks.filter(
+    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "design",
+  );
+  const sddTasksTasks = tasks.filter(
+    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "tasks",
+  );
+  const inProgressTasks = tasks.filter(
+    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "in_progress",
+  );
+  const doneTasks = tasks.filter(
+    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "done",
+  );
   const workspaceSelector = (
     <WorkspaceSelector
       activeWorkspaceId={activeWorkspaceId}
@@ -233,6 +271,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-surface-600 flex">
+      {/* FEAT-012: SDD phase transition animation */}
+      <KiroColumnTransition currentPhase={currentSddPhase} />
       {/* Sidebar — solo íconos de navegación */}
       <aside className="sidebar" aria-label="Navegación principal">
         <nav className="flex flex-col items-center gap-2 flex-1">
@@ -425,6 +465,45 @@ export default function App() {
                   onStatusChange={handleStatusChange}
                   onDrop={handleDrop}
                 />
+                {hasSddTasks && (
+                  <KanbanColumn
+                    title="Requirements"
+                    tasks={requirementsTasks}
+                    color="purple"
+                    executions={executions}
+                    onViewTask={handleViewTask}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteRequest}
+                    onStatusChange={handleStatusChange}
+                    isSdd
+                  />
+                )}
+                {hasSddTasks && (
+                  <KanbanColumn
+                    title="Diseño"
+                    tasks={designTasks}
+                    color="indigo"
+                    executions={executions}
+                    onViewTask={handleViewTask}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteRequest}
+                    onStatusChange={handleStatusChange}
+                    isSdd
+                  />
+                )}
+                {hasSddTasks && (
+                  <KanbanColumn
+                    title="Tasks"
+                    tasks={sddTasksTasks}
+                    color="yellow"
+                    executions={executions}
+                    onViewTask={handleViewTask}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteRequest}
+                    onStatusChange={handleStatusChange}
+                    isSdd
+                  />
+                )}
                 <KanbanColumn
                   title="En Progreso"
                   status="in_progress"

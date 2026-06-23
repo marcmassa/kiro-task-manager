@@ -122,6 +122,10 @@ export interface AgentExecution {
   state: AgentState;
   agent_summary: string | null;
   review_feedback: string | null;
+  /** FEAT-012: Current SDD phase, null for legacy non-SDD executions. */
+  sdd_phase: import("./utils/sddLifecycle").SddPhase | null;
+  /** FEAT-012: Output text produced by the agent for the current phase. */
+  phase_output: string | null;
   created_at: string;
   updated_at: string;
 }

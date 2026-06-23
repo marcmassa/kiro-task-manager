@@ -316,6 +316,14 @@ function tableSchema(table: string): string {
   return row?.sql ?? "";
 }
 
+// FEAT-012: SDD lifecycle — add sdd_phase and phase_output columns to agent_executions (idempotent)
+if (!tableColumns("agent_executions").has("sdd_phase")) {
+  db.exec("ALTER TABLE agent_executions ADD COLUMN sdd_phase TEXT DEFAULT NULL");
+}
+if (!tableColumns("agent_executions").has("phase_output")) {
+  db.exec("ALTER TABLE agent_executions ADD COLUMN phase_output TEXT DEFAULT NULL");
+}
+
 // Add workspace_id to tasks (backward compatible, default 1)
 if (!tableColumns("tasks").has("workspace_id")) {
   db.exec("ALTER TABLE tasks ADD COLUMN workspace_id INTEGER DEFAULT 1");

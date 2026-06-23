@@ -11,6 +11,8 @@ import {
   RobotIcon,
 } from "../Icons";
 import { agentStateDisplay } from "../utils/agentStateDisplay";
+import { phaseLabel } from "../utils/sddLifecycle";
+import { sddPhaseStyle } from "../utils/sddPhaseDisplay";
 
 interface TaskCardProps {
   task: Task;
@@ -124,13 +126,20 @@ export function TaskCard({
 
       {/* Agent execution state (R21) */}
       {execution && (
-        <div className="mb-3">
+        <div className="mb-3 flex flex-wrap gap-1.5">
           <span
             className={`badge text-[10px] inline-flex items-center gap-1.5 ${agentStateDisplay(execution.state).badge}`}
           >
             <RobotIcon size={11} />
             {agentStateDisplay(execution.state).label}
           </span>
+          {execution.sdd_phase && (
+            <span
+              className={`badge text-[10px] inline-flex items-center gap-1 ${sddPhaseStyle(execution.sdd_phase, execution.state === "pending_review").badge}`}
+            >
+              SDD: {phaseLabel(execution.sdd_phase)}
+            </span>
+          )}
         </div>
       )}
 

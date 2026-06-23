@@ -230,11 +230,15 @@ export async function fetchAgents(): Promise<Agent[]> {
 }
 
 /** POST /api/tasks/:id/assign — assigns an agent, creating an execution. */
-export async function assignAgent(taskId: number, agentId: string): Promise<AgentExecution> {
+export async function assignAgent(
+  taskId: number,
+  agentId: string,
+  sddMode = false,
+): Promise<AgentExecution> {
   return request<AgentExecution>(`${BASE_URL}/tasks/${taskId}/assign`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ agentId }),
+    body: JSON.stringify({ agentId, sddMode }),
   });
 }
 
@@ -261,6 +265,22 @@ export async function requestChanges(taskId: number, feedback: string): Promise<
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ feedback }),
+  });
+}
+
+/** POST /api/tasks/:id/execution/approve-phase — SDD phase approval. */
+export async function approvePhase(taskId: number): Promise<AgentExecution> {
+  return request<AgentExecution>(`${BASE_URL}/tasks/${taskId}/execution/approve-phase`, {
+    method: "POST",
+  });
+}
+
+/** PUT /api/tasks/:id/description — update task description (agent-side during SDD). */
+export async function updateTaskDescription(taskId: number, description: string): Promise<Task> {
+  return request<Task>(`${BASE_URL}/tasks/${taskId}/description`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ description }),
   });
 }
 

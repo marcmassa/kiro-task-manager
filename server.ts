@@ -27,6 +27,8 @@ import {
   listAllExecutions,
   approveExecution,
   requestChanges,
+  approvePhase,
+  updateTaskDescription,
   listAttachments,
   createAttachment,
   getAttachmentRecord,
@@ -410,8 +412,8 @@ const app = new Elysia()
   .get("/api/executions", () => listAllExecutions(db).body)
 
   .post("/api/tasks/:id/assign", ({ params, body, set }) => {
-    const { agentId } = body as { agentId: string };
-    const result = assignAgent(db, Number(params.id), agentId);
+    const { agentId, sddMode } = body as { agentId: string; sddMode?: boolean };
+    const result = assignAgent(db, Number(params.id), agentId, sddMode ?? false);
     if (result.status !== 200) set.status = result.status;
     return result.body;
   })
@@ -432,6 +434,25 @@ const app = new Elysia()
   .post("/api/tasks/:id/execution/request-changes", ({ params, body, set }) => {
     const { feedback } = body as { feedback: string };
     const result = requestChanges(db, Number(params.id), feedback);
+    if (result.status !== 200) set.status = result.status;
+    return result.body;
+  })
+
+  // ── FEAT-012: SDD phase approval ─────────────────────────────────────────
+
+  .post("/api/tasks/:id/execution/approve-phase", ({ params, set }) => {
+    const result = approvePhase(db, Number(params.id));
+    if (result.status !== 200) set.status = result.status;
+    return result.body;
+  })
+
+  .put("/api/tasks/:id/description", ({ params, body, set }) => {
+    const { description } = body as { description: string };
+    if (typeof description !== "string") {
+      set.status = 400;
+      return { error: "description requerida" };
+    }
+    const result = updateTaskDescription(db, Number(params.id), description);
     if (result.status !== 200) set.status = result.status;
     return result.body;
   })

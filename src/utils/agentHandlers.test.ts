@@ -27,6 +27,7 @@ function makeDb(): Database {
     CREATE TABLE agent_executions (
       id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER UNIQUE, agent_id TEXT,
       state TEXT DEFAULT 'assigned', agent_summary TEXT, review_feedback TEXT,
+      sdd_phase TEXT DEFAULT NULL, phase_output TEXT DEFAULT NULL,
       created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE agent_execution_events (

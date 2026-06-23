@@ -14,9 +14,17 @@ import type { RepoPromptContext } from "../utils/gitTypes";
 import { createProviderAdapter } from "./providerAdapter";
 import { createToolRouter } from "./toolRouter";
 import { createMcpClientPool } from "./mcpClientPool";
-import { buildSystemPrompt } from "./systemPrompt";
+import { buildSystemPrompt, buildSddPhasePrompt } from "./systemPrompt";
 import { getActiveProviderConfig } from "../utils/aiProviderHandlers";
-import { claimTask, postComment, submitForReview, getTask, getTaskComments } from "../mcp/handlers";
+import {
+  claimTask,
+  postComment,
+  submitForReview,
+  submitPhaseOutput,
+  getTask,
+  getTaskComments,
+} from "../mcp/handlers";
+import { type SddPhase } from "../utils/sddLifecycle";
 import { readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -134,39 +142,62 @@ export class AgentEngine {
       return { ok: false, message: "Proveedor de IA no configurado" };
     }
 
-    // Buscar tarea asignada al agente
+    // Buscar tarea asignada al agente (newly assigned)
     const taskRow = this.db
       .query(
-        `SELECT t.id, t.title FROM tasks t
+        `SELECT t.id, t.title, e.sdd_phase FROM tasks t
          JOIN agent_executions e ON e.task_id = t.id
          WHERE e.state = 'assigned' AND e.agent_id = 'kiro'
          ORDER BY e.created_at ASC LIMIT 1`,
       )
-      .get() as { id: number; title: string } | null;
+      .get() as { id: number; title: string; sdd_phase: SddPhase | null } | null;
 
-    if (!taskRow) {
+    // FEAT-012: also look for SDD phases resumed after human approval
+    const resumedSddRow = !taskRow
+      ? (this.db
+          .query(
+            `SELECT t.id, t.title, e.sdd_phase FROM tasks t
+             JOIN agent_executions e ON e.task_id = t.id
+             WHERE e.state = 'agent_working' AND e.sdd_phase IS NOT NULL AND e.agent_id = 'kiro'
+             ORDER BY e.updated_at ASC LIMIT 1`,
+          )
+          .get() as { id: number; title: string; sdd_phase: SddPhase } | null)
+      : null;
+
+    const activeRow = taskRow ?? resumedSddRow;
+    const isSddResumed = !taskRow && resumedSddRow !== null;
+
+    if (!activeRow) {
       return { ok: true, message: "No hay tareas pendientes" };
     }
 
-    const taskId = taskRow.id;
+    const taskId = activeRow.id;
     this.processing = true;
     this.status = "working";
     this.currentTaskId = taskId;
-    this.currentTaskTitle = taskRow.title;
+    this.currentTaskTitle = activeRow.title;
 
     try {
-      // Reclamar la tarea (assigned → agent_working)
-      const claimResult = claimTask(this.db, taskId);
-      if (!claimResult.ok) {
-        this.processing = false;
-        this.status = "idle";
-        this.currentTaskId = null;
-        this.currentTaskTitle = null;
-        return { ok: false, taskId, message: claimResult.error };
+      if (!isSddResumed) {
+        // Reclamar la tarea (assigned → agent_working)
+        const claimResult = claimTask(this.db, taskId);
+        if (!claimResult.ok) {
+          this.processing = false;
+          this.status = "idle";
+          this.currentTaskId = null;
+          this.currentTaskTitle = null;
+          return { ok: false, taskId, message: claimResult.error };
+        }
       }
 
-      // Procesar la tarea (tool-use loop)
-      await this.processTask(taskId);
+      // Dispatch: SDD mode or standard mode
+      const sddPhase = activeRow.sdd_phase;
+      if (sddPhase) {
+        await this.processSddPhase(taskId, sddPhase);
+      } else {
+        // Procesar la tarea (tool-use loop)
+        await this.processTask(taskId);
+      }
 
       return { ok: true, taskId, message: "Tarea procesada" };
     } catch (error) {
@@ -383,6 +414,111 @@ export class AgentEngine {
     const reviewResult = submitForReview(this.db, taskId, summary);
     if (!reviewResult.ok) {
       postComment(this.db, taskId, `⚠️ No se pudo enviar a revisión: ${reviewResult.error}`);
+    }
+  }
+
+  /**
+   * FEAT-012: Processes a single SDD phase. Builds phase-specific prompt,
+   * runs the tool-use loop, then saves output and sets state to pending_review.
+   */
+  private async processSddPhase(taskId: number, phase: SddPhase): Promise<void> {
+    const taskContext = this.loadTaskContext(taskId);
+
+    // Build repo config if available
+    let repoContext: import("../utils/gitTypes").RepoPromptContext | undefined;
+    let repoConfig: { workingDir: string; taskId: number; executionId: number | null } | undefined;
+
+    const repoRow = this.db
+      .query(
+        "SELECT repo_path, repo_status, repo_current_branch FROM workspace_settings WHERE id = 1",
+      )
+      .get() as {
+      repo_path: string | null;
+      repo_status: string | null;
+      repo_current_branch: string | null;
+    } | null;
+
+    if (repoRow?.repo_status === "connected" && repoRow?.repo_path) {
+      const execRow = this.db
+        .query("SELECT id FROM agent_executions WHERE task_id = ? ORDER BY created_at DESC LIMIT 1")
+        .get(taskId) as { id: number } | null;
+      repoConfig = { workingDir: repoRow.repo_path, taskId, executionId: execRow?.id ?? null };
+      try {
+        const entries = readdirSync(repoRow.repo_path, { withFileTypes: true })
+          .filter((e) => !IGNORED_DIRS.has(e.name))
+          .map((e) => (e.isDirectory() ? `${e.name}/` : e.name))
+          .sort()
+          .join("\n");
+        repoContext = {
+          workingDir: repoRow.repo_path,
+          currentBranch: repoRow.repo_current_branch ?? "main",
+          directoryTree: entries,
+          contextFiles: [],
+        };
+      } catch {}
+    }
+
+    const toolRouter = createToolRouter(
+      this.db,
+      this.mcpPool,
+      { toolTimeoutMs: this.config.toolTimeoutMs },
+      repoConfig,
+    );
+    const tools: ToolDefinition[] = toolRouter.getAvailableTools();
+
+    // Collect prior approved phase outputs from comments
+    const priorOutputs: Array<{ phase: SddPhase; output: string }> = (() => {
+      const comments = this.db
+        .query(
+          "SELECT content FROM comments WHERE task_id = ? AND author = 'Kiro' ORDER BY created_at ASC",
+        )
+        .all(taskId) as Array<{ content: string }>;
+      const phases: SddPhase[] = ["requirements", "design", "tasks"];
+      const result: Array<{ phase: SddPhase; output: string }> = [];
+      for (const p of phases) {
+        if (p === phase) break;
+        const marker = `[SDD:${p}]`;
+        const match = comments.find((c) => c.content.startsWith(marker));
+        if (match) result.push({ phase: p, output: match.content.replace(marker, "").trim() });
+      }
+      return result;
+    })();
+
+    const systemPrompt = buildSddPhasePrompt(phase, taskContext, tools, priorOutputs, repoContext);
+
+    postComment(this.db, taskId, `🤖 [SDD] Comenzando fase: ${phase}...`);
+
+    const messages: Message[] = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: `Ejecuta la fase "${phase}" del proceso SDD para esta tarea.` },
+    ];
+
+    const providerConfig = await getActiveProviderConfig(this.db);
+    if (!providerConfig) throw new Error("Proveedor de IA no configurado");
+    const adapter: ProviderAdapter = createProviderAdapter(providerConfig);
+
+    let phaseOutput = "";
+    for (let i = 0; i < this.config.maxIterations; i++) {
+      const response = await this.sendWithRetry(adapter, messages, tools);
+      if (response.type === "text") {
+        phaseOutput = response.content;
+        break;
+      }
+      messages.push({ role: "assistant", content: "", toolCalls: response.toolCalls });
+      for (const toolCall of response.toolCalls) {
+        const result = await toolRouter.executeTool(toolCall);
+        messages.push({ role: "tool", content: result.content, toolCallId: result.toolCallId });
+      }
+    }
+
+    if (!phaseOutput) phaseOutput = "Se alcanzó el límite de iteraciones";
+
+    // Store phase output in comment with SDD marker so future phases can reference it
+    postComment(this.db, taskId, `[SDD:${phase}] ${phaseOutput}`);
+
+    const submitResult = submitPhaseOutput(this.db, taskId, phaseOutput);
+    if (!submitResult.ok) {
+      postComment(this.db, taskId, `⚠️ No se pudo enviar fase a revisión: ${submitResult.error}`);
     }
   }
 

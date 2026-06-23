@@ -7,6 +7,7 @@ import {
   assignAgent,
   getExecution,
   approveExecution,
+  approvePhase,
   requestChanges,
   listAttachments,
   uploadAttachment,
@@ -26,10 +27,13 @@ import {
   DownloadIcon,
 } from "../Icons";
 import { agentStateDisplay } from "../utils/agentStateDisplay";
+import { phaseLabel } from "../utils/sddLifecycle";
+import { parseValidationComment, extractFeedback } from "../utils/sddCommentParser";
 import { CommentItem } from "./CommentItem";
 import { ActivityIndicator } from "./ActivityIndicator";
 import { isAgentComment, shouldShowActivityIndicator } from "../utils/commentUtils";
 import { TaskFileChanges } from "./TaskFileChanges";
+import { SddPhaseSteps } from "./SddPhaseSteps";
 
 interface TaskDetailModalProps {
   task: Task;
@@ -90,6 +94,7 @@ export function TaskDetailModal({
   const [agents, setAgents] = useState<Agent[]>([]);
   const [execution, setExecution] = useState<AgentExecution | null>(null);
   const [selectedAgent, setSelectedAgent] = useState("");
+  const [sddMode, setSddMode] = useState(false);
   const [agentBusy, setAgentBusy] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
@@ -109,6 +114,46 @@ export function TaskDetailModal({
   useEffect(() => {
     commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [comments]);
+
+  // FEAT-012: Poll for validation comments when in SDD pending_review
+  useEffect(() => {
+    if (!execution || execution.state !== "pending_review" || !execution.sdd_phase) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await fetchComments(task.id, task.workspace_id);
+        setComments(fresh);
+        // Find the last human comment (non-agent) for validation intent
+        const humanComments = fresh.filter((c) => c.author !== "Kiro" && c.author !== "kiro");
+        if (humanComments.length === 0) return;
+        const last = humanComments[humanComments.length - 1];
+        const intent = parseValidationComment(last.content);
+        if (intent === "approve") {
+          clearInterval(interval);
+          await handleApprovePhase();
+        } else if (intent === "request_changes") {
+          const feedback = extractFeedback(last.content);
+          clearInterval(interval);
+          // Use feedback text or empty fallback
+          const fb = feedback || last.content;
+          setFeedbackText(fb);
+          try {
+            const exec = await requestChanges(task.id, fb || "Cambios solicitados via comentario");
+            setExecution(exec);
+            setFeedbackText("");
+            onExecutionChanged?.();
+          } catch {
+            setAgentError("No se pudieron solicitar cambios.");
+          }
+        }
+      } catch {
+        // Ignore poll errors
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [execution?.state, execution?.sdd_phase, task.id]);
 
   async function loadComments() {
     try {
@@ -147,11 +192,25 @@ export function TaskDetailModal({
     setAgentBusy(true);
     setAgentError(null);
     try {
-      const exec = await assignAgent(task.id, selectedAgent);
+      const exec = await assignAgent(task.id, selectedAgent, sddMode);
       setExecution(exec);
       onExecutionChanged?.();
     } catch {
       setAgentError("No se pudo asignar el agente.");
+    } finally {
+      setAgentBusy(false);
+    }
+  }
+
+  async function handleApprovePhase() {
+    setAgentBusy(true);
+    setAgentError(null);
+    try {
+      const exec = await approvePhase(task.id);
+      setExecution(exec);
+      onExecutionChanged?.();
+    } catch {
+      setAgentError("No se pudo aprobar la fase.");
     } finally {
       setAgentBusy(false);
     }
@@ -333,40 +392,71 @@ export function TaskDetailModal({
             </div>
 
             {!execution ? (
-              // Unassigned: pick an agent + assign
-              <div className="flex items-end gap-2 flex-wrap">
-                <label className="flex-1 min-w-[160px]">
-                  <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                    Asignar a un agente
-                  </span>
-                  <select
-                    value={selectedAgent}
-                    onChange={(e) => setSelectedAgent(e.target.value)}
-                    className="input-field"
-                    aria-label="Seleccionar agente"
+              // Unassigned: pick an agent + SDD toggle + assign
+              <div className="space-y-3">
+                <div className="flex items-end gap-2 flex-wrap">
+                  <label className="flex-1 min-w-[160px]">
+                    <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+                      Asignar a un agente
+                    </span>
+                    <select
+                      value={selectedAgent}
+                      onChange={(e) => setSelectedAgent(e.target.value)}
+                      className="input-field"
+                      aria-label="Seleccionar agente"
+                    >
+                      {agents.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    onClick={handleAssign}
+                    disabled={agentBusy || !selectedAgent}
+                    className="btn-primary text-sm"
+                    aria-label="Asignar agente a la tarea"
                   >
-                    {agents.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
+                    Asignar
+                  </button>
+                </div>
+                {/* SDD mode toggle */}
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={sddMode}
+                    onChange={(e) => setSddMode(e.target.checked)}
+                    className="w-4 h-4 accent-accent rounded"
+                    aria-label="Activar modo SDD"
+                  />
+                  <span className="text-xs text-muted-300">
+                    Modo SDD (requirements → diseño → tasks → ejecución)
+                  </span>
                 </label>
-                <button
-                  onClick={handleAssign}
-                  disabled={agentBusy || !selectedAgent}
-                  className="btn-primary text-sm"
-                  aria-label="Asignar agente a la tarea"
-                >
-                  Asignar
-                </button>
               </div>
             ) : (
               <div className="space-y-3">
+                {/* SDD phase stepper */}
+                {execution.sdd_phase && (
+                  <SddPhaseSteps
+                    currentPhase={execution.sdd_phase}
+                    inReview={execution.state === "pending_review"}
+                  />
+                )}
+
                 <div className="rounded-xl bg-surface-400/40 border border-white/5 p-3">
                   <p className="text-xs text-muted-400">
                     Agente: <span className="text-gray-200 font-medium">{execution.agent_id}</span>
                   </p>
+                  {execution.sdd_phase && (
+                    <p className="text-xs text-muted-400 mt-1">
+                      Fase SDD:{" "}
+                      <span className="text-purple-300 font-medium">
+                        {phaseLabel(execution.sdd_phase)}
+                      </span>
+                    </p>
+                  )}
                   {execution.agent_summary && (
                     <p className="text-xs text-muted-300 mt-2">
                       <span className="text-muted-500">Resumen del agente:</span>{" "}
@@ -381,18 +471,44 @@ export function TaskDetailModal({
                   )}
                 </div>
 
+                {/* Phase output block (SDD pending_review) */}
+                {execution.sdd_phase &&
+                  execution.state === "pending_review" &&
+                  execution.phase_output && (
+                    <div className="rounded-xl bg-surface-500/50 border border-purple-500/20 p-3">
+                      <p className="text-xs font-medium text-purple-300 mb-2">
+                        Output de fase: {phaseLabel(execution.sdd_phase)}
+                      </p>
+                      <pre className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed font-sans">
+                        {execution.phase_output}
+                      </pre>
+                    </div>
+                  )}
+
                 {/* Human approval gate — only in pending_review (R22) */}
                 {execution.state === "pending_review" && !showFeedback && (
                   <div className="flex gap-2 flex-wrap">
-                    <button
-                      onClick={handleApprove}
-                      disabled={agentBusy}
-                      className="btn-primary flex items-center gap-2 text-sm"
-                      aria-label="Aprobar el trabajo del agente"
-                    >
-                      <CheckCircleIcon size={16} />
-                      Aprobar
-                    </button>
+                    {execution.sdd_phase ? (
+                      <button
+                        onClick={handleApprovePhase}
+                        disabled={agentBusy}
+                        className="btn-primary flex items-center gap-2 text-sm"
+                        aria-label="Aprobar fase SDD"
+                      >
+                        <CheckCircleIcon size={16} />
+                        Aprobar fase
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleApprove}
+                        disabled={agentBusy}
+                        className="btn-primary flex items-center gap-2 text-sm"
+                        aria-label="Aprobar el trabajo del agente"
+                      >
+                        <CheckCircleIcon size={16} />
+                        Aprobar
+                      </button>
+                    )}
                     <button
                       onClick={() => setShowFeedback(true)}
                       disabled={agentBusy}

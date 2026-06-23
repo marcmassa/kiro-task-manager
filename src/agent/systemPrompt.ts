@@ -1,5 +1,7 @@
 import type { TaskContext, ToolDefinition } from "./types";
 import type { RepoPromptContext } from "../utils/gitTypes";
+import type { SddPhase } from "../utils/sddLifecycle";
+import { phaseLabel } from "../utils/sddLifecycle";
 
 /**
  * Función pura: construye el system prompt para el agente.
@@ -82,6 +84,112 @@ export function buildSystemPrompt(
   }
 
   // 7. Herramientas disponibles
+  if (tools.length > 0) {
+    const toolLines = tools.map((t) => `- **${t.name}**: ${t.description}`);
+    sections.push(`## Herramientas Disponibles\n\n${toolLines.join("\n")}`);
+  }
+
+  return sections.join("\n\n");
+}
+
+const SDD_PHASE_INSTRUCTIONS: Record<SddPhase, string> = {
+  requirements: `Tu objetivo es ANALIZAR la tarea y producir una lista de REQUISITOS ESTRUCTURADOS.
+
+El output debe seguir este formato:
+- Lista numerada de requisitos funcionales
+- Lista de requisitos no funcionales relevantes
+- Criterios de aceptación claros
+
+Sé preciso y exhaustivo. Este documento será validado por el usuario antes de proceder al diseño.`,
+
+  design: `Tu objetivo es producir un DOCUMENTO DE DISEÑO TÉCNICO basado en los requisitos aprobados.
+
+El output debe incluir:
+- Arquitectura propuesta (componentes, módulos, interfaces)
+- Decisiones técnicas clave y justificaciones
+- Diagrama de flujo o pseudocódigo si aplica
+- Consideraciones de rendimiento, seguridad o mantenibilidad
+
+Este documento será validado por el usuario antes de proceder a las tareas de implementación.`,
+
+  tasks: `Tu objetivo es descomponer el trabajo en TAREAS DE IMPLEMENTACIÓN concretas.
+
+El output debe ser una lista de tareas en formato checklist:
+- [ ] Cada tarea debe ser accionable y específica
+- [ ] Incluye dependencias entre tareas si existen
+- [ ] Estima la complejidad (S/M/L) de cada tarea
+- [ ] Ordena las tareas por prioridad de implementación
+
+Estas tareas serán validadas por el usuario antes de la fase de ejecución.`,
+
+  execution: `Tu objetivo es EJECUTAR las tareas de implementación listadas en la descripción de la tarea.
+
+- Trabaja en orden de las tareas definidas
+- Usa las herramientas disponibles para leer y escribir código
+- Reporta progreso con comentarios
+- Al finalizar, resume qué se implementó, qué se omitió y por qué`,
+};
+
+/**
+ * Builds a phase-specific prompt for SDD mode. Used by the agent engine when
+ * processing an SDD phase instead of the general `buildSystemPrompt`.
+ */
+export function buildSddPhasePrompt(
+  phase: SddPhase,
+  task: TaskContext,
+  tools: ToolDefinition[],
+  priorOutputs: Array<{ phase: SddPhase; output: string }>,
+  repoContext?: RepoPromptContext,
+): string {
+  const sections: string[] = [];
+
+  sections.push(
+    `## Rol\n\nEres Kiro, un asistente de software que trabaja siguiendo el proceso SDD (Spec-Driven Development). Estás en la fase: **${phaseLabel(phase)}**.`,
+  );
+
+  sections.push(
+    `## Reglas de Comportamiento SDD\n\n- Produce un output estructurado específico para esta fase.\n- NO ejecutes código ni implementes en esta fase si aún estás en requirements, design o tasks.\n- Publica un comentario al inicio indicando que comenzaste la fase.\n- Tu respuesta final DEBE ser el documento de la fase, sin explicaciones adicionales.`,
+  );
+
+  if (repoContext) {
+    sections.push(
+      [
+        `## Repositorio de Trabajo`,
+        ``,
+        `Directorio: ${repoContext.workingDir}`,
+        `Rama: ${repoContext.currentBranch}`,
+        ``,
+        repoContext.directoryTree,
+      ].join("\n"),
+    );
+  }
+
+  const dueDateLine = task.dueDate !== null ? `- **Fecha límite:** ${task.dueDate}` : "";
+  sections.push(
+    [
+      `## Tarea`,
+      ``,
+      `- **Título:** ${task.title}`,
+      `- **Descripción:** ${task.description}`,
+      `- **Prioridad:** ${task.priority}`,
+      `- **Categoría:** ${task.category}`,
+      dueDateLine,
+    ]
+      .filter((l) => l !== "")
+      .join("\n"),
+  );
+
+  if (priorOutputs.length > 0) {
+    const outputSections = priorOutputs.map(
+      (p) => `### Output de ${phaseLabel(p.phase)} (aprobado)\n\n${p.output}`,
+    );
+    sections.push(`## Contexto de Fases Anteriores\n\n${outputSections.join("\n\n")}`);
+  }
+
+  sections.push(
+    `## Instrucciones de la Fase: ${phaseLabel(phase)}\n\n${SDD_PHASE_INSTRUCTIONS[phase]}`,
+  );
+
   if (tools.length > 0) {
     const toolLines = tools.map((t) => `- **${t.name}**: ${t.description}`);
     sections.push(`## Herramientas Disponibles\n\n${toolLines.join("\n")}`);
