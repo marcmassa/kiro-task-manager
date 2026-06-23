@@ -364,4 +364,53 @@ db.exec(`
   );
 `);
 
+// FEAT-011: Multi-workspace support (R22) — workspaces table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS workspaces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    slug TEXT NOT NULL UNIQUE,
+    repo_path TEXT DEFAULT NULL,
+    repo_remote_url TEXT DEFAULT NULL,
+    repo_default_branch TEXT NOT NULL DEFAULT 'main',
+    repo_status TEXT NOT NULL DEFAULT 'not_configured'
+      CHECK (repo_status IN ('connected', 'disconnected', 'error', 'not_configured', 'cloning')),
+    repo_current_branch TEXT DEFAULT NULL,
+    git_token_encrypted TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Migrate singleton data from workspace_settings to workspaces table (if not already done)
+const workspaceCount = (
+  db.query("SELECT COUNT(*) as count FROM workspaces").get() as { count: number }
+).count;
+if (workspaceCount === 0) {
+  const ws = db
+    .query(
+      "SELECT repo_path, repo_remote_url, repo_default_branch, repo_status, repo_current_branch, git_token_encrypted FROM workspace_settings WHERE id = 1",
+    )
+    .get() as any;
+  if (ws && (ws.repo_path || ws.repo_remote_url)) {
+    db.prepare(
+      "INSERT INTO workspaces (id, name, slug, repo_path, repo_remote_url, repo_default_branch, repo_status, repo_current_branch, git_token_encrypted) VALUES (1, 'Default', 'default', ?, ?, ?, ?, ?, ?)",
+    ).run(
+      ws.repo_path ?? null,
+      ws.repo_remote_url ?? null,
+      ws.repo_default_branch ?? "main",
+      ws.repo_status ?? "not_configured",
+      ws.repo_current_branch ?? null,
+      ws.git_token_encrypted ?? "",
+    );
+  } else {
+    db.prepare("INSERT INTO workspaces (id, name, slug) VALUES (1, 'Default', 'default')").run();
+  }
+}
+
+// Add workspace_id to tasks table (backward compatible, default 1)
+try {
+  db.exec("ALTER TABLE tasks ADD COLUMN workspace_id INTEGER DEFAULT 1 REFERENCES workspaces(id)");
+} catch {}
+
 export default db;

@@ -86,3 +86,20 @@ export interface GitBranchInfo {
   branches: string[];
   current: string;
 }
+
+// ── FEAT-011: Multi-Workspace Extension (R22-R25) ───────────────────────────
+
+/** Representación de un workspace (tabla workspaces). */
+export interface Workspace {
+  id: number;
+  name: string;
+  slug: string;
+  repoPath: string | null;
+  repoRemoteUrl: string | null;
+  repoDefaultBranch: string;
+  repoStatus: RepoStatus | "cloning";
+  repoCurrentBranch: string | null;
+  gitTokenConfigured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -59,12 +59,37 @@ import {
   gitPull,
   gitBranches,
   gitCheckout,
+  gitClone,
+  slugify,
 } from "./src/utils/gitOperations";
 
 const PUBLIC_DIR = path.resolve(import.meta.dir, "public");
 const PACKAGE_ROOT = import.meta.dir;
 
+// FEAT-011: Multi-workspace / Server mode — workspaces directory (R24)
+const WORKSPACES_DIR = process.env.WORKSPACES_DIR || "./workspaces";
+if (!existsSync(WORKSPACES_DIR)) {
+  mkdirSync(WORKSPACES_DIR, { recursive: true });
+}
+
 const agentEngine = new AgentEngine(db);
+
+// ── FEAT-011: Workspace row mapper ──────────────────────────────────────────
+function mapWorkspaceRow(row: any): any {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    repoPath: row.repo_path,
+    repoRemoteUrl: row.repo_remote_url,
+    repoDefaultBranch: row.repo_default_branch,
+    repoStatus: row.repo_status,
+    repoCurrentBranch: row.repo_current_branch,
+    gitTokenConfigured: !!row.git_token_encrypted,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 const app = new Elysia()
   .use(cors())
@@ -110,10 +135,10 @@ const app = new Elysia()
 
   // Create task
   .post("/api/tasks", ({ body }) => {
-    const { title, description, status, priority_id, category_id, due_date } = body as any;
+    const { title, description, status, priority_id, category_id, due_date, workspace_id } = body as any;
     const result = db
       .prepare(
-        "INSERT INTO tasks (title, description, status, priority_id, category_id, due_date) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO tasks (title, description, status, priority_id, category_id, due_date, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         title,
@@ -122,6 +147,7 @@ const app = new Elysia()
         priority_id || 2,
         category_id || 1,
         due_date || null,
+        workspace_id || 1,
       );
 
     const task = db
@@ -141,10 +167,11 @@ const app = new Elysia()
 
   // Update task
   .put("/api/tasks/:id", ({ params, body }) => {
-    const { title, description, status, priority_id, category_id, due_date } = body as any;
+    const { title, description, status, priority_id, category_id, due_date, workspace_id } = body as any;
     db.prepare(
       "UPDATE tasks SET title = ?, description = ?, status = ?, priority_id = ?, category_id = ?, due_date = ?, updated_at = datetime('now') WHERE id = ?",
-    ).run(title, description || "", status, priority_id, category_id, due_date || null, params.id);
+    ).run(title, description || "", status, priority_id, category_id, due_date || null,
+        workspace_id || 1, params.id);
 
     const task = db
       .query(
@@ -956,6 +983,144 @@ const app = new Elysia()
     } catch (e) {
       set.status = 500;
       return { error: e instanceof Error ? e.message : "Error al cambiar de rama" };
+    }
+  })
+
+  // ── FEAT-011: Multi-Workspace CRUD (R22-R25) ────────────────────────────────
+
+  .get("/api/workspaces", () => {
+    const rows = db.query("SELECT * FROM workspaces ORDER BY id").all();
+    return (rows as any[]).map(mapWorkspaceRow);
+  })
+
+  .get("/api/workspaces/:id", ({ params, set }) => {
+    const row = db
+      .query("SELECT * FROM workspaces WHERE id = ?")
+      .get(Number(params.id)) as any;
+    if (!row) {
+      set.status = 404;
+      return { error: "Workspace no encontrado" };
+    }
+    return mapWorkspaceRow(row);
+  })
+
+  .post("/api/workspaces", ({ body, set }) => {
+    const { name, remoteUrl, branch } = body as any;
+    if (!name?.trim()) {
+      set.status = 422;
+      return { error: "El nombre es obligatorio" };
+    }
+    const slug = slugify(name.trim());
+    try {
+      db.prepare(
+        "INSERT INTO workspaces (name, slug, repo_remote_url, repo_default_branch) VALUES (?, ?, ?, ?)",
+      ).run(name.trim(), slug, remoteUrl ?? null, branch ?? "main");
+    } catch (e: any) {
+      if (e.message?.includes("UNIQUE")) {
+        set.status = 409;
+        return { error: "Ya existe un workspace con ese nombre" };
+      }
+      throw e;
+    }
+    const id = (db.query("SELECT last_insert_rowid() AS id").get() as any).id;
+    return mapWorkspaceRow(db.query("SELECT * FROM workspaces WHERE id = ?").get(id));
+  })
+
+  .put("/api/workspaces/:id", async ({ params, body, set }) => {
+    const id = Number(params.id);
+    const row = db.query("SELECT * FROM workspaces WHERE id = ?").get(id) as any;
+    if (!row) {
+      set.status = 404;
+      return { error: "Workspace no encontrado" };
+    }
+    const { name, repoPath, remoteUrl, branch, gitToken } = body as any;
+
+    // Handle token encryption
+    let tokenValue = row.git_token_encrypted;
+    if (gitToken !== undefined) {
+      tokenValue = gitToken ? await encryptApiKey(gitToken) : "";
+    }
+
+    // Validate repoPath if provided
+    let repoStatus = row.repo_status;
+    let currentBranch = row.repo_current_branch;
+    if (repoPath !== undefined) {
+      if (repoPath) {
+        const validation = validateRepoPath(repoPath);
+        if (!validation.ok) {
+          set.status = 422;
+          return { code: validation.code, message: validation.message };
+        }
+        repoStatus = "connected";
+        currentBranch = validation.currentBranch;
+      } else {
+        repoStatus = "not_configured";
+        currentBranch = null;
+      }
+    }
+
+    db.prepare(
+      "UPDATE workspaces SET name = COALESCE(?, name), slug = COALESCE(?, slug), repo_path = ?, repo_remote_url = ?, repo_default_branch = ?, repo_status = ?, repo_current_branch = ?, git_token_encrypted = ?, updated_at = datetime('now') WHERE id = ?",
+    ).run(
+      name?.trim() ?? null,
+      name ? slugify(name.trim()) : null,
+      repoPath ?? row.repo_path,
+      remoteUrl ?? row.repo_remote_url,
+      branch ?? row.repo_default_branch,
+      repoStatus,
+      currentBranch,
+      tokenValue,
+      id,
+    );
+    return mapWorkspaceRow(db.query("SELECT * FROM workspaces WHERE id = ?").get(id));
+  })
+
+  .delete("/api/workspaces/:id", ({ params, set }) => {
+    const id = Number(params.id);
+    if (id === 1) {
+      set.status = 422;
+      return { error: "No se puede eliminar el workspace por defecto" };
+    }
+    db.prepare("UPDATE tasks SET workspace_id = 1 WHERE workspace_id = ?").run(id);
+    db.prepare("DELETE FROM workspaces WHERE id = ?").run(id);
+    return { ok: true };
+  })
+
+  // Clone endpoint (R21)
+  .post("/api/workspaces/:id/clone", async ({ params, set }) => {
+    const id = Number(params.id);
+    const row = db.query("SELECT * FROM workspaces WHERE id = ?").get(id) as any;
+    if (!row) {
+      set.status = 404;
+      return { error: "Workspace no encontrado" };
+    }
+    if (!row.repo_remote_url) {
+      set.status = 422;
+      return { error: "No hay URL remota configurada" };
+    }
+    const localDir = path.resolve(WORKSPACES_DIR, row.slug);
+    if (existsSync(localDir)) {
+      set.status = 409;
+      return { error: "El directorio ya existe. Elimínalo primero o usa 'Usar existente'." };
+    }
+    db.prepare("UPDATE workspaces SET repo_status = 'cloning' WHERE id = ?").run(id);
+    try {
+      await gitClone(
+        row.repo_remote_url,
+        localDir,
+        row.repo_default_branch || undefined,
+        row.git_token_encrypted || undefined,
+      );
+      db.prepare(
+        "UPDATE workspaces SET repo_path = ?, repo_status = 'connected', repo_current_branch = ?, updated_at = datetime('now') WHERE id = ?",
+      ).run(localDir, row.repo_default_branch || "main", id);
+      return { ok: true, repoPath: localDir };
+    } catch (e: any) {
+      db.prepare(
+        "UPDATE workspaces SET repo_status = 'error', updated_at = datetime('now') WHERE id = ?",
+      ).run(id);
+      set.status = 500;
+      return { error: e.message || "Error al clonar" };
     }
   })
 

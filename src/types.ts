@@ -6,6 +6,7 @@ export interface Task {
   priority_id: number;
   category_id: number;
   due_date: string | null;
+  workspace_id: number;
   created_at: string;
   updated_at: string;
   priority_name: string;
@@ -314,4 +315,21 @@ export interface GitStatusFile {
 export interface GitBranchInfo {
   branches: string[];
   current: string;
+}
+
+// ── FEAT-011: Multi-Workspace Extension (R22-R25) ───────────────────────────
+
+/** Representación de un workspace. */
+export interface Workspace {
+  id: number;
+  name: string;
+  slug: string;
+  repoPath: string | null;
+  repoRemoteUrl: string | null;
+  repoDefaultBranch: string;
+  repoStatus: RepoStatus | "cloning";
+  repoCurrentBranch: string | null;
+  gitTokenConfigured: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

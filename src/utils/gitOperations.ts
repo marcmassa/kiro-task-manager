@@ -205,3 +205,45 @@ function sanitizeGitError(error: string): string {
   // Remove any URL with embedded credentials
   return error.replace(/https:\/\/[^@]+@/g, "https://***@");
 }
+
+// ── FEAT-011: Remote Clone + Multi-Workspace (R21-R25) ──────────────────────
+
+/**
+ * Clona un repositorio remoto en un directorio local.
+ * Usa token si está configurado (cifrado).
+ */
+export async function gitClone(
+  remoteUrl: string,
+  localDir: string,
+  branch?: string,
+  tokenEncrypted?: string,
+): Promise<void> {
+  let cloneUrl = remoteUrl;
+  if (tokenEncrypted) {
+    const token = await decryptApiKey(tokenEncrypted);
+    try {
+      const url = new URL(remoteUrl);
+      url.username = token;
+      cloneUrl = url.toString();
+    } catch {
+      cloneUrl = remoteUrl.replace("https://", `https://${token}@`);
+    }
+  }
+  const args = ["clone"];
+  if (branch) args.push("--branch", branch);
+  args.push(cloneUrl, localDir);
+  const { exitCode, stderr } = await runGit(".", args);
+  if (exitCode !== 0) {
+    throw new Error(sanitizeGitError(stderr) || "Error al clonar el repositorio");
+  }
+}
+
+/**
+ * Convierte un nombre a slug válido como nombre de directorio.
+ */
+export function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}

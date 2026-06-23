@@ -31,6 +31,7 @@ import type {
   DirectoryEntry,
   GitStatusFile,
   GitBranchInfo,
+  Workspace,
 } from "./types";
 
 const BASE_URL = "/api";
@@ -55,8 +56,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export async function fetchTasks(): Promise<Task[]> {
-  return request<Task[]>(`${BASE_URL}/tasks`);
+export async function fetchTasks(workspaceId?: number): Promise<Task[]> {
+  const params = workspaceId ? `?workspaceId=${workspaceId}` : "";
+  return request<Task[]>(`${BASE_URL}/tasks${params}`);
 }
 
 export async function fetchTask(id: number): Promise<Task> {
@@ -564,4 +566,60 @@ export async function gitCheckoutBranch(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ branch, create }),
   });
+}
+
+// ── FEAT-011: Multi-Workspace (R22-R25) ─────────────────────────────────────
+
+/** GET /api/workspaces — lista todos los workspaces. */
+export async function fetchWorkspaces(): Promise<Workspace[]> {
+  return request<Workspace[]>(`${BASE_URL}/workspaces`);
+}
+
+/** GET /api/workspaces/:id — obtiene un workspace por ID. */
+export async function fetchWorkspace(id: number): Promise<Workspace> {
+  return request<Workspace>(`${BASE_URL}/workspaces/${id}`);
+}
+
+/** POST /api/workspaces — crea un nuevo workspace. */
+export async function createWorkspace(data: {
+  name: string;
+  remoteUrl?: string;
+  branch?: string;
+}): Promise<Workspace> {
+  return request<Workspace>(`${BASE_URL}/workspaces`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+/** PUT /api/workspaces/:id — actualiza configuración del workspace. */
+export async function updateWorkspace(
+  id: number,
+  data: {
+    name?: string;
+    repoPath?: string;
+    remoteUrl?: string;
+    branch?: string;
+    gitToken?: string;
+  },
+): Promise<Workspace> {
+  return request<Workspace>(`${BASE_URL}/workspaces/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+/** DELETE /api/workspaces/:id — elimina un workspace. */
+export async function deleteWorkspace(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/workspaces/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+}
+
+/** POST /api/workspaces/:id/clone — clona el repositorio remoto del workspace. */
+export async function cloneWorkspace(
+  id: number,
+): Promise<{ ok: boolean; repoPath?: string; error?: string }> {
+  return request(`${BASE_URL}/workspaces/${id}/clone`, { method: "POST" });
 }

@@ -20,6 +20,7 @@ import { SettingsPage } from "./components/SettingsPage";
 import { KiroIllustration } from "./components/KiroIllustration";
 import { PageHeader } from "./components/ui/PageHeader";
 import { WorkspacePage } from "./components/WorkspacePage";
+import { WorkspaceSelector } from "./components/WorkspaceSelector";
 import {
   PlusIcon,
   KanbanIcon,
@@ -46,6 +47,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("home");
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<number>(() => {
+    const stored = localStorage.getItem("activeWorkspaceId");
+    return stored ? Number(stored) : 1;
+  });
+
 
   useEffect(() => {
     loadData();
@@ -229,6 +235,14 @@ export default function App() {
           </button>
 
           {/* Spacer to push Configuración to bottom */}
+                  <WorkspaceSelector
+                    activeWorkspaceId={activeWorkspaceId}
+                    onWorkspaceChange={(id) => {
+                      setActiveWorkspaceId(id);
+                      localStorage.setItem("activeWorkspaceId", String(id));
+                    }}
+                  />
+        
           <div className="flex-1" />
 
           <button
