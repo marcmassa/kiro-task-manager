@@ -137,16 +137,16 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
 
   return (
     <section
-      className="flex flex-col h-full bg-gray-900 border-l border-gray-700"
+      className="flex flex-col h-full bg-surface-500 border-l border-white/5"
       aria-label="Panel de Git"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-200">Git</h3>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
+        <h3 className="text-sm font-semibold text-muted-300">Git</h3>
         <button
           onClick={refresh}
           disabled={loading}
-          className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors disabled:opacity-50"
+          className="text-xs px-2 py-1 bg-surface-400/80 hover:bg-surface-300 text-muted-300 rounded-lg transition-colors disabled:opacity-50"
           aria-label="Refrescar estado de Git"
         >
           {loading ? "..." : "⟳ Refrescar"}
@@ -154,7 +154,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
       </div>
 
       {/* Branch selector */}
-      <div className="px-3 py-2 border-b border-gray-700">
+      <div className="px-3 py-2 border-b border-white/5">
         <BranchSelector
           branchInfo={branchInfo}
           hasChanges={files.length > 0}
@@ -164,13 +164,13 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
 
       {/* Error/Success messages */}
       {error && (
-        <div className="px-3 py-2 bg-red-900/30 border-b border-red-700/50">
-          <p className="text-xs text-red-300">{error}</p>
+        <div className="px-3 py-2 bg-danger-700/30 border-b border-danger-700/50">
+          <p className="text-xs text-danger-300">{error}</p>
         </div>
       )}
       {successMsg && (
-        <div className="px-3 py-2 bg-green-900/30 border-b border-green-700/50">
-          <p className="text-xs text-green-300">{successMsg}</p>
+        <div className="px-3 py-2 bg-success-700/30 border-b border-success-700/50">
+          <p className="text-xs text-success-300">{successMsg}</p>
         </div>
       )}
 
@@ -185,7 +185,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
       </div>
 
       {/* Commit section */}
-      <div className="border-t border-gray-700 px-3 py-2 space-y-2">
+      <div className="border-t border-white/5 px-3 py-2 space-y-2">
         <div className="flex gap-2">
           <input
             type="text"
@@ -193,13 +193,13 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
             onChange={(e) => setCommitMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && canCommit && handleCommit()}
             placeholder="Mensaje de commit..."
-            className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="flex-1 bg-surface-400 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-muted-200 placeholder-muted-500 focus:outline-none focus:ring-2 focus:ring-accent"
             aria-label="Mensaje de commit"
           />
           <button
             onClick={handleCommit}
             disabled={!canCommit}
-            className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg transition-colors font-medium"
+            className="px-3 py-1.5 text-sm bg-accent hover:bg-accent-500 disabled:bg-surface-400 disabled:text-muted-500 text-white rounded-lg transition-colors font-medium"
             aria-label="Crear commit"
           >
             Commit
@@ -211,7 +211,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
           <button
             onClick={handlePush}
             disabled={pushLoading || !tokenConfigured}
-            className="flex-1 px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-gray-200 rounded transition-colors"
+            className="flex-1 px-3 py-1.5 text-xs bg-surface-400/80 hover:bg-surface-300 disabled:bg-surface-500 disabled:text-muted-600 text-muted-200 rounded-lg transition-colors"
             aria-label="Push al remoto"
             title={!tokenConfigured ? "Token no configurado" : "Push al remoto"}
           >
@@ -220,7 +220,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
           <button
             onClick={handlePull}
             disabled={pullLoading || !tokenConfigured}
-            className="flex-1 px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-gray-200 rounded transition-colors"
+            className="flex-1 px-3 py-1.5 text-xs bg-surface-400/80 hover:bg-surface-300 disabled:bg-surface-500 disabled:text-muted-600 text-muted-200 rounded-lg transition-colors"
             aria-label="Pull del remoto"
             title={!tokenConfigured ? "Token no configurado" : "Pull del remoto"}
           >
@@ -228,7 +228,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
           </button>
         </div>
         {!tokenConfigured && (
-          <p className="text-xs text-gray-500 text-center">
+          <p className="text-xs text-muted-500 text-center">
             Configura un token en Ajustes para push/pull
           </p>
         )}

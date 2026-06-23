@@ -265,7 +265,7 @@ export function WorkspacePage(): JSX.Element {
         </button>
         <button
           onClick={() => setGitPanelOpen((v) => !v)}
-          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${gitPanelOpen ? "bg-purple-600 text-white" : "bg-surface-400/50 text-muted-300 hover:bg-surface-400"}`}
+          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${gitPanelOpen ? "bg-accent text-white" : "bg-surface-400/50 text-muted-300 hover:bg-surface-400"}`}
           aria-label={gitPanelOpen ? "Cerrar panel Git" : "Abrir panel Git"}
         >
           <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">

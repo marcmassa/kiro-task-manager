@@ -59,13 +59,13 @@ export function GitStatusList({
       {stagedFiles.length > 0 && (
         <div>
           <div className="flex items-center justify-between px-2 py-1">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            <span className="text-xs font-medium text-muted-400 uppercase tracking-wide">
               En staging ({stagedFiles.length})
             </span>
             {selectedPaths.size > 0 && (
               <button
                 onClick={handleUnstageSelected}
-                className="text-xs text-orange-400 hover:text-orange-300 transition-colors"
+                className="text-xs text-warning-400 hover:text-warning-300 transition-colors"
                 aria-label="Quitar del staging los ficheros seleccionados"
               >
                 Unstage
@@ -90,13 +90,13 @@ export function GitStatusList({
       {unstagedFiles.length > 0 && (
         <div>
           <div className="flex items-center justify-between px-2 py-1">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            <span className="text-xs font-medium text-muted-400 uppercase tracking-wide">
               Cambios ({unstagedFiles.length})
             </span>
             {selectedPaths.size > 0 && (
               <button
                 onClick={handleStageSelected}
-                className="text-xs text-green-400 hover:text-green-300 transition-colors"
+                className="text-xs text-success-400 hover:text-success-300 transition-colors"
                 aria-label="Añadir al staging los ficheros seleccionados"
               >
                 Stage
@@ -118,7 +118,7 @@ export function GitStatusList({
       )}
 
       {files.length === 0 && (
-        <p className="text-sm text-gray-500 text-center py-4">
+        <p className="text-sm text-muted-500 text-center py-4">
           No hay cambios en el directorio de trabajo
         </p>
       )}
@@ -137,11 +137,11 @@ interface FileItemProps {
 
 function FileItem({ file, selected, onToggle, onClick }: FileItemProps): JSX.Element {
   const statusColors: Record<GitStatusFile["status"], string> = {
-    modified: "text-orange-400",
-    added: "text-green-400",
-    deleted: "text-red-400",
-    renamed: "text-blue-400",
-    untracked: "text-gray-400",
+    modified: "text-warning-400",
+    added: "text-success-400",
+    deleted: "text-danger-400",
+    renamed: "text-accent-400",
+    untracked: "text-muted-400",
   };
 
   const statusLabels: Record<GitStatusFile["status"], string> = {
@@ -153,12 +153,12 @@ function FileItem({ file, selected, onToggle, onClick }: FileItemProps): JSX.Ele
   };
 
   return (
-    <li className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-700/50 group">
+    <li className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-surface-400/50 group">
       <input
         type="checkbox"
         checked={selected}
         onChange={onToggle}
-        className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-800 text-purple-500 focus:ring-purple-500 focus:ring-offset-0"
+        className="w-3.5 h-3.5 rounded border-white/10 bg-surface-400 text-accent focus:ring-accent focus:ring-offset-0"
         aria-label={`Seleccionar ${file.path}`}
       />
       <span
@@ -169,7 +169,7 @@ function FileItem({ file, selected, onToggle, onClick }: FileItemProps): JSX.Ele
       </span>
       <button
         onClick={onClick}
-        className="flex-1 text-left text-sm text-gray-300 truncate hover:text-white transition-colors font-mono"
+        className="flex-1 text-left text-sm text-muted-300 truncate hover:text-white transition-colors font-mono"
         aria-label={`Abrir ${file.path}`}
       >
         {file.path}
