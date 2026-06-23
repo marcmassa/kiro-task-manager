@@ -6,6 +6,7 @@ export interface Task {
   priority_id: number;
   category_id: number;
   due_date: string | null;
+  workspace_id: number;
   created_at: string;
   updated_at: string;
   priority_name: string;
@@ -121,6 +122,10 @@ export interface AgentExecution {
   state: AgentState;
   agent_summary: string | null;
   review_feedback: string | null;
+  /** FEAT-012: Current SDD phase, null for legacy non-SDD executions. */
+  sdd_phase: import("./utils/sddLifecycle").SddPhase | null;
+  /** FEAT-012: Output text produced by the agent for the current phase. */
+  phase_output: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -247,6 +252,23 @@ export interface AgentRunResult {
   message: string;
 }
 
+// ── FEAT-011: Workspace types ────────────────────────────────────────────
+
+/** Un workspace (proyecto) con su repositorio asociado. */
+export interface Workspace {
+  id: number;
+  name: string;
+  slug: string;
+  repoPath: string | null;
+  repoRemoteUrl: string | null;
+  repoDefaultBranch: string;
+  repoStatus: RepoStatus;
+  repoCurrentBranch: string | null;
+  gitTokenConfigured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── FEAT-011: Workspace Git types ─────────────────────────────────────────
 
 /** Estado de conexión del repositorio. */
@@ -298,4 +320,36 @@ export interface FileContentResponse {
   content: string;
   size: number;
   language: string;
+}
+
+// ── FEAT-011: Git Operations Extension (R16-R20) ────────────────────────────
+
+/** Estado de un fichero en git status. */
+export interface GitStatusFile {
+  path: string;
+  status: "modified" | "added" | "deleted" | "renamed" | "untracked";
+  staged: boolean;
+}
+
+/** Información de ramas del repositorio. */
+export interface GitBranchInfo {
+  branches: string[];
+  current: string;
+}
+
+// ── FEAT-011: Multi-Workspace Extension (R22-R25) ───────────────────────────
+
+/** Representación de un workspace. */
+export interface Workspace {
+  id: number;
+  name: string;
+  slug: string;
+  repoPath: string | null;
+  repoRemoteUrl: string | null;
+  repoDefaultBranch: string;
+  repoStatus: RepoStatus | "cloning";
+  repoCurrentBranch: string | null;
+  gitTokenConfigured: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

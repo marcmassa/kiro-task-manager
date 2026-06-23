@@ -1,13 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { fetchWorkspaceTree } from "../api";
 import type { DirectoryEntry } from "../types";
+import { FolderCodeIcon, CodeIcon } from "../Icons";
 
-interface WorkspaceTreeViewProps {
+interface WorkspaceExplorerProps {
   workspaceId: number;
-  taskId: number;
-  onFileSelect: (path: string) => void;
-  onAddReference: (path: string) => void;
-  repoConfigured: boolean;
+  onOpenFile?: (path: string) => void;
 }
 
 interface TreeNode {
@@ -21,52 +19,39 @@ interface TreeNode {
   loading: boolean;
 }
 
-function getFileIcon(name: string, type: "file" | "directory"): string {
-  if (type === "directory") return "📁";
+function getFileEmoji(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  switch (ext) {
-    case "ts":
-    case "tsx":
-      return "🟦";
-    case "js":
-    case "jsx":
-      return "🟨";
-    case "json":
-      return "📋";
-    case "md":
-      return "📝";
-    case "css":
-      return "🎨";
-    case "html":
-      return "🌐";
-    case "py":
-      return "🐍";
-    case "sh":
-      return "⚙️";
-    default:
-      return "📄";
-  }
+  const map: Record<string, string> = {
+    ts: "🟦",
+    tsx: "🟦",
+    js: "🟨",
+    jsx: "🟨",
+    json: "📋",
+    md: "📝",
+    css: "🎨",
+    html: "🌐",
+    py: "🐍",
+    sh: "⚙️",
+    rs: "🦀",
+    go: "🔵",
+  };
+  return map[ext] ?? "📄";
 }
 
 function TreeItem({
   node,
   onToggle,
   onFileClick,
-  onAddRef,
 }: {
   node: TreeNode;
   onToggle: (path: string) => void;
   onFileClick: (path: string) => void;
-  onAddRef: (path: string) => void;
 }) {
   const isDir = node.type === "directory";
 
   function handleClick() {
-    if (isDir) {
-      onToggle(node.path);
-    } else {
-      onFileClick(node.path);
-    }
+    if (isDir) onToggle(node.path);
+    else onFileClick(node.path);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -76,65 +61,53 @@ function TreeItem({
     }
   }
 
-  function handleContextMenu(e: React.MouseEvent) {
-    e.preventDefault();
-    onAddRef(node.path);
-  }
-
   return (
     <li role="treeitem" aria-expanded={isDir ? node.expanded : undefined}>
       <div
         className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-white/5 cursor-pointer text-sm group transition-colors"
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        onContextMenu={handleContextMenu}
         tabIndex={0}
         role="button"
         aria-label={
-          isDir
-            ? `${node.expanded ? "Colapsar" : "Expandir"} directorio: ${node.name}`
-            : `Abrir fichero: ${node.name}`
+          isDir ? `${node.expanded ? "Colapsar" : "Expandir"} ${node.name}` : `Abrir ${node.name}`
         }
       >
-        {/* Expand/collapse arrow for directories */}
+        <span className="text-muted-500 text-[10px] w-3 text-center shrink-0" aria-hidden="true">
+          {node.loading ? "⏳" : isDir ? (node.expanded ? "▼" : "▶") : ""}
+        </span>
+
         {isDir ? (
-          <span className="text-muted-500 text-[10px] w-3 text-center shrink-0" aria-hidden="true">
-            {node.loading ? "⏳" : node.expanded ? "▼" : "▶"}
-          </span>
+          <svg
+            className="text-accent-400 shrink-0"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
         ) : (
-          <span className="w-3 shrink-0" />
+          <span className="text-xs shrink-0">{getFileEmoji(node.name)}</span>
         )}
 
-        <span className="text-xs shrink-0" aria-hidden="true">
-          {getFileIcon(node.name, node.type)}
-        </span>
-        <span className="font-mono text-xs text-gray-300 truncate">{node.name}</span>
+        <span className="font-mono text-xs text-gray-300 truncate flex-1 min-w-0">{node.name}</span>
 
-        {/* Add reference button */}
-        <button
-          className="ml-auto opacity-0 group-hover:opacity-100 text-[10px] text-accent-300 hover:text-accent-200 transition-opacity px-1"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddRef(node.path);
-          }}
-          aria-label={`Añadir ${node.name} como referencia`}
-          title="Añadir como referencia"
-        >
-          +ref
-        </button>
+        {!isDir && (
+          <span className="text-[10px] text-muted-500 opacity-0 group-hover:opacity-100 transition-opacity">
+            {node.size < 1024 ? `${node.size}B` : `${(node.size / 1024).toFixed(1)}KB`}
+          </span>
+        )}
       </div>
 
-      {/* Children */}
       {isDir && node.expanded && node.children && (
         <ul role="group" className="pl-3 border-l border-white/5 ml-2">
           {node.children.map((child) => (
-            <TreeItem
-              key={child.path}
-              node={child}
-              onToggle={onToggle}
-              onFileClick={onFileClick}
-              onAddRef={onAddRef}
-            />
+            <TreeItem key={child.path} node={child} onToggle={onToggle} onFileClick={onFileClick} />
           ))}
         </ul>
       )}
@@ -142,24 +115,14 @@ function TreeItem({
   );
 }
 
-export function WorkspaceTreeView({
-  workspaceId,
-  onFileSelect,
-  onAddReference,
-  repoConfigured,
-}: WorkspaceTreeViewProps) {
+export function WorkspaceExplorer({ workspaceId, onOpenFile }: WorkspaceExplorerProps) {
   const [roots, setRoots] = useState<TreeNode[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [rootLoading, setRootLoading] = useState(false);
 
   const loadRootDirectory = useCallback(async () => {
-    if (!workspaceId || workspaceId <= 0) {
-      setRoots([]);
-      setLoaded(true);
-      setRootLoading(false);
-      return;
-    }
+    if (!workspaceId || workspaceId === 0) return;
     setRootLoading(true);
     setLoadError(null);
     try {
@@ -189,31 +152,23 @@ export function WorkspaceTreeView({
   }, [workspaceId]);
 
   useEffect(() => {
-    if (!repoConfigured) {
-      setRoots([]);
-      setLoaded(false);
-      setRootLoading(false);
-      setLoadError(null);
-      return;
+    if (workspaceId && workspaceId > 0) {
+      loadRootDirectory();
     }
-    setRoots([]);
-    setLoaded(false);
-    setLoadError(null);
-    void loadRootDirectory();
-  }, [repoConfigured, workspaceId, loadRootDirectory]);
+  }, [workspaceId, loadRootDirectory]);
 
   async function handleToggle(path: string) {
-    // Check if the node needs loading
     const node = findNode(roots, path);
     if (node && node.type === "directory" && !node.loaded) {
-      // Mark as loading
       setRoots((prev) => markNodeLoading(prev, path));
-      // Load children
       await loadChildren(path);
     } else {
-      // Just toggle expanded
       setRoots((prev) => toggleExpanded(prev, path));
     }
+  }
+
+  function handleFileClick(path: string) {
+    onOpenFile?.(path);
   }
 
   function findNode(nodes: TreeNode[], targetPath: string): TreeNode | null {
@@ -229,24 +184,16 @@ export function WorkspaceTreeView({
 
   function markNodeLoading(nodes: TreeNode[], targetPath: string): TreeNode[] {
     return nodes.map((node) => {
-      if (node.path === targetPath) {
-        return { ...node, loading: true };
-      }
-      if (node.children) {
-        return { ...node, children: markNodeLoading(node.children, targetPath) };
-      }
+      if (node.path === targetPath) return { ...node, loading: true };
+      if (node.children) return { ...node, children: markNodeLoading(node.children, targetPath) };
       return node;
     });
   }
 
   function toggleExpanded(nodes: TreeNode[], targetPath: string): TreeNode[] {
     return nodes.map((node) => {
-      if (node.path === targetPath) {
-        return { ...node, expanded: !node.expanded };
-      }
-      if (node.children) {
-        return { ...node, children: toggleExpanded(node.children, targetPath) };
-      }
+      if (node.path === targetPath) return { ...node, expanded: !node.expanded };
+      if (node.children) return { ...node, children: toggleExpanded(node.children, targetPath) };
       return node;
     });
   }
@@ -269,7 +216,6 @@ export function WorkspaceTreeView({
           expanded: false,
           loading: false,
         }));
-
       setRoots((prev) => updateNodeChildren(prev, parentPath, children));
     } catch {
       setRoots((prev) => updateNodeChildren(prev, parentPath, []));
@@ -292,57 +238,42 @@ export function WorkspaceTreeView({
     });
   }
 
-  if (!repoConfigured) {
-    return (
-      <div className="rounded-xl bg-surface-400/30 border border-white/5 p-4">
-        <p className="text-sm text-muted-400">
-          No hay repositorio configurado. Configura uno en{" "}
-          <span className="text-accent-300">Configuración → Repositorio</span> para explorar
-          ficheros.
-        </p>
-      </div>
-    );
-  }
-
-  if (rootLoading) {
-    return (
-      <div className="rounded-xl bg-surface-400/30 border border-white/5 p-4">
-        <div className="flex items-center gap-2 text-muted-400 text-sm">
-          <span className="animate-pulse">●</span>
-          <span>Cargando árbol de ficheros...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="rounded-xl bg-danger/5 border border-danger/20 p-4">
-        <p className="text-sm text-danger-400">{loadError}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-xl bg-surface-400/30 border border-white/5 overflow-hidden">
-      <div className="px-3 py-2 border-b border-white/5 bg-surface-400/20">
+      <div className="px-3 py-2 border-b border-white/5 bg-surface-400/20 flex items-center gap-2">
+        <FolderCodeIcon className="text-accent-400" size={14} />
         <span className="text-xs font-medium text-muted-400">Explorador de archivos</span>
       </div>
-      <div className="p-2">
-        <ul role="tree" aria-label="Estructura del proyecto">
-          {roots.map((node) => (
-            <TreeItem
-              key={node.path}
-              node={node}
-              onToggle={handleToggle}
-              onFileClick={onFileSelect}
-              onAddRef={onAddReference}
-            />
-          ))}
-          {roots.length === 0 && (
-            <li className="text-xs text-muted-500 px-2 py-1">Directorio vacío</li>
-          )}
-        </ul>
+      <div className="overflow-y-auto p-2">
+        {rootLoading && (
+          <div className="flex items-center gap-2 text-muted-400 text-xs px-2 py-3">
+            <span className="animate-pulse">●</span>
+            <span>Cargando...</span>
+          </div>
+        )}
+
+        {loadError && <p className="text-xs text-danger-400 px-2 py-3">{loadError}</p>}
+
+        {!rootLoading && !loadError && (
+          <ul role="tree" aria-label="Estructura del proyecto">
+            {roots.map((node) => (
+              <TreeItem
+                key={node.path}
+                node={node}
+                onToggle={handleToggle}
+                onFileClick={handleFileClick}
+              />
+            ))}
+            {roots.length === 0 && loaded && (
+              <li className="text-xs text-muted-500 px-2 py-3 text-center">Directorio vacío</li>
+            )}
+            {!loaded && !rootLoading && (
+              <li className="text-xs text-muted-500 px-2 py-3 text-center">
+                Selecciona un workspace para explorar
+              </li>
+            )}
+          </ul>
+        )}
       </div>
     </div>
   );

@@ -5,15 +5,17 @@ import { KiroIllustration } from "./KiroIllustration";
 
 interface KanbanColumnProps {
   title: string;
-  status: TaskStatus;
+  status?: TaskStatus;
   tasks: Task[];
-  color: "accent" | "warning" | "success";
+  color: "accent" | "warning" | "success" | "purple" | "indigo" | "yellow";
   executions?: Map<number, AgentExecution>;
   onViewTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
   onStatusChange: (task: Task, status: TaskStatus) => void;
-  onDrop: (taskId: number, targetStatus: TaskStatus) => void;
+  onDrop?: (taskId: number, targetStatus: TaskStatus) => void;
+  /** When true, drag-and-drop is disabled (SDD phase columns). */
+  isSdd?: boolean;
 }
 
 const colorMap = {
@@ -32,6 +34,21 @@ const colorMap = {
     text: "text-success-300",
     badge: "bg-success/10 text-success-300",
   },
+  purple: {
+    dot: "bg-purple-500",
+    text: "text-purple-300",
+    badge: "bg-purple-500/10 text-purple-300",
+  },
+  indigo: {
+    dot: "bg-indigo-500",
+    text: "text-indigo-300",
+    badge: "bg-indigo-500/10 text-indigo-300",
+  },
+  yellow: {
+    dot: "bg-yellow-500",
+    text: "text-yellow-300",
+    badge: "bg-yellow-500/10 text-yellow-300",
+  },
 };
 
 export function KanbanColumn({
@@ -45,20 +62,24 @@ export function KanbanColumn({
   onDeleteTask,
   onStatusChange,
   onDrop,
+  isSdd = false,
 }: KanbanColumnProps) {
   const colors = colorMap[color];
   const [isDragOver, setIsDragOver] = useState(false);
 
   function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
+    if (isSdd) return;
     e.preventDefault();
   }
 
   function handleDragEnter(e: React.DragEvent<HTMLDivElement>) {
+    if (isSdd) return;
     e.preventDefault();
     setIsDragOver(true);
   }
 
   function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
+    if (isSdd) return;
     if (e.currentTarget.contains(e.relatedTarget as Node)) {
       return;
     }
@@ -66,6 +87,7 @@ export function KanbanColumn({
   }
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    if (isSdd || !status || !onDrop) return;
     e.preventDefault();
     setIsDragOver(false);
     try {
@@ -79,12 +101,12 @@ export function KanbanColumn({
 
   return (
     <div
-      className={`kanban-column ${isDragOver ? "kanban-column--drag-over" : ""}`}
+      className={`kanban-column ${isDragOver && !isSdd ? "kanban-column--drag-over" : ""}`}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      aria-dropeffect="move"
+      aria-dropeffect={isSdd ? "none" : "move"}
     >
       {/* Column Header */}
       <div className="flex items-center gap-3 mb-4 px-1">

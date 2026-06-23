@@ -351,3 +351,35 @@ export function PaperclipIcon({ className = "", size = 20 }: IconProps) {
     </svg>
   );
 }
+
+// FEAT-011 icons — workspace
+
+export function CodeIcon({ className = "", size = 20 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+      className={className}
+    >
+      <path d="M69.12,94.15,28.5,128l40.62,33.85a8,8,0,1,1-10.24,12.29l-48-40a8,8,0,0,1,0-12.29l48-40a8,8,0,0,1,10.24,12.3Zm176,27.7-48-40a8,8,0,1,0-10.24,12.3L227.5,128l-40.62,33.85a8,8,0,1,0,10.24,12.29l48-40a8,8,0,0,0,0-12.29ZM162.73,32.48a8,8,0,0,0-10.25,4.79l-64,176a8,8,0,0,0,4.79,10.26A8.14,8.14,0,0,0,96,224a8,8,0,0,0,7.52-5.27l64-176A8,8,0,0,0,162.73,32.48Z" />
+    </svg>
+  );
+}
+
+export function FolderCodeIcon({ className = "", size = 20 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+      className={className}
+    >
+      <path d="M216,72H131.31L104,44.69A15.86,15.86,0,0,0,92.69,40H40A16,16,0,0,0,24,56V200.62A15.4,15.4,0,0,0,39.38,216H216.89A15.13,15.13,0,0,0,232,200.89V88A16,16,0,0,0,216,72ZM40,56H92.69l16,16H40ZM216,200H40V88H216Zm-98.34-45.66a8,8,0,0,1-11.32,11.32l-16-16a8,8,0,0,1,0-11.32l16-16a8,8,0,0,1,11.32,11.32L107.31,144Zm48-20.68-16,16a8,8,0,0,1-11.32-11.32L148.69,128l-10.35-10.34a8,8,0,0,1,11.32-11.32l16,16A8,8,0,0,1,165.66,133.66Z" />
+    </svg>
+  );
+}

@@ -37,6 +37,8 @@ function createTestDb(): Database {
       state TEXT NOT NULL DEFAULT 'assigned',
       agent_summary TEXT,
       review_feedback TEXT,
+      sdd_phase TEXT DEFAULT NULL,
+      phase_output TEXT DEFAULT NULL,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );

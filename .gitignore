@@ -24,3 +24,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# FEAT-011: cloned workspaces (R21, R24)
+workspaces/

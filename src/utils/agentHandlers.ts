@@ -11,6 +11,7 @@
  */
 import type { Database } from "bun:sqlite";
 import { applyTransition, type AgentState } from "./agentLifecycle";
+import { applyPhaseApproval, type SddPhase } from "./sddLifecycle";
 import { validateAttachment } from "./attachmentValidation";
 import { attachmentStoragePath, taskUploadDir, UPLOADS_DIR } from "./attachmentPaths";
 import path from "path";
@@ -28,6 +29,8 @@ interface ExecutionRow {
   state: AgentState;
   agent_summary: string | null;
   review_feedback: string | null;
+  sdd_phase: SddPhase | null;
+  phase_output: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,7 +49,12 @@ export function listAgents(db: Database): HandlerResult {
 
 // ── Assignment ───────────────────────────────────────────────────────────────
 
-export function assignAgent(db: Database, taskId: number, agentId: string): HandlerResult {
+export function assignAgent(
+  db: Database,
+  taskId: number,
+  agentId: string,
+  sddMode = false,
+): HandlerResult {
   const task = db.query("SELECT id FROM tasks WHERE id = ?").get(taskId);
   if (!task) return { status: 404, body: { error: "Tarea no encontrada" } };
 
@@ -58,17 +66,21 @@ export function assignAgent(db: Database, taskId: number, agentId: string): Hand
     return { status: 400, body: { error: "Agente inexistente o deshabilitado" } };
   }
 
+  const firstPhase: SddPhase | null = sddMode ? "requirements" : null;
+
   // Upsert the execution: assigning (re)starts the lifecycle at 'assigned'.
   db.prepare(
-    `INSERT INTO agent_executions (task_id, agent_id, state)
-     VALUES (?, ?, 'assigned')
+    `INSERT INTO agent_executions (task_id, agent_id, state, sdd_phase, phase_output)
+     VALUES (?, ?, 'assigned', ?, NULL)
      ON CONFLICT(task_id) DO UPDATE SET
        agent_id = excluded.agent_id,
        state = 'assigned',
        agent_summary = NULL,
        review_feedback = NULL,
+       sdd_phase = excluded.sdd_phase,
+       phase_output = NULL,
        updated_at = datetime('now')`,
-  ).run(taskId, agentId);
+  ).run(taskId, agentId, firstPhase);
 
   return getExecution(db, taskId);
 }
@@ -143,6 +155,68 @@ export function requestChanges(db: Database, taskId: number, feedback: string): 
     return { status: 400, body: { error: "El feedback es obligatorio" } };
   }
   return humanTransition(db, taskId, "changes_requested", { feedback: feedback.trim() });
+}
+
+// ── SDD phase approval ───────────────────────────────────────────────────────
+
+/**
+ * Approves the current SDD phase for the given task. Advances to the next
+ * phase or marks the execution as done when approving 'execution'.
+ * Returns 409 if there is no active SDD execution waiting for review.
+ */
+export function approvePhase(db: Database, taskId: number): HandlerResult {
+  const exec = db
+    .query("SELECT * FROM agent_executions WHERE task_id = ?")
+    .get(taskId) as ExecutionRow | null;
+  if (!exec) return { status: 404, body: { error: "La tarea no tiene una ejecución de agente" } };
+  if (!exec.sdd_phase) {
+    return { status: 409, body: { error: "Esta ejecución no está en modo SDD" } };
+  }
+  if (exec.state !== "pending_review") {
+    return {
+      status: 409,
+      body: { error: `Aprobación de fase requiere estado pending_review (actual: ${exec.state})` },
+    };
+  }
+
+  const approval = applyPhaseApproval(exec.sdd_phase);
+  if (!approval.ok) return { status: 409, body: { error: approval.reason } };
+
+  db.prepare(
+    `UPDATE agent_executions
+     SET state = ?, sdd_phase = ?, phase_output = NULL, updated_at = datetime('now')
+     WHERE task_id = ? AND state = 'pending_review'`,
+  ).run(approval.nextState, approval.nextPhase, taskId);
+
+  recordEvent(
+    db,
+    exec.id,
+    exec.state,
+    approval.nextState,
+    "human",
+    `approved sdd_phase=${exec.sdd_phase}`,
+  );
+  return getExecution(db, taskId);
+}
+
+// ── Task description update ───────────────────────────────────────────────────
+
+/** Updates the description of a task (used by agent during SDD phases). */
+export function updateTaskDescription(
+  db: Database,
+  taskId: number,
+  description: string,
+): HandlerResult {
+  const task = db.query("SELECT id FROM tasks WHERE id = ?").get(taskId);
+  if (!task) return { status: 404, body: { error: "Tarea no encontrada" } };
+
+  db.prepare("UPDATE tasks SET description = ?, updated_at = datetime('now') WHERE id = ?").run(
+    description,
+    taskId,
+  );
+
+  const updated = db.query("SELECT * FROM tasks WHERE id = ?").get(taskId);
+  return { status: 200, body: updated };
 }
 
 // ── Attachments ──────────────────────────────────────────────────────────────

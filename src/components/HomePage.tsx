@@ -1,4 +1,4 @@
-import { Task } from "../types";
+import { Task, Workspace } from "../types";
 import {
   KanbanIcon,
   CheckCircleIcon,
@@ -6,6 +6,7 @@ import {
   FireIcon,
   ArrowRightIcon,
   CalendarIcon,
+  LayersIcon,
 } from "../Icons";
 import { KiroMascot } from "./KiroMascot";
 import { KiroIllustration } from "./KiroIllustration";
@@ -14,17 +15,27 @@ import { PageHeader } from "./ui/PageHeader";
 interface HomePageProps {
   tasks: Task[];
   todoCount: number;
+  requirementsCount: number;
+  designCount: number;
+  tasksCount: number;
   inProgressCount: number;
   doneCount: number;
   onNavigate: (page: string) => void;
+  activeWorkspace?: Workspace | null;
+  workspaceSelector?: React.ReactNode;
 }
 
 export function HomePage({
   tasks,
   todoCount,
+  requirementsCount,
+  designCount,
+  tasksCount,
   inProgressCount,
   doneCount,
   onNavigate,
+  activeWorkspace,
+  workspaceSelector,
 }: HomePageProps) {
   const totalTasks = tasks.length;
   const completionRate = totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0;
@@ -33,14 +44,44 @@ export function HomePage({
     if (!t.due_date || t.status === "done") return false;
     return new Date(t.due_date) < new Date();
   });
+  function workspaceStatusLabel(status?: string): string {
+    switch (status) {
+      case "connected":
+        return "Conectado";
+      case "cloning":
+        return "Clonando";
+      case "error":
+        return "Error";
+      case "disconnected":
+        return "Desconectado";
+      default:
+        return "No configurado";
+    }
+  }
+
+  function workspaceStatusDot(status?: string): string {
+    switch (status) {
+      case "connected":
+        return "bg-success";
+      case "cloning":
+        return "bg-warning animate-pulse";
+      case "error":
+        return "bg-danger";
+      case "disconnected":
+        return "bg-warning";
+      default:
+        return "bg-muted-500";
+    }
+  }
 
   const recentTasks = tasks.slice(0, 5);
 
   return (
-    <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen">
       <PageHeader
         title="Bienvenido de vuelta"
-        subtitle="Aquí tienes un resumen de tu espacio de trabajo"
+        subtitle={`Aquí tienes un resumen de ${activeWorkspace?.name ?? "tu espacio de trabajo"}`}
+        actions={workspaceSelector}
       />
 
       <main className="flex-1 px-8 py-6 space-y-8">
@@ -56,6 +97,33 @@ export function HomePage({
             <h2 className="text-lg font-semibold text-white">Kiro está listo para ayudarte</h2>
             <p className="text-sm text-muted-400 mt-1">
               Tu asistente de productividad está aquí. ¡Organicemos tu día!
+            </p>
+          </div>
+        </div>
+
+        <div className="home-card flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+              <LayersIcon size={18} className="text-accent-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-400">Workspace activo</p>
+              <p className="text-sm font-semibold text-white truncate">
+                {activeWorkspace?.name ?? "Sin workspace seleccionado"}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-400 flex items-center justify-end gap-2">
+              <span
+                className={`w-2 h-2 rounded-full ${workspaceStatusDot(activeWorkspace?.repoStatus)}`}
+              />
+              <span>{workspaceStatusLabel(activeWorkspace?.repoStatus)}</span>
+            </p>
+            <p className="text-xs text-muted-500 mt-1">
+              {activeWorkspace?.repoCurrentBranch
+                ? `Rama ${activeWorkspace.repoCurrentBranch}`
+                : "Sin rama activa"}
             </p>
           </div>
         </div>
@@ -145,6 +213,48 @@ export function HomePage({
               </div>
               <p className="text-lg font-semibold text-white">{doneCount}</p>
             </div>
+          </div>
+        </div>
+
+        {/* SDD Pipeline */}
+        <div className="home-card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-200">Pipeline SDD</h2>
+            <button
+              onClick={() => onNavigate("kanban")}
+              className="text-xs text-accent-400 hover:text-accent-300 flex items-center gap-1 transition-colors"
+            >
+              Ver tablero <ArrowRightIcon size={12} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+            {(
+              [
+                { label: "Por Hacer", count: todoCount, dot: "bg-muted-500" },
+                { label: "Requirements", count: requirementsCount, dot: "bg-purple-400" },
+                { label: "Diseño", count: designCount, dot: "bg-indigo-400" },
+                { label: "Tasks", count: tasksCount, dot: "bg-yellow-400" },
+                { label: "En Progreso", count: inProgressCount, dot: "bg-warning" },
+                { label: "Completadas", count: doneCount, dot: "bg-success" },
+              ] as const
+            ).map((col, i, arr) => (
+              <div key={col.label} className="flex items-center gap-1 shrink-0">
+                <div className="flex flex-col items-center gap-1 px-2">
+                  <span
+                    className={`text-base font-bold ${col.count > 0 ? "text-white" : "text-muted-600"}`}
+                  >
+                    {col.count}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
+                    <span className="text-[10px] text-muted-400 whitespace-nowrap">{col.label}</span>
+                  </div>
+                </div>
+                {i < arr.length - 1 && (
+                  <ArrowRightIcon size={10} className="text-muted-600 shrink-0" />
+                )}
+              </div>
+            ))}
           </div>
         </div>
 

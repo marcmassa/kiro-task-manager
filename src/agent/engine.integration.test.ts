@@ -66,6 +66,8 @@ function createFullTestDb(): Database {
       state TEXT NOT NULL DEFAULT 'assigned',
       agent_summary TEXT,
       review_feedback TEXT,
+      sdd_phase TEXT DEFAULT NULL,
+      phase_output TEXT DEFAULT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,

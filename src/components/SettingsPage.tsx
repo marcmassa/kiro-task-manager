@@ -9,6 +9,7 @@ import { McpServersSection, McpServerForm } from "./McpServersSection";
 import { AiProviderSection } from "./AiProviderSection";
 import { AgentEngineSection } from "./AgentEngineSection";
 import { RepoSection } from "./RepoSection";
+import { WorkspaceSettingsSection } from "./WorkspaceSettingsSection";
 import {
   fetchSettings,
   updateWorkspaceSettings,
@@ -54,6 +55,12 @@ interface SettingsPageProps {
   /** Called after a successful `DELETE /api/tasks/all` so the rest of the
    *  app (Kanban + Stats) refreshes its data. */
   onDataChanged?: () => Promise<void> | void;
+  /** Current active workspace ID for settings UI. */
+  activeWorkspaceId: number;
+  /** Called when user activates a different workspace. */
+  onWorkspaceChange: (id: number) => void;
+  /** Optional workspace selector rendered in the page header. */
+  workspaceSelector?: React.ReactNode;
 }
 
 /**
@@ -72,6 +79,9 @@ export function SettingsPage({
   error: externalError,
   onRetry,
   onDataChanged,
+  activeWorkspaceId,
+  onWorkspaceChange,
+  workspaceSelector,
 }: SettingsPageProps) {
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -386,7 +396,7 @@ export function SettingsPage({
 
   if (loading || (!settings && !externalError && !localError)) {
     return (
-      <div className="flex-1 ml-[72px] flex items-center justify-center min-h-screen">
+      <div className="flex-1 flex items-center justify-center min-h-screen">
         <LoadingState message="Cargando configuración..." />
       </div>
     );
@@ -395,8 +405,12 @@ export function SettingsPage({
   if (externalError || localError) {
     const displayError = externalError ?? localError;
     return (
-      <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-        <PageHeader title="Configuración" subtitle="Preferencias del workspace e integraciones" />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <PageHeader
+          title="Configuración"
+          subtitle="Preferencias del workspace e integraciones"
+          actions={workspaceSelector}
+        />
         <main className="flex-1 px-8 py-6 flex items-center justify-center">
           <ErrorState message={displayError!} onRetry={() => void handleRetrySettings()} />
         </main>
@@ -415,9 +429,13 @@ export function SettingsPage({
       workspaceForm.defaultTimezone !== s.workspace.defaultTimezone);
 
   return (
-    <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen">
       {/* Header — usa el mismo PageHeader que StatsDashboard */}
-      <PageHeader title="Configuración" subtitle="Preferencias del workspace e integraciones" />
+      <PageHeader
+        title="Configuración"
+        subtitle="Preferencias del workspace e integraciones"
+        actions={workspaceSelector}
+      />
 
       <main className="flex-1 px-8 py-6 space-y-8">
         {/* ── 1. Datos del workspace ─────────────────────────────── */}
@@ -490,7 +508,18 @@ export function SettingsPage({
         <section aria-label="Repositorio">
           <SectionHeader label="Repositorio" dotColor="bg-accent" />
           <div className="home-card">
-            <RepoSection />
+            <RepoSection workspaceId={activeWorkspaceId} />
+          </div>
+        </section>
+
+        {/* ── 1c. Workspaces ───────────────────────────────────── */}
+        <section aria-label="Workspaces">
+          <SectionHeader label="Workspaces" dotColor="bg-accent" />
+          <div className="home-card">
+            <WorkspaceSettingsSection
+              activeWorkspaceId={activeWorkspaceId}
+              onWorkspaceChange={onWorkspaceChange}
+            />
           </div>
         </section>
 

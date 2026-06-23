@@ -14,6 +14,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import path from "node:path";
 import db from "./db/database";
 import {
   listAssignedTasks,
@@ -27,7 +28,10 @@ import {
   type ToolResult,
 } from "./src/mcp/handlers";
 
-const PACKAGE_ROOT = import.meta.dir;
+// FEAT-011 / R24 — attachments live under DATA_DIR (persistent volume in Docker),
+// matching the HTTP server's ATTACHMENTS_ROOT so both processes resolve the
+// same on-disk location.
+const ATTACHMENTS_ROOT = path.resolve(process.env.DATA_DIR || ".");
 
 /** Wraps a handler result into the MCP content shape. */
 function toContent(result: ToolResult) {
@@ -59,7 +63,7 @@ server.tool(
   "get_attachment",
   "Devuelve el contenido de un adjunto (texto en UTF-8 o binario en base64).",
   { attachmentId: z.number().int().positive() },
-  ({ attachmentId }) => toContent(getAttachment(db, attachmentId, PACKAGE_ROOT)),
+  ({ attachmentId }) => toContent(getAttachment(db, attachmentId, ATTACHMENTS_ROOT)),
 );
 
 // ── Transition tools (actor = agent; nunca llegan a 'done') ──────────────────

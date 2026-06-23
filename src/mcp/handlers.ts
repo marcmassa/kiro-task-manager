@@ -163,6 +163,47 @@ export function resumeTask(db: Database, taskId: number): ToolResult {
   return agentTransition(db, taskId, "agent_working");
 }
 
+/**
+ * FEAT-012 — Saves the output of the current SDD phase and transitions the
+ * execution to pending_review so the human can validate.
+ */
+export function submitPhaseOutput(db: Database, taskId: number, output: string): ToolResult {
+  if (!output || !output.trim()) {
+    return { ok: false, error: "El output de la fase es obligatorio" };
+  }
+
+  const exec = db
+    .query("SELECT * FROM agent_executions WHERE task_id = ?")
+    .get(taskId) as ExecutionRow | null;
+  if (!exec) return { ok: false, error: "La tarea no tiene una ejecución de agente" };
+  if (!("sdd_phase" in exec) || !(exec as any).sdd_phase) {
+    return { ok: false, error: "Esta ejecución no está en modo SDD" };
+  }
+
+  const result = applyTransition(exec.state, "pending_review", "agent");
+  if (!result.ok) return { ok: false, error: result.reason };
+
+  const changed = db
+    .prepare(
+      `UPDATE agent_executions
+       SET state = 'pending_review', phase_output = ?, agent_summary = ?, updated_at = datetime('now')
+       WHERE task_id = ? AND state = ?`,
+    )
+    .run(output.trim(), output.trim(), taskId, exec.state);
+
+  if (changed.changes === 0) {
+    return { ok: false, error: "El estado cambió; reintenta" };
+  }
+
+  db.prepare(
+    `INSERT INTO agent_execution_events (execution_id, from_state, to_state, actor, note)
+     VALUES (?, ?, 'pending_review', 'agent', ?)`,
+  ).run(exec.id, exec.state, `sdd_phase output submitted`);
+
+  const updated = db.query("SELECT * FROM agent_executions WHERE task_id = ?").get(taskId);
+  return { ok: true, data: updated };
+}
+
 // ── FEAT-008: Comment tools ──────────────────────────────────────────────
 
 /**

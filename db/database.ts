@@ -1,6 +1,16 @@
 import { Database } from "bun:sqlite";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 
-const db = new Database("tasks.db", { create: true });
+// FEAT-011 / R24 — Server mode persistence.
+// The DB lives under DATA_DIR so it can be mounted on a persistent volume in
+// production (Docker). Defaults to "." (the package root) for local/workshop
+// use, which keeps the historical `task-manager/tasks.db` location intact.
+const DATA_DIR = process.env.DATA_DIR || ".";
+mkdirSync(DATA_DIR, { recursive: true });
+const DB_PATH = path.join(DATA_DIR, "tasks.db");
+
+const db = new Database(DB_PATH, { create: true });
 
 // Enable WAL mode for better performance
 db.exec("PRAGMA journal_mode = WAL");
@@ -198,120 +208,6 @@ if (categoryCount.count === 0) {
   insertCategory.run("Personal", "#252F3E");
 }
 
-// Seed example tasks
-const taskCount = db.query("SELECT COUNT(*) as count FROM tasks").get() as { count: number };
-if (taskCount.count === 0) {
-  const insertTask = db.prepare(
-    "INSERT INTO tasks (title, description, status, priority_id, category_id, due_date) VALUES (?, ?, ?, ?, ?, ?)",
-  );
-
-  // We capture each task's auto-generated id via last_insert_rowid()
-  // so the comments below can reference them by their real ids. This
-  // is robust to AUTOINCREMENT starting at any value (the seed used
-  // to crash with FK error in environments where other writes had
-  // already consumed ids 1-7).
-  insertTask.run(
-    "Diseñar interfaz de usuario",
-    "Crear los mockups y prototipos para la nueva landing page del producto. Incluir versión mobile y desktop.",
-    "todo",
-    2,
-    2,
-    "2025-06-20",
-  );
-  const idDiseno = Number(
-    (db.query("SELECT last_insert_rowid() AS id").get() as { id: number } | null)?.id ?? 0,
-  );
-
-  insertTask.run(
-    "Implementar autenticación OAuth",
-    "Integrar login con Google y GitHub usando OAuth 2.0. Configurar tokens de refresh y manejo de sesiones.",
-    "in_progress",
-    3,
-    1,
-    "2025-06-15",
-  );
-  const idOauth = Number(
-    (db.query("SELECT last_insert_rowid() AS id").get() as { id: number } | null)?.id ?? 0,
-  );
-
-  insertTask.run(
-    "Escribir documentación API",
-    "Documentar todos los endpoints REST con ejemplos de request/response usando OpenAPI 3.0.",
-    "todo",
-    1,
-    1,
-    "2025-06-25",
-  );
-  const idDocs = Number(
-    (db.query("SELECT last_insert_rowid() AS id").get() as { id: number } | null)?.id ?? 0,
-  );
-
-  insertTask.run(
-    "Campaña de lanzamiento",
-    "Preparar materiales para el lanzamiento: emails, posts en redes sociales y blog post de anuncio.",
-    "done",
-    2,
-    3,
-    "2025-06-10",
-  );
-  const idCampana = Number(
-    (db.query("SELECT last_insert_rowid() AS id").get() as { id: number } | null)?.id ?? 0,
-  );
-
-  insertTask.run(
-    "Investigar tendencias UX 2025",
-    "Revisar las últimas tendencias en diseño de interfaces y experiencia de usuario para aplicar en el próximo sprint.",
-    "in_progress",
-    1,
-    4,
-    "2025-06-18",
-  );
-  const idUx = Number(
-    (db.query("SELECT last_insert_rowid() AS id").get() as { id: number } | null)?.id ?? 0,
-  );
-
-  insertTask.run(
-    "Optimizar rendimiento del backend",
-    "Identificar cuellos de botella en las consultas SQL y optimizar los endpoints críticos del API.",
-    "todo",
-    4,
-    1,
-    "2025-06-12",
-  );
-  const idPerf = Number(
-    (db.query("SELECT last_insert_rowid() AS id").get() as { id: number } | null)?.id ?? 0,
-  );
-
-  insertTask.run(
-    "Actualizar dependencias del proyecto",
-    "Revisar y actualizar todas las dependencias a sus últimas versiones estables.",
-    "done",
-    1,
-    5,
-    "2025-06-05",
-  );
-  const idDeps = Number(
-    (db.query("SELECT last_insert_rowid() AS id").get() as { id: number } | null)?.id ?? 0,
-  );
-
-  // Seed example comments — references are the auto-generated ids above,
-  // not hardcoded 1/2/4/6 (which would crash FK if AUTOINCREMENT started
-  // at any value other than 1).
-  const insertComment = db.prepare(
-    "INSERT INTO comments (task_id, content, author) VALUES (?, ?, ?)",
-  );
-  insertComment.run(
-    idDiseno,
-    "Ya tengo algunas referencias de Dribbble para inspiración.",
-    "María",
-  );
-  insertComment.run(idDiseno, "Excelente, compártelas en el canal de diseño.", "Carlos");
-  insertComment.run(idOauth, "El flujo de Google ya está funcionando en staging.", "Ana");
-  insertComment.run(idOauth, "Falta implementar el refresh token, lo tengo para mañana.", "Pedro");
-  insertComment.run(idCampana, "Los copies de email ya están aprobados por el equipo.", "Laura");
-  insertComment.run(idPerf, "Las consultas más lentas están en el endpoint de búsqueda.", "Ana");
-}
-
 // FEAT-011: workspace-git — add repo columns to workspace_settings (idempotent)
 try {
   db.exec("ALTER TABLE workspace_settings ADD COLUMN repo_path TEXT DEFAULT NULL");
@@ -331,6 +227,11 @@ try {
 } catch {}
 try {
   db.exec("ALTER TABLE workspace_settings ADD COLUMN repo_current_branch TEXT DEFAULT NULL");
+} catch {}
+
+// FEAT-011: workspace-git — git token column for push/pull authentication
+try {
+  db.exec("ALTER TABLE workspace_settings ADD COLUMN git_token_encrypted TEXT NOT NULL DEFAULT ''");
 } catch {}
 
 // FEAT-011: workspace-git — file references and changes tables
@@ -356,5 +257,143 @@ db.exec(`
     FOREIGN KEY (agent_execution_id) REFERENCES agent_executions(id) ON DELETE SET NULL
   );
 `);
+
+// FEAT-011: Multi-workspace support (R22) — workspaces table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS workspaces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    slug TEXT NOT NULL UNIQUE,
+    repo_path TEXT DEFAULT NULL,
+    repo_remote_url TEXT DEFAULT NULL,
+    repo_default_branch TEXT NOT NULL DEFAULT 'main',
+    repo_status TEXT NOT NULL DEFAULT 'not_configured'
+      CHECK (repo_status IN ('connected', 'disconnected', 'error', 'not_configured', 'cloning')),
+    repo_current_branch TEXT DEFAULT NULL,
+    git_token_encrypted TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Migrate singleton data from workspace_settings to workspaces table (if not already done)
+const workspaceCount = (
+  db.query("SELECT COUNT(*) as count FROM workspaces").get() as { count: number }
+).count;
+if (workspaceCount === 0) {
+  const ws = db
+    .query(
+      "SELECT repo_path, repo_remote_url, repo_default_branch, repo_status, repo_current_branch, git_token_encrypted FROM workspace_settings WHERE id = 1",
+    )
+    .get() as any;
+  if (ws && (ws.repo_path || ws.repo_remote_url)) {
+    db.prepare(
+      "INSERT INTO workspaces (id, name, slug, repo_path, repo_remote_url, repo_default_branch, repo_status, repo_current_branch, git_token_encrypted) VALUES (1, 'Default', 'default', ?, ?, ?, ?, ?, ?)",
+    ).run(
+      ws.repo_path ?? null,
+      ws.repo_remote_url ?? null,
+      ws.repo_default_branch ?? "main",
+      ws.repo_status ?? "not_configured",
+      ws.repo_current_branch ?? null,
+      ws.git_token_encrypted ?? "",
+    );
+  } else {
+    db.prepare("INSERT INTO workspaces (id, name, slug) VALUES (1, 'Default', 'default')").run();
+  }
+}
+
+// Helper: returns the set of column names for a table using PRAGMA table_info.
+function tableColumns(table: string): Set<string> {
+  const cols = db.query(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  return new Set(cols.map((c) => c.name));
+}
+
+// Helper: returns the CREATE TABLE sql for a table from sqlite_master.
+function tableSchema(table: string): string {
+  const row = db.query("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").get(table) as
+    | { sql: string }
+    | undefined;
+  return row?.sql ?? "";
+}
+
+// FEAT-012: SDD lifecycle — add sdd_phase and phase_output columns to agent_executions (idempotent)
+if (!tableColumns("agent_executions").has("sdd_phase")) {
+  db.exec("ALTER TABLE agent_executions ADD COLUMN sdd_phase TEXT DEFAULT NULL");
+}
+if (!tableColumns("agent_executions").has("phase_output")) {
+  db.exec("ALTER TABLE agent_executions ADD COLUMN phase_output TEXT DEFAULT NULL");
+}
+
+// Add workspace_id to tasks (backward compatible, default 1)
+if (!tableColumns("tasks").has("workspace_id")) {
+  db.exec("ALTER TABLE tasks ADD COLUMN workspace_id INTEGER DEFAULT 1");
+}
+
+// Add workspace_id to categories, priorities, comments.
+// Uses simple nullable DEFAULT 1 (no NOT NULL / REFERENCES) for maximum SQLite
+// compatibility. Existing rows receive DEFAULT 1; new rows always pass workspace_id
+// explicitly from the application layer.
+if (!tableColumns("categories").has("workspace_id")) {
+  db.exec("ALTER TABLE categories ADD COLUMN workspace_id INTEGER DEFAULT 1");
+}
+if (!tableColumns("priorities").has("workspace_id")) {
+  db.exec("ALTER TABLE priorities ADD COLUMN workspace_id INTEGER DEFAULT 1");
+}
+if (!tableColumns("comments").has("workspace_id")) {
+  db.exec("ALTER TABLE comments ADD COLUMN workspace_id INTEGER DEFAULT 1");
+}
+
+// Recreate categories with UNIQUE(name, workspace_id) if not already done.
+// Condition: workspace_id column exists but the composite unique is absent.
+{
+  const schema = tableSchema("categories");
+  const hasCols = tableColumns("categories").has("workspace_id");
+  const hasComposite =
+    schema.includes("workspace_id") && schema.includes("UNIQUE(name, workspace_id)");
+  if (hasCols && !hasComposite) {
+    try {
+      db.exec("BEGIN TRANSACTION");
+      db.exec(
+        "CREATE TABLE categories_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, color TEXT NOT NULL DEFAULT '#6366f1', workspace_id INTEGER NOT NULL DEFAULT 1, UNIQUE(name, workspace_id))",
+      );
+      db.exec(
+        "INSERT INTO categories_new (id, name, color, workspace_id) SELECT id, name, color, COALESCE(workspace_id, 1) FROM categories",
+      );
+      db.exec("DROP TABLE categories");
+      db.exec("ALTER TABLE categories_new RENAME TO categories");
+      db.exec("COMMIT");
+    } catch {
+      try {
+        db.exec("ROLLBACK");
+      } catch {}
+    }
+  }
+}
+
+// Recreate priorities with UNIQUE(name, workspace_id) if not already done.
+{
+  const schema = tableSchema("priorities");
+  const hasCols = tableColumns("priorities").has("workspace_id");
+  const hasComposite =
+    schema.includes("workspace_id") && schema.includes("UNIQUE(name, workspace_id)");
+  if (hasCols && !hasComposite) {
+    try {
+      db.exec("BEGIN TRANSACTION");
+      db.exec(
+        "CREATE TABLE priorities_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, level INTEGER NOT NULL, color TEXT NOT NULL, workspace_id INTEGER NOT NULL DEFAULT 1, UNIQUE(name, workspace_id))",
+      );
+      db.exec(
+        "INSERT INTO priorities_new (id, name, level, color, workspace_id) SELECT id, name, level, color, COALESCE(workspace_id, 1) FROM priorities",
+      );
+      db.exec("DROP TABLE priorities");
+      db.exec("ALTER TABLE priorities_new RENAME TO priorities");
+      db.exec("COMMIT");
+    } catch {
+      try {
+        db.exec("ROLLBACK");
+      } catch {}
+    }
+  }
+}
 
 export default db;

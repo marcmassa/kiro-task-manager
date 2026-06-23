@@ -1,0 +1,25 @@
+# ── FEAT-011 / R24: Server Mode — Docker Compose ────────────────────────────
+# Referencia para desplegar Task Manager como servicio web con persistencia.
+#
+# Uso:
+#   docker compose up -d
+#   docker compose logs -f
+
+version: "3.8"
+
+services:
+  task-manager:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - task-data:/data
+    environment:
+      - WORKSPACES_DIR=/data/workspaces
+      - DATA_DIR=/data
+      - PORT=3000
+      - GIT_BINARY=git
+    restart: unless-stopped
+
+volumes:
+  task-data:

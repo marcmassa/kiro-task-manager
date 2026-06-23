@@ -71,3 +71,35 @@ export interface RepoPromptContext {
   directoryTree: string;
   contextFiles: string[];
 }
+
+// ── FEAT-011: Git Operations Extension (R16-R20) ────────────────────────────
+
+/** Estado de un fichero en git status --porcelain. */
+export interface GitStatusFile {
+  path: string;
+  status: "modified" | "added" | "deleted" | "renamed" | "untracked";
+  staged: boolean;
+}
+
+/** Información de ramas del repositorio. */
+export interface GitBranchInfo {
+  branches: string[];
+  current: string;
+}
+
+// ── FEAT-011: Multi-Workspace Extension (R22-R25) ───────────────────────────
+
+/** Representación de un workspace (tabla workspaces). */
+export interface Workspace {
+  id: number;
+  name: string;
+  slug: string;
+  repoPath: string | null;
+  repoRemoteUrl: string | null;
+  repoDefaultBranch: string;
+  repoStatus: RepoStatus | "cloning";
+  repoCurrentBranch: string | null;
+  gitTokenConfigured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
