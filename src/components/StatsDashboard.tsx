@@ -76,9 +76,18 @@ interface StatsDashboardProps {
   loading: boolean;
   error: string | null;
   onRetry: () => void;
+  workspaceSelector?: React.ReactNode;
+  activeWorkspaceName?: string;
 }
 
-export function StatsDashboard({ tasks, loading, error, onRetry }: StatsDashboardProps) {
+export function StatsDashboard({
+  tasks,
+  loading,
+  error,
+  onRetry,
+  workspaceSelector,
+  activeWorkspaceName,
+}: StatsDashboardProps) {
   const { stats, derivedError } = useMemo<{
     stats: StatsData | null;
     derivedError: string | null;
@@ -94,7 +103,7 @@ export function StatsDashboard({ tasks, loading, error, onRetry }: StatsDashboar
 
   if (loading) {
     return (
-      <div className="flex-1 ml-[72px] flex items-center justify-center min-h-screen">
+      <div className="flex-1 flex items-center justify-center min-h-screen">
         <LoadingState message="Cargando estadísticas..." />
       </div>
     );
@@ -102,8 +111,12 @@ export function StatsDashboard({ tasks, loading, error, onRetry }: StatsDashboar
 
   if (displayError) {
     return (
-      <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-        <PageHeader title="Estadísticas" subtitle="Análisis de productividad de tu workspace" />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <PageHeader
+          title="Estadísticas"
+          subtitle={`Análisis de productividad · ${activeWorkspaceName ?? "Workspace activo"}`}
+          actions={workspaceSelector}
+        />
         <main className="flex-1 px-8 py-6 flex items-center justify-center">
           <ErrorState message={displayError} onRetry={onRetry} />
         </main>
@@ -113,8 +126,12 @@ export function StatsDashboard({ tasks, loading, error, onRetry }: StatsDashboar
 
   if (tasks.length === 0) {
     return (
-      <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-        <PageHeader title="Estadísticas" subtitle="Análisis de productividad de tu workspace" />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <PageHeader
+          title="Estadísticas"
+          subtitle={`Análisis de productividad · ${activeWorkspaceName ?? "Workspace activo"}`}
+          actions={workspaceSelector}
+        />
         <main className="flex-1 px-8 py-6">
           <EmptyState
             icon={<ChartIcon size={32} className="text-accent-400" />}
@@ -189,8 +206,12 @@ export function StatsDashboard({ tasks, loading, error, onRetry }: StatsDashboar
     }));
 
   return (
-    <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-      <PageHeader title="Estadísticas" subtitle="Análisis de productividad de tu workspace" />
+    <div className="flex-1 flex flex-col min-h-screen">
+      <PageHeader
+        title="Estadísticas"
+        subtitle={`Análisis de productividad · ${activeWorkspaceName ?? "Workspace activo"}`}
+        actions={workspaceSelector}
+      />
 
       <main className="flex-1 px-8 py-6 space-y-8">
         {/* ── KPI Cards ─────────────────────────────────────────── */}

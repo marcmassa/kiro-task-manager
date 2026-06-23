@@ -7,9 +7,13 @@ import { RepoStatusBadge } from "./RepoStatusBadge";
  * RepoSection — self-contained panel for configuring the workspace Git
  * repository inside the Settings page.
  *
+ * When workspaceId is provided (id > 0), the config is loaded/saved from the
+ * workspace-scoped API (GET/PUT /api/workspaces/:id). Otherwise it falls back
+ * to the global singleton (GET/PUT /api/workspace/repo).
+ *
  * Requirements: R3.1, R3.2, R3.3, R3.4, R3.5, R3.6, R3.7
  */
-export function RepoSection(): JSX.Element {
+export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Element {
   const [config, setConfig] = useState<RepoConfig | null>(null);
   const [repoPath, setRepoPath] = useState("");
   const [repoRemoteUrl, setRepoRemoteUrl] = useState("");
@@ -25,19 +29,22 @@ export function RepoSection(): JSX.Element {
   } | null>(null);
   const [saveMessage, setSaveMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  // ── Load current config on mount ──────────────────────────────────
+  // ── Load current config on mount / workspace change ──────────────
   const loadConfig = useCallback(async () => {
     try {
-      const cfg = await fetchRepoConfig();
+      const cfg = await fetchRepoConfig(workspaceId);
       setConfig(cfg);
       setRepoPath(cfg.repoPath ?? "");
       setRepoRemoteUrl(cfg.repoRemoteUrl ?? "");
       setRepoDefaultBranch(cfg.repoDefaultBranch || "main");
       setGitTokenConfigured(!!(cfg as any).gitTokenConfigured);
+      // Clear stale feedback
+      setValidationResult(null);
+      setSaveMessage(null);
     } catch {
       // silently ignore — user will see "No configurado"
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     loadConfig();
@@ -85,7 +92,7 @@ export function RepoSection(): JSX.Element {
       if (gitToken !== "") {
         payload.gitToken = gitToken;
       }
-      const updated = await updateRepoConfig(payload);
+      const updated = await updateRepoConfig(payload, workspaceId);
       setConfig(updated);
       setGitTokenConfigured(!!(updated as any).gitTokenConfigured);
       setGitToken(""); // clear after save

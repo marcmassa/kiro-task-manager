@@ -25,6 +25,7 @@ import type {
   AgentEngineConfig,
   AgentRunResult,
   RepoConfig,
+  RepoStatus,
   FileReference,
   FileReferenceType,
   FileChange,
@@ -32,7 +33,6 @@ import type {
   DirectoryEntry,
   GitStatusFile,
   GitBranchInfo,
-  Workspace,
 } from "./types";
 
 const BASE_URL = "/api";
@@ -58,7 +58,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export async function fetchTasks(workspaceId?: number): Promise<Task[]> {
-  const params = workspaceId ? `?workspaceId=${workspaceId}` : "";
+  const wsId = workspaceId && workspaceId > 0 ? workspaceId : 1;
+  const params = `?workspace_id=${wsId}`;
   return request<Task[]>(`${BASE_URL}/tasks${params}`);
 }
 
@@ -66,57 +67,76 @@ export async function fetchTask(id: number): Promise<Task> {
   return request<Task>(`${BASE_URL}/tasks/${id}`);
 }
 
-export async function createTask(data: TaskFormData): Promise<Task> {
+export async function createTask(data: TaskFormData, workspaceId?: number): Promise<Task> {
   return request<Task>(`${BASE_URL}/tasks`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, workspace_id: workspaceId || 1 }),
   });
 }
 
-export async function updateTask(id: number, data: TaskFormData): Promise<Task> {
-  return request<Task>(`${BASE_URL}/tasks/${id}`, {
+export async function updateTask(
+  id: number,
+  data: TaskFormData,
+  workspaceId?: number,
+): Promise<Task> {
+  return request<Task>(`${BASE_URL}/tasks/${id}?workspace_id=${workspaceId || 1}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 }
 
-export async function updateTaskStatus(id: number, status: string): Promise<Task> {
-  return request<Task>(`${BASE_URL}/tasks/${id}/status`, {
+export async function updateTaskStatus(
+  id: number,
+  status: string,
+  workspaceId?: number,
+): Promise<Task> {
+  return request<Task>(`${BASE_URL}/tasks/${id}/status?workspace_id=${workspaceId || 1}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
   });
 }
 
-export async function deleteTask(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/tasks/${id}`, { method: "DELETE" });
+export async function deleteTask(id: number, workspaceId?: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/tasks/${id}?workspace_id=${workspaceId || 1}`, {
+    method: "DELETE",
+  });
   if (!res.ok) throw new Error(`Error ${res.status}`);
 }
 
-export async function fetchComments(taskId: number): Promise<Comment[]> {
-  return request<Comment[]>(`${BASE_URL}/tasks/${taskId}/comments`);
+export async function fetchComments(taskId: number, workspaceId?: number): Promise<Comment[]> {
+  const wsId = workspaceId && workspaceId > 0 ? workspaceId : 1;
+  const params = `?workspace_id=${wsId}`;
+  return request<Comment[]>(`${BASE_URL}/tasks/${taskId}/comments${params}`);
 }
 
 export async function addComment(
   taskId: number,
   content: string,
   author: string,
+  workspaceId?: number,
 ): Promise<Comment> {
-  return request<Comment>(`${BASE_URL}/tasks/${taskId}/comments`, {
+  const wsId = workspaceId && workspaceId > 0 ? workspaceId : 1;
+  const params = `?workspace_id=${wsId}`;
+  return request<Comment>(`${BASE_URL}/tasks/${taskId}/comments${params}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content, author }),
   });
 }
 
-export async function fetchCategories(): Promise<Category[]> {
-  return request<Category[]>(`${BASE_URL}/categories`);
+export async function fetchCategories(workspaceId?: number): Promise<Category[]> {
+  const wsId = workspaceId && workspaceId > 0 ? workspaceId : 1;
+  const params = `?workspace_id=${wsId}`;
+  return request<Category[]>(`${BASE_URL}/categories${params}`);
 }
 
-export async function fetchPriorities(): Promise<Priority[]> {
-  return request<Priority[]>(`${BASE_URL}/priorities`);
+export async function fetchPriorities(workspaceId?: number): Promise<Priority[]> {
+  const wsId = workspaceId && workspaceId > 0 ? workspaceId : 1;
+  const params = `?workspace_id=${wsId}`;
+  return request<Priority[]>(`${BASE_URL}/priorities${params}`);
 }
 
 // ── FEAT-005: Settings + Linear integration + Export + Delete-all ─────────
@@ -449,13 +469,42 @@ export async function cloneWorkspace(id: number): Promise<{ ok: boolean; error?:
 
 // ── FEAT-011: Workspace Git ──────────────────────────────────────────────
 
-/** GET /api/workspace/repo — current repo configuration. */
-export async function fetchRepoConfig(): Promise<RepoConfig> {
+/** GET /api/workspace/repo — current repo configuration (workspace-aware). */
+export async function fetchRepoConfig(workspaceId?: number): Promise<RepoConfig> {
+  if (workspaceId && workspaceId > 0) {
+    // Use workspace-scoped endpoint
+    const ws = await request<Workspace>(`${BASE_URL}/workspaces/${workspaceId}`);
+    return {
+      repoPath: ws.repoPath,
+      repoRemoteUrl: ws.repoRemoteUrl,
+      repoDefaultBranch: ws.repoDefaultBranch,
+      repoStatus: ws.repoStatus as RepoStatus,
+      currentBranch: ws.repoCurrentBranch,
+    };
+  }
   return request<RepoConfig>(`${BASE_URL}/workspace/repo`);
 }
 
-/** PUT /api/workspace/repo — update repo configuration. */
-export async function updateRepoConfig(data: Partial<RepoConfig>): Promise<RepoConfig> {
+/** PUT /api/workspace/repo — update repo configuration (workspace-aware). */
+export async function updateRepoConfig(
+  data: Partial<RepoConfig> & { gitToken?: string },
+  workspaceId?: number,
+): Promise<RepoConfig> {
+  if (workspaceId && workspaceId > 0) {
+    // Use workspace-scoped endpoint
+    const ws = await request<Workspace>(`${BASE_URL}/workspaces/${workspaceId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return {
+      repoPath: ws.repoPath,
+      repoRemoteUrl: ws.repoRemoteUrl,
+      repoDefaultBranch: ws.repoDefaultBranch,
+      repoStatus: ws.repoStatus as RepoStatus,
+      currentBranch: ws.repoCurrentBranch,
+    };
+  }
   return request<RepoConfig>(`${BASE_URL}/workspace/repo`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -540,10 +589,17 @@ export async function saveFileContent(
 export async function uploadWorkspaceFile(
   file: File,
   dirPath?: string,
+  workspaceId?: number,
 ): Promise<{ ok: boolean; filePath: string; size: number }> {
   const form = new FormData();
   form.append("file", file);
   const params = dirPath ? `?path=${encodeURIComponent(dirPath)}` : "";
+  if (workspaceId && workspaceId > 0) {
+    return request<{ ok: boolean; filePath: string; size: number }>(
+      `${BASE_URL}/workspaces/${workspaceId}/upload${params}`,
+      { method: "POST", body: form },
+    );
+  }
   return request<{ ok: boolean; filePath: string; size: number }>(
     `${BASE_URL}/workspace/upload${params}`,
     { method: "POST", body: form },
@@ -551,21 +607,32 @@ export async function uploadWorkspaceFile(
 }
 
 /** GET /api/workspace/changes — list recent file changes across all tasks. */
-export async function fetchWorkspaceChanges(limit?: number): Promise<FileChange[]> {
-  const params = limit ? `?limit=${limit}` : "";
+export async function fetchWorkspaceChanges(
+  limit?: number,
+  workspaceId?: number,
+): Promise<FileChange[]> {
+  const searchParams = new URLSearchParams();
+  if (limit) searchParams.set("limit", String(limit));
+  if (workspaceId && workspaceId > 0) searchParams.set("workspace_id", String(workspaceId));
+  const params = searchParams.toString() ? `?${searchParams.toString()}` : "";
   return request<FileChange[]>(`${BASE_URL}/workspace/changes${params}`);
 }
 
 // ── FEAT-011: Git Operations (R16-R20) ──────────────────────────────────────
 
 /** GET /api/workspace/git/status — lista de ficheros con estado Git. */
-export async function fetchGitStatus(): Promise<{ files: GitStatusFile[] }> {
-  return request<{ files: GitStatusFile[] }>(`${BASE_URL}/workspace/git/status`);
+export async function fetchGitStatus(workspaceId?: number): Promise<{ files: GitStatusFile[] }> {
+  const params = workspaceId && workspaceId > 0 ? `?workspace_id=${workspaceId}` : "";
+  return request<{ files: GitStatusFile[] }>(`${BASE_URL}/workspace/git/status${params}`);
 }
 
 /** POST /api/workspace/git/stage — añade ficheros al staging area. */
-export async function gitStageFiles(paths: string[]): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/stage`, {
+export async function gitStageFiles(
+  paths: string[],
+  workspaceId?: number,
+): Promise<{ ok: boolean }> {
+  const params = workspaceId && workspaceId > 0 ? `?workspace_id=${workspaceId}` : "";
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/stage${params}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ paths }),
@@ -573,8 +640,12 @@ export async function gitStageFiles(paths: string[]): Promise<{ ok: boolean }> {
 }
 
 /** POST /api/workspace/git/unstage — quita ficheros del staging area. */
-export async function gitUnstageFiles(paths: string[]): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/unstage`, {
+export async function gitUnstageFiles(
+  paths: string[],
+  workspaceId?: number,
+): Promise<{ ok: boolean }> {
+  const params = workspaceId && workspaceId > 0 ? `?workspace_id=${workspaceId}` : "";
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/unstage${params}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ paths }),
@@ -582,8 +653,12 @@ export async function gitUnstageFiles(paths: string[]): Promise<{ ok: boolean }>
 }
 
 /** POST /api/workspace/git/commit — crea un commit con mensaje. */
-export async function gitCommitChanges(message: string): Promise<{ ok: boolean; hash: string }> {
-  return request<{ ok: boolean; hash: string }>(`${BASE_URL}/workspace/git/commit`, {
+export async function gitCommitChanges(
+  message: string,
+  workspaceId?: number,
+): Promise<{ ok: boolean; hash: string }> {
+  const params = workspaceId && workspaceId > 0 ? `?workspace_id=${workspaceId}` : "";
+  return request<{ ok: boolean; hash: string }>(`${BASE_URL}/workspace/git/commit${params}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
@@ -591,88 +666,71 @@ export async function gitCommitChanges(message: string): Promise<{ ok: boolean; 
 }
 
 /** POST /api/workspace/git/push — push al remoto (requiere token). */
-export async function gitPushChanges(): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/push`, {
+export async function gitPushChanges(workspaceId?: number): Promise<{ ok: boolean }> {
+  const params = workspaceId && workspaceId > 0 ? `?workspace_id=${workspaceId}` : "";
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/push${params}`, {
     method: "POST",
   });
 }
 
 /** POST /api/workspace/git/pull — pull del remoto (requiere token). */
-export async function gitPullChanges(): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/pull`, {
+export async function gitPullChanges(workspaceId?: number): Promise<{ ok: boolean }> {
+  const params = workspaceId && workspaceId > 0 ? `?workspace_id=${workspaceId}` : "";
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/pull${params}`, {
     method: "POST",
   });
 }
 
 /** GET /api/workspace/git/branches — lista de ramas. */
-export async function fetchGitBranches(): Promise<GitBranchInfo> {
-  return request<GitBranchInfo>(`${BASE_URL}/workspace/git/branches`);
+export async function fetchGitBranches(workspaceId?: number): Promise<GitBranchInfo> {
+  const params = workspaceId && workspaceId > 0 ? `?workspace_id=${workspaceId}` : "";
+  return request<GitBranchInfo>(`${BASE_URL}/workspace/git/branches${params}`);
 }
 
 /** POST /api/workspace/git/checkout — cambiar o crear rama. */
 export async function gitCheckoutBranch(
   branch: string,
   create?: boolean,
+  workspaceId?: number,
 ): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/checkout`, {
+  const params = workspaceId && workspaceId > 0 ? `?workspace_id=${workspaceId}` : "";
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/checkout${params}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ branch, create }),
   });
 }
 
-// ── FEAT-011: Multi-Workspace (R22-R25) ─────────────────────────────────────
+// ── FEAT-011: Workspace file endpoints ───────────────────────────────────
 
-/** GET /api/workspaces — lista todos los workspaces. */
-export async function fetchWorkspaces(): Promise<Workspace[]> {
-  return request<Workspace[]>(`${BASE_URL}/workspaces`);
-}
-
-/** GET /api/workspaces/:id — obtiene un workspace por ID. */
-export async function fetchWorkspace(id: number): Promise<Workspace> {
-  return request<Workspace>(`${BASE_URL}/workspaces/${id}`);
-}
-
-/** POST /api/workspaces — crea un nuevo workspace. */
-export async function createWorkspace(data: {
-  name: string;
-  remoteUrl?: string;
-  branch?: string;
-}): Promise<Workspace> {
-  return request<Workspace>(`${BASE_URL}/workspaces`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-}
-
-/** PUT /api/workspaces/:id — actualiza configuración del workspace. */
-export async function updateWorkspace(
+/** GET /api/workspaces/:id/tree — árbol de ficheros del workspace. */
+export async function fetchWorkspaceTree(
   id: number,
-  data: {
-    name?: string;
-    repoPath?: string;
-    remoteUrl?: string;
-    branch?: string;
-    gitToken?: string;
-  },
-): Promise<Workspace> {
-  return request<Workspace>(`${BASE_URL}/workspaces/${id}`, {
+  path?: string,
+): Promise<{ entries: DirectoryEntry[] }> {
+  const params = path ? `?path=${encodeURIComponent(path)}` : "";
+  return request<{ entries: DirectoryEntry[] }>(`${BASE_URL}/workspaces/${id}/tree${params}`);
+}
+
+/** GET /api/workspaces/:id/files/*path — contenido de un fichero del workspace. */
+export async function fetchWorkspaceFile(
+  id: number,
+  filePath: string,
+): Promise<FileContentResponse> {
+  return request<FileContentResponse>(
+    `${BASE_URL}/workspaces/${id}/files/${encodeURIComponent(filePath)}`,
+  );
+}
+
+/** PUT /api/workspaces/:id/files/*path — escribe contenido en un fichero del workspace. */
+export async function saveWorkspaceFile(
+  id: number,
+  filePath: string,
+  content: string,
+): Promise<{ ok: boolean }> {
+  return request(`${BASE_URL}/workspaces/${id}/files/${encodeURIComponent(filePath)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ content }),
   });
-}
-
-/** DELETE /api/workspaces/:id — elimina un workspace. */
-export async function deleteWorkspace(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/workspaces/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`Error ${res.status}`);
-}
-
-/** POST /api/workspaces/:id/clone — clona el repositorio remoto del workspace. */
-export async function cloneWorkspace(
-  id: number,
-): Promise<{ ok: boolean; repoPath?: string; error?: string }> {
-  return request(`${BASE_URL}/workspaces/${id}/clone`, { method: "POST" });
 }

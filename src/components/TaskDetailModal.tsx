@@ -112,7 +112,7 @@ export function TaskDetailModal({
 
   async function loadComments() {
     try {
-      const data = await fetchComments(task.id);
+      const data = await fetchComments(task.id, task.workspace_id);
       setComments(data);
     } catch (err) {
       console.error("Error loading comments:", err);
@@ -222,7 +222,7 @@ export function TaskDetailModal({
   async function handleAddComment(e: React.FormEvent) {
     e.preventDefault();
     if (!newComment.trim()) return;
-    const comment = await addComment(task.id, newComment, commentAuthor);
+    const comment = await addComment(task.id, newComment, commentAuthor, task.workspace_id);
     setComments([...comments, comment]);
     setNewComment("");
   }

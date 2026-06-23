@@ -3,6 +3,7 @@ import { fetchWorkspaceChanges } from "../api";
 import type { FileChange } from "../types";
 
 interface ChangesLogPanelProps {
+  workspaceId: number;
   onFileClick: (path: string) => void;
 }
 
@@ -42,7 +43,7 @@ function changeTypeLabel(changeType: string): string {
   }
 }
 
-export function ChangesLogPanel({ onFileClick }: ChangesLogPanelProps): JSX.Element {
+export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelProps): JSX.Element {
   const [collapsed, setCollapsed] = useState(false);
   const [changes, setChanges] = useState<FileChange[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +51,7 @@ export function ChangesLogPanel({ onFileClick }: ChangesLogPanelProps): JSX.Elem
 
   async function loadChanges() {
     try {
-      const data = await fetchWorkspaceChanges(50);
+      const data = await fetchWorkspaceChanges(50, workspaceId);
       setChanges(data);
     } catch {
       // Silently fail — non-critical panel
@@ -60,12 +61,14 @@ export function ChangesLogPanel({ onFileClick }: ChangesLogPanelProps): JSX.Elem
   }
 
   useEffect(() => {
+    setChanges([]);
+    setLoading(true);
     loadChanges();
     intervalRef.current = setInterval(loadChanges, 5000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [workspaceId]);
 
   return (
     <section

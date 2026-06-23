@@ -4,7 +4,13 @@ import { EditorTabs } from "./EditorTabs";
 import { WorkspaceTreeView } from "./WorkspaceTreeView";
 import { ChangesLogPanel } from "./ChangesLogPanel";
 import { GitPanel } from "./GitPanel";
-import { fetchFileContent, fetchRepoConfig, saveFileContent, uploadWorkspaceFile } from "../api";
+import { PageHeader } from "./ui/PageHeader";
+import {
+  fetchRepoConfig,
+  fetchWorkspaceFile,
+  saveWorkspaceFile,
+  uploadWorkspaceFile,
+} from "../api";
 import type { RepoConfig } from "../types";
 import { DownloadIcon } from "../Icons";
 
@@ -15,6 +21,12 @@ interface OpenTab {
   originalContent: string;
   language: string;
   isDirty: boolean;
+}
+
+interface WorkspacePageProps {
+  workspaceId: number;
+  workspaceName?: string;
+  workspaceSelector?: React.ReactNode;
 }
 
 function detectLanguage(filePath: string): string {
@@ -43,7 +55,11 @@ function detectLanguage(filePath: string): string {
   }
 }
 
-export function WorkspacePage(): JSX.Element {
+export function WorkspacePage({
+  workspaceId,
+  workspaceName,
+  workspaceSelector,
+}: WorkspacePageProps): JSX.Element {
   const [repoConfig, setRepoConfig] = useState<RepoConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [tabs, setTabs] = useState<OpenTab[]>([]);
@@ -53,12 +69,21 @@ export function WorkspacePage(): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadRepoConfig();
-  }, []);
+    setTabs([]);
+    setActiveTabId("");
+    setGitPanelOpen(false);
+    setLoading(true);
+    void loadRepoConfig(workspaceId);
+  }, [workspaceId]);
 
-  async function loadRepoConfig() {
+  async function loadRepoConfig(targetWorkspaceId: number) {
+    if (!targetWorkspaceId || targetWorkspaceId <= 0) {
+      setRepoConfig(null);
+      setLoading(false);
+      return;
+    }
     try {
-      const config = await fetchRepoConfig();
+      const config = await fetchRepoConfig(targetWorkspaceId);
       setRepoConfig(config);
     } catch {
       setRepoConfig(null);
@@ -79,7 +104,7 @@ export function WorkspacePage(): JSX.Element {
       }
 
       try {
-        const result = await fetchFileContent(filePath);
+        const result = await fetchWorkspaceFile(workspaceId, filePath);
         const newTab: OpenTab = {
           id: `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`,
           filePath,
@@ -94,7 +119,7 @@ export function WorkspacePage(): JSX.Element {
         console.error("Error opening file:", err);
       }
     },
-    [tabs],
+    [tabs, workspaceId],
   );
 
   const handleTabSelect = useCallback((tabId: string) => {
@@ -115,7 +140,7 @@ export function WorkspacePage(): JSX.Element {
         setActiveTabId(remaining.length > 0 ? remaining[remaining.length - 1].id : "");
       }
     },
-    [tabs, activeTabId],
+    [tabs, activeTabId, workspaceId],
   );
 
   const handleContentChange = useCallback(
@@ -135,7 +160,7 @@ export function WorkspacePage(): JSX.Element {
       if (!tab) return;
       setSaving(true);
       try {
-        await saveFileContent(tab.filePath, content);
+        await saveWorkspaceFile(workspaceId, tab.filePath, content);
         setTabs((prev) =>
           prev.map((t) =>
             t.id === activeTabId ? { ...t, content, originalContent: content, isDirty: false } : t,
@@ -147,19 +172,22 @@ export function WorkspacePage(): JSX.Element {
         setSaving(false);
       }
     },
-    [tabs, activeTabId],
+    [tabs, activeTabId, workspaceId],
   );
 
-  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      await uploadWorkspaceFile(file);
-    } catch (err) {
-      console.error("Error uploading file:", err);
-    }
-    e.target.value = "";
-  }, []);
+  const handleUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        await uploadWorkspaceFile(file, undefined, workspaceId);
+      } catch (err) {
+        console.error("Error uploading file:", err);
+      }
+      e.target.value = "";
+    },
+    [workspaceId],
+  );
 
   const handleDownload = useCallback(() => {
     const tab = tabs.find((t) => t.id === activeTabId);
@@ -197,7 +225,7 @@ export function WorkspacePage(): JSX.Element {
 
   if (loading) {
     return (
-      <div className="flex-1 ml-[72px] flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center">
         <p className="text-sm text-muted-400">Cargando workspace...</p>
       </div>
     );
@@ -205,7 +233,7 @@ export function WorkspacePage(): JSX.Element {
 
   if (!isConnected) {
     return (
-      <div className="flex-1 ml-[72px] flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 rounded-2xl bg-surface-400/50 border border-white/5 flex items-center justify-center mx-auto mb-4">
             <svg
@@ -232,10 +260,17 @@ export function WorkspacePage(): JSX.Element {
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   return (
-    <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen">
+      <PageHeader
+        title="Workspace"
+        subtitle={`Editor y explorador · ${workspaceName ?? "Workspace activo"}`}
+        actions={workspaceSelector}
+      />
       {/* Action bar */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-surface-400/20">
-        <h1 className="text-sm font-medium text-muted-300 mr-auto">Workspace</h1>
+        <h2 className="text-sm font-medium text-muted-300 mr-auto">
+          {workspaceName ?? "Workspace"}
+        </h2>
         <button
           onClick={() => fileInputRef.current?.click()}
           className="btn-secondary text-xs flex items-center gap-1.5"
@@ -290,6 +325,7 @@ export function WorkspacePage(): JSX.Element {
           aria-label="Panel explorador de archivos"
         >
           <WorkspaceTreeView
+            workspaceId={workspaceId}
             taskId={0}
             onFileSelect={openFile}
             onAddReference={() => {}}
@@ -323,13 +359,13 @@ export function WorkspacePage(): JSX.Element {
                 </div>
               )}
               {/* Changes log below editor */}
-              <ChangesLogPanel onFileClick={handleFileClick} />
+              <ChangesLogPanel workspaceId={workspaceId} onFileClick={handleFileClick} />
             </div>
 
             {/* Git panel */}
             {gitPanelOpen && (
               <aside className="w-[300px] shrink-0 overflow-y-auto" aria-label="Panel de Git">
-                <GitPanel onFileClick={handleFileClick} />
+                <GitPanel workspaceId={workspaceId} onFileClick={handleFileClick} />
               </aside>
             )}
           </div>

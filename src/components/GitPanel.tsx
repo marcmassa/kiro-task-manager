@@ -15,6 +15,7 @@ import { GitStatusList } from "./GitStatusList";
 import { BranchSelector } from "./BranchSelector";
 
 interface GitPanelProps {
+  workspaceId: number;
   onFileClick: (path: string) => void;
 }
 
@@ -24,7 +25,7 @@ interface GitPanelProps {
  *
  * Requirements: R17.2, R17.3, R18.5, R18.6, R18.7, R19.4, R19.5, R19.6
  */
-export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
+export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Element {
   const [files, setFiles] = useState<GitStatusFile[]>([]);
   const [branchInfo, setBranchInfo] = useState<GitBranchInfo | null>(null);
   const [commitMessage, setCommitMessage] = useState("");
@@ -40,9 +41,9 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
     setError(null);
     try {
       const [statusRes, branchRes, repoRes] = await Promise.all([
-        fetchGitStatus(),
-        fetchGitBranches(),
-        fetchRepoConfig(),
+        fetchGitStatus(workspaceId),
+        fetchGitBranches(workspaceId),
+        fetchRepoConfig(workspaceId),
       ]);
       setFiles(statusRes.files);
       setBranchInfo(branchRes);
@@ -52,7 +53,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     refresh();
@@ -65,7 +66,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
 
   async function handleStage(paths: string[]) {
     try {
-      await gitStageFiles(paths);
+      await gitStageFiles(paths, workspaceId);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al hacer stage");
@@ -74,7 +75,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
 
   async function handleUnstage(paths: string[]) {
     try {
-      await gitUnstageFiles(paths);
+      await gitUnstageFiles(paths, workspaceId);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al hacer unstage");
@@ -85,7 +86,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
     if (!commitMessage.trim()) return;
     setError(null);
     try {
-      const result = await gitCommitChanges(commitMessage.trim());
+      const result = await gitCommitChanges(commitMessage.trim(), workspaceId);
       showSuccess(`Commit creado: ${result.hash}`);
       setCommitMessage("");
       await refresh();
@@ -98,7 +99,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
     setPushLoading(true);
     setError(null);
     try {
-      await gitPushChanges();
+      await gitPushChanges(workspaceId);
       showSuccess("Push completado");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al hacer push");
@@ -111,7 +112,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
     setPullLoading(true);
     setError(null);
     try {
-      await gitPullChanges();
+      await gitPullChanges(workspaceId);
       showSuccess("Pull completado");
       await refresh();
     } catch (e) {
@@ -124,7 +125,7 @@ export function GitPanel({ onFileClick }: GitPanelProps): JSX.Element {
   async function handleCheckout(branch: string, create?: boolean) {
     setError(null);
     try {
-      await gitCheckoutBranch(branch, create);
+      await gitCheckoutBranch(branch, create, workspaceId);
       showSuccess(`Rama: ${branch}`);
       await refresh();
     } catch (e) {
