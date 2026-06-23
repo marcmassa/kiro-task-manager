@@ -1,4 +1,5 @@
-import { Task, Workspace } from "../types";
+import { Task, Workspace, WorkspaceColumn } from "../types";
+import { columnColorTokens } from "../utils/columnColors";
 import {
   KanbanIcon,
   CheckCircleIcon,
@@ -15,11 +16,10 @@ import { PageHeader } from "./ui/PageHeader";
 interface HomePageProps {
   tasks: Task[];
   todoCount: number;
-  requirementsCount: number;
-  designCount: number;
-  tasksCount: number;
   inProgressCount: number;
   doneCount: number;
+  customColumns: WorkspaceColumn[];
+  columnCounts: Map<string, number>;
   onNavigate: (page: string) => void;
   activeWorkspace?: Workspace | null;
   workspaceSelector?: React.ReactNode;
@@ -28,11 +28,10 @@ interface HomePageProps {
 export function HomePage({
   tasks,
   todoCount,
-  requirementsCount,
-  designCount,
-  tasksCount,
   inProgressCount,
   doneCount,
+  customColumns,
+  columnCounts,
   onNavigate,
   activeWorkspace,
   workspaceSelector,
@@ -191,72 +190,71 @@ export function HomePage({
               style={{ width: `${completionRate}%` }}
             ></div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1.5 mb-1">
-                <div className="w-2 h-2 rounded-full bg-accent"></div>
-                <span className="text-xs text-muted-400">Por Hacer</span>
-              </div>
-              <p className="text-lg font-semibold text-white">{todoCount}</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1.5 mb-1">
-                <div className="w-2 h-2 rounded-full bg-warning"></div>
-                <span className="text-xs text-muted-400">En Progreso</span>
-              </div>
-              <p className="text-lg font-semibold text-white">{inProgressCount}</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1.5 mb-1">
-                <div className="w-2 h-2 rounded-full bg-success"></div>
-                <span className="text-xs text-muted-400">Completadas</span>
-              </div>
-              <p className="text-lg font-semibold text-white">{doneCount}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* SDD Pipeline */}
-        <div className="home-card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-200">Pipeline SDD</h2>
-            <button
-              onClick={() => onNavigate("kanban")}
-              className="text-xs text-accent-400 hover:text-accent-300 flex items-center gap-1 transition-colors"
-            >
-              Ver tablero <ArrowRightIcon size={12} />
-            </button>
-          </div>
-          <div className="flex items-center gap-1 overflow-x-auto pb-1">
-            {(
-              [
-                { label: "Por Hacer", count: todoCount, dot: "bg-muted-500" },
-                { label: "Requirements", count: requirementsCount, dot: "bg-purple-400" },
-                { label: "Diseño", count: designCount, dot: "bg-indigo-400" },
-                { label: "Tasks", count: tasksCount, dot: "bg-yellow-400" },
-                { label: "En Progreso", count: inProgressCount, dot: "bg-warning" },
-                { label: "Completadas", count: doneCount, dot: "bg-success" },
-              ] as const
-            ).map((col, i, arr) => (
-              <div key={col.label} className="flex items-center gap-1 shrink-0">
-                <div className="flex flex-col items-center gap-1 px-2">
-                  <span
-                    className={`text-base font-bold ${col.count > 0 ? "text-white" : "text-muted-600"}`}
-                  >
-                    {col.count}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <div className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
-                    <span className="text-[10px] text-muted-400 whitespace-nowrap">{col.label}</span>
-                  </div>
+          <div className="grid grid-cols-3 gap-3" style={{ gridTemplateColumns: `repeat(${3 + customColumns.length}, minmax(0,1fr))` }}>
+            {[
+              { label: "Por Hacer", count: todoCount, dot: "bg-accent" },
+              ...customColumns.map((c) => ({
+                label: c.label,
+                count: columnCounts.get(c.id) ?? 0,
+                dot: columnColorTokens(c.color).dot,
+              })),
+              { label: "En Progreso", count: inProgressCount, dot: "bg-warning" },
+              { label: "Completadas", count: doneCount, dot: "bg-success" },
+            ].map((col) => (
+              <div key={col.label} className="text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <div className={`w-2 h-2 rounded-full ${col.dot}`}></div>
+                  <span className="text-[10px] text-muted-400 leading-tight">{col.label}</span>
                 </div>
-                {i < arr.length - 1 && (
-                  <ArrowRightIcon size={10} className="text-muted-600 shrink-0" />
-                )}
+                <p
+                  className={`text-lg font-semibold ${col.count > 0 ? "text-white" : "text-muted-600"}`}
+                >
+                  {col.count}
+                </p>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Pipeline — only shown when workspace has custom columns */}
+        {customColumns.length > 0 && (
+          <div className="home-card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-200">Pipeline</h2>
+              <button
+                onClick={() => onNavigate("kanban")}
+                className="text-xs text-accent-400 hover:text-accent-300 flex items-center gap-1 transition-colors"
+              >
+                Ver tablero <ArrowRightIcon size={12} />
+              </button>
+            </div>
+            <div className="flex items-center gap-1 overflow-x-auto pb-1">
+              {[
+                { label: "Por Hacer", count: todoCount, dot: "bg-muted-500" },
+                ...customColumns.map((c) => ({
+                  label: c.label,
+                  count: columnCounts.get(c.id) ?? 0,
+                  dot: columnColorTokens(c.color).dot,
+                })),
+                { label: "En Progreso", count: inProgressCount, dot: "bg-warning" },
+                { label: "Completadas", count: doneCount, dot: "bg-success" },
+              ].map((col, i, arr) => (
+                <div key={col.label} className="flex items-center gap-1 shrink-0">
+                  <div className="flex flex-col items-center gap-1 px-2">
+                    <span className={`text-base font-bold ${col.count > 0 ? "text-white" : "text-muted-600"}`}>
+                      {col.count}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <div className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
+                      <span className="text-[10px] text-muted-400 whitespace-nowrap">{col.label}</span>
+                    </div>
+                  </div>
+                  {i < arr.length - 1 && <ArrowRightIcon size={10} className="text-muted-600 shrink-0" />}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Tasks */}

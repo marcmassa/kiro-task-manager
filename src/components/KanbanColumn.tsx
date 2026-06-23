@@ -2,58 +2,38 @@ import { useState } from "react";
 import { Task, TaskStatus, AgentExecution } from "../types";
 import { TaskCard } from "./TaskCard";
 import { KiroIllustration } from "./KiroIllustration";
+import { columnColorTokens } from "../utils/columnColors";
 
 interface KanbanColumnProps {
   title: string;
   status?: TaskStatus;
+  /** Column identifier for custom/SDD columns that don't map to a TaskStatus. */
+  columnId?: string;
   tasks: Task[];
-  color: "accent" | "warning" | "success" | "purple" | "indigo" | "yellow";
+  /** Design-system token ("accent"|"warning"|"success") or a color key from columnColors. */
+  color: string;
   executions?: Map<number, AgentExecution>;
   onViewTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
   onStatusChange: (task: Task, status: TaskStatus) => void;
-  onDrop?: (taskId: number, targetStatus: TaskStatus) => void;
-  /** When true, drag-and-drop is disabled (SDD phase columns). */
-  isSdd?: boolean;
+  onDrop?: (taskId: number, targetColumn: string) => void;
 }
 
-const colorMap = {
-  accent: {
-    dot: "bg-accent",
-    text: "text-accent-300",
-    badge: "bg-accent/10 text-accent-300",
-  },
-  warning: {
-    dot: "bg-warning",
-    text: "text-warning-300",
-    badge: "bg-warning/10 text-warning-300",
-  },
-  success: {
-    dot: "bg-success",
-    text: "text-success-300",
-    badge: "bg-success/10 text-success-300",
-  },
-  purple: {
-    dot: "bg-purple-500",
-    text: "text-purple-300",
-    badge: "bg-purple-500/10 text-purple-300",
-  },
-  indigo: {
-    dot: "bg-indigo-500",
-    text: "text-indigo-300",
-    badge: "bg-indigo-500/10 text-indigo-300",
-  },
-  yellow: {
-    dot: "bg-yellow-500",
-    text: "text-yellow-300",
-    badge: "bg-yellow-500/10 text-yellow-300",
-  },
+const systemColorMap: Record<string, { dot: string; text: string; badge: string }> = {
+  accent:  { dot: "bg-accent",  text: "text-accent-300",  badge: "bg-accent/10 text-accent-300"  },
+  warning: { dot: "bg-warning", text: "text-warning-300", badge: "bg-warning/10 text-warning-300" },
+  success: { dot: "bg-success", text: "text-success-300", badge: "bg-success/10 text-success-300" },
 };
+
+function resolveColor(color: string) {
+  return systemColorMap[color] ?? columnColorTokens(color);
+}
 
 export function KanbanColumn({
   title,
   status,
+  columnId,
   tasks,
   color,
   executions,
@@ -62,24 +42,25 @@ export function KanbanColumn({
   onDeleteTask,
   onStatusChange,
   onDrop,
-  isSdd = false,
 }: KanbanColumnProps) {
-  const colors = colorMap[color];
+  const colors = resolveColor(color);
   const [isDragOver, setIsDragOver] = useState(false);
+  const dropTarget = columnId ?? status;
+  const canDrop = !!dropTarget && !!onDrop;
 
   function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
-    if (isSdd) return;
+    if (!canDrop) return;
     e.preventDefault();
   }
 
   function handleDragEnter(e: React.DragEvent<HTMLDivElement>) {
-    if (isSdd) return;
+    if (!canDrop) return;
     e.preventDefault();
     setIsDragOver(true);
   }
 
   function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
-    if (isSdd) return;
+    if (!canDrop) return;
     if (e.currentTarget.contains(e.relatedTarget as Node)) {
       return;
     }
@@ -87,13 +68,13 @@ export function KanbanColumn({
   }
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
-    if (isSdd || !status || !onDrop) return;
+    if (!canDrop) return;
     e.preventDefault();
     setIsDragOver(false);
     try {
       const data = JSON.parse(e.dataTransfer.getData("application/json"));
       const taskId = data.taskId as number;
-      onDrop(taskId, status);
+      onDrop!(taskId, dropTarget!);
     } catch (error) {
       console.error("Failed to parse drop data:", error);
     }
@@ -101,12 +82,12 @@ export function KanbanColumn({
 
   return (
     <div
-      className={`kanban-column ${isDragOver && !isSdd ? "kanban-column--drag-over" : ""}`}
+      className={`kanban-column ${isDragOver ? "kanban-column--drag-over" : ""}`}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      aria-dropeffect={isSdd ? "none" : "move"}
+      aria-dropeffect={canDrop ? "move" : "none"}
     >
       {/* Column Header */}
       <div className="flex items-center gap-3 mb-4 px-1">

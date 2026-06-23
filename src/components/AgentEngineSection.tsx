@@ -76,6 +76,23 @@ export function AgentEngineSection(): JSX.Element {
     }
   }, [config]);
 
+  const handleMaxChatTurnsChange = useCallback(
+    async (value: number) => {
+      if (!config) return;
+      const clamped = Math.max(1, Math.min(50, value));
+      setSaving(true);
+      try {
+        const updated = await updateAgentConfig({ maxChatTurnsPerExecution: clamped });
+        setConfig(updated);
+      } catch {
+        // silently ignore
+      } finally {
+        setSaving(false);
+      }
+    },
+    [config],
+  );
+
   const handlePollIntervalChange = useCallback(
     async (value: number) => {
       if (!config) return;
@@ -175,6 +192,36 @@ export function AgentEngineSection(): JSX.Element {
               }`}
             />
           </button>
+        </div>
+
+        {/* Max chat turns */}
+        <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-400/30 border border-white/5">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white">Máx. respuestas por tarea</p>
+            <p className="text-xs text-muted-400 mt-0.5">
+              Límite de respuestas de chat por ejecución activa
+            </p>
+          </div>
+          <input
+            type="number"
+            min={1}
+            max={50}
+            step={1}
+            value={config?.maxChatTurnsPerExecution ?? 10}
+            aria-label="Máximo de respuestas de chat por ejecución"
+            disabled={saving}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val)) {
+                setConfig((prev) => (prev ? { ...prev, maxChatTurnsPerExecution: val } : prev));
+              }
+            }}
+            onBlur={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val)) handleMaxChatTurnsChange(val);
+            }}
+            className="input-field w-20 !py-1.5 text-right text-sm"
+          />
         </div>
 
         {/* Poll interval */}

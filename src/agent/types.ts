@@ -47,6 +47,7 @@ export interface AgentEngineConfig {
   maxIterations: number;
   maxRetries: number;
   toolTimeoutMs: number;
+  maxChatTurnsPerExecution: number;
 }
 
 /** Estado público del agent (para GET /api/agent/status). */

@@ -14,7 +14,7 @@ import type { RepoPromptContext } from "../utils/gitTypes";
 import { createProviderAdapter } from "./providerAdapter";
 import { createToolRouter } from "./toolRouter";
 import { createMcpClientPool } from "./mcpClientPool";
-import { buildSystemPrompt, buildSddPhasePrompt } from "./systemPrompt";
+import { buildSystemPrompt, buildSddPhasePrompt, buildChatPrompt } from "./systemPrompt";
 import { getActiveProviderConfig } from "../utils/aiProviderHandlers";
 import {
   claimTask,
@@ -167,7 +167,29 @@ export class AgentEngine {
     const activeRow = taskRow ?? resumedSddRow;
     const isSddResumed = !taskRow && resumedSddRow !== null;
 
+    // FEAT-013: third priority — chat turn for tasks with unanswered user messages
     if (!activeRow) {
+      const chatRow = this.findChatEligibleTask();
+      if (chatRow) {
+        this.processing = true;
+        this.status = "working";
+        this.currentTaskId = chatRow.id;
+        this.currentTaskTitle = chatRow.title;
+        try {
+          await this.processChatTurn(chatRow.id);
+          return { ok: true, taskId: chatRow.id, message: "Chat turn procesado" };
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Error desconocido";
+          this.lastError = msg;
+          this.status = "error";
+          return { ok: false, taskId: chatRow.id, message: msg };
+        } finally {
+          this.processing = false;
+          if (this.status !== "error") this.status = "idle";
+          this.currentTaskId = null;
+          this.currentTaskTitle = null;
+        }
+      }
       return { ok: true, message: "No hay tareas pendientes" };
     }
 
@@ -254,7 +276,8 @@ export class AgentEngine {
          poll_interval_ms = ?,
          max_iterations = ?,
          max_retries = ?,
-         tool_timeout_ms = ?
+         tool_timeout_ms = ?,
+         max_chat_turns_per_execution = ?
          WHERE id = 1`,
       )
       .run(
@@ -263,6 +286,7 @@ export class AgentEngine {
         updated.maxIterations,
         updated.maxRetries,
         updated.toolTimeoutMs,
+        updated.maxChatTurnsPerExecution,
       );
 
     this.config = updated;
@@ -273,9 +297,24 @@ export class AgentEngine {
       this.start();
     }
 
+    // Si autoStart cambió a true y el loop no está activo, arrancar
+    if (updated.autoStart && !prevAutoStart && !this.intervalId) {
+      this.start();
+    }
+
     // Si autoStart cambió a false y el loop está activo, detener
     if (!updated.autoStart && prevAutoStart && this.intervalId) {
       this.stop();
+    }
+  }
+
+  /**
+   * Intenta arrancar el loop de polling si hay proveedor configurado y autoStart=true.
+   * Llamado externamente cuando se guarda una nueva config de proveedor.
+   */
+  tryStart(): void {
+    if (this.config.autoStart && !this.intervalId) {
+      this.start();
     }
   }
 
@@ -547,6 +586,112 @@ export class AgentEngine {
   }
 
   /**
+   * FEAT-013: Busca la tarea más antigua con una ejecución activa que tenga
+   * mensajes humanos sin respuesta del agente (Pending_Messages). R1.1–R1.4
+   */
+  private findChatEligibleTask(): { id: number; title: string } | null {
+    return this.db
+      .query(
+        `SELECT t.id, t.title
+         FROM tasks t
+         JOIN agent_executions e ON e.task_id = t.id
+         WHERE e.state IN ('pending_review', 'agent_working')
+           AND e.agent_id = 'kiro'
+           AND EXISTS (
+             SELECT 1 FROM comments c
+             WHERE c.task_id = t.id
+               AND c.author != 'Kiro'
+               AND c.created_at > COALESCE(
+                 (SELECT MAX(created_at) FROM comments
+                  WHERE task_id = t.id AND author = 'Kiro'),
+                 '1970-01-01'
+               )
+           )
+         ORDER BY e.updated_at ASC
+         LIMIT 1`,
+      )
+      .get() as { id: number; title: string } | null;
+  }
+
+  /**
+   * FEAT-013: Genera y publica una Conversational_Reply para la tarea indicada.
+   * No transiciona el estado de la ejecución ni usa herramientas de edición.
+   * R2.1–R2.6, R5.2, R6.2, R6.5
+   */
+  private async processChatTurn(taskId: number): Promise<void> {
+    // Contar turns previos del agente en esta ejecución
+    const agentCommentCount = (
+      this.db
+        .query("SELECT COUNT(*) AS c FROM comments WHERE task_id = ? AND author = 'Kiro'")
+        .get(taskId) as { c: number }
+    ).c;
+
+    if (agentCommentCount >= this.config.maxChatTurnsPerExecution) {
+      postComment(
+        this.db,
+        taskId,
+        `⏸ Límite de respuestas alcanzado (${this.config.maxChatTurnsPerExecution}). Aprueba o solicita cambios para continuar.`,
+      );
+      return;
+    }
+
+    // Cargar contexto de tarea
+    const taskContext = this.loadTaskContext(taskId);
+
+    // Recuperar último output de fase SDD aprobado si existe
+    const phaseOutputRow = this.db
+      .query(
+        `SELECT phase_output FROM agent_executions
+         WHERE task_id = ? AND phase_output IS NOT NULL
+         ORDER BY updated_at DESC LIMIT 1`,
+      )
+      .get(taskId) as { phase_output: string } | null;
+
+    const systemPrompt = buildChatPrompt(taskContext, phaseOutputRow?.phase_output);
+
+    // Construir historial: comments → roles (Kiro = assistant, resto = user)
+    // Truncar a los últimos 20 para limitar tokens
+    const recentComments = taskContext.comments.slice(-20);
+    const messages: import("./types").Message[] = [
+      { role: "system", content: systemPrompt },
+      ...recentComments.map((c) => ({
+        role: (c.author === "Kiro" ? "assistant" : "user") as "assistant" | "user",
+        content: c.author === "Kiro" ? c.content : `[${c.author}]: ${c.content}`,
+      })),
+    ];
+
+    const providerConfig = await getActiveProviderConfig(this.db);
+    if (!providerConfig) throw new Error("Proveedor de IA no configurado");
+    const adapter = createProviderAdapter(providerConfig);
+
+    let reply: string;
+    try {
+      const response = await this.sendWithRetry(adapter, messages, []); // sin tools
+      reply = response.type === "text" ? response.content : "(sin respuesta de texto)";
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Error desconocido";
+      // Verificar que la ejecución sigue activa antes de publicar error
+      const exec = this.db
+        .query("SELECT state FROM agent_executions WHERE task_id = ?")
+        .get(taskId) as { state: string } | null;
+      if (exec && !["done", "changes_requested"].includes(exec.state)) {
+        postComment(this.db, taskId, `❌ No pude generar una respuesta: ${msg}. Inténtalo de nuevo.`);
+      }
+      return;
+    }
+
+    // Comprobar carrera: ejecución puede haber transitado mientras generábamos la respuesta
+    const execNow = this.db
+      .query("SELECT state FROM agent_executions WHERE task_id = ?")
+      .get(taskId) as { state: string } | null;
+    if (!execNow || ["done", "changes_requested"].includes(execNow.state)) {
+      return; // Descartar reply — R6.5
+    }
+
+    postComment(this.db, taskId, reply);
+  }
+
+  /**
    * Lee la configuración del engine desde la tabla agent_engine_config.
    */
   private loadConfig(): AgentEngineConfig {
@@ -556,16 +701,17 @@ export class AgentEngine {
       max_iterations: number;
       max_retries: number;
       tool_timeout_ms: number;
+      max_chat_turns_per_execution: number;
     } | null;
 
     if (!row) {
-      // Defaults si no existe la fila
       return {
         autoStart: false,
         pollIntervalMs: 30000,
         maxIterations: 10,
         maxRetries: 3,
         toolTimeoutMs: 30000,
+        maxChatTurnsPerExecution: 10,
       };
     }
 
@@ -575,6 +721,7 @@ export class AgentEngine {
       maxIterations: row.max_iterations,
       maxRetries: row.max_retries,
       toolTimeoutMs: row.tool_timeout_ms,
+      maxChatTurnsPerExecution: row.max_chat_turns_per_execution ?? 10,
     };
   }
 

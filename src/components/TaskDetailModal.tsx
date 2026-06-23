@@ -87,6 +87,7 @@ export function TaskDetailModal({
   const [newComment, setNewComment] = useState("");
   const [commentAuthor, setCommentAuthor] = useState("Usuario");
   const [loadingComments, setLoadingComments] = useState(true);
+  const [waitingForAgentReply, setWaitingForAgentReply] = useState(false);
   const [agentNames, setAgentNames] = useState<string[]>([]);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
@@ -115,41 +116,52 @@ export function TaskDetailModal({
     commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [comments]);
 
-  // FEAT-012: Poll for validation comments when in SDD pending_review
+  // FEAT-013: Poll for new agent replies and validation comments while execution is active.
+  // Covers pending_review (SDD + non-SDD) and agent_working states. R4.2, R4.3, R4.4
   useEffect(() => {
-    if (!execution || execution.state !== "pending_review" || !execution.sdd_phase) return;
+    const shouldPoll =
+      execution !== null &&
+      (execution.state === "pending_review" || execution.state === "agent_working");
+    if (!shouldPoll) return;
 
     const interval = setInterval(async () => {
       try {
         const fresh = await fetchComments(task.id, task.workspace_id);
         setComments(fresh);
-        // Find the last human comment (non-agent) for validation intent
-        const humanComments = fresh.filter((c) => c.author !== "Kiro" && c.author !== "kiro");
-        if (humanComments.length === 0) return;
-        const last = humanComments[humanComments.length - 1];
-        const intent = parseValidationComment(last.content);
-        if (intent === "approve") {
-          clearInterval(interval);
-          await handleApprovePhase();
-        } else if (intent === "request_changes") {
-          const feedback = extractFeedback(last.content);
-          clearInterval(interval);
-          // Use feedback text or empty fallback
-          const fb = feedback || last.content;
-          setFeedbackText(fb);
-          try {
-            const exec = await requestChanges(task.id, fb || "Cambios solicitados via comentario");
-            setExecution(exec);
-            setFeedbackText("");
-            onExecutionChanged?.();
-          } catch {
-            setAgentError("No se pudieron solicitar cambios.");
+        // If we were waiting for a reply and the agent has now posted one, clear the indicator
+        const lastComment = fresh[fresh.length - 1];
+        if (lastComment && agentNames.includes(lastComment.author)) {
+          setWaitingForAgentReply(false);
+        }
+
+        // SDD pending_review: also parse natural-language approval/changes keywords
+        if (execution.state === "pending_review" && execution.sdd_phase) {
+          const humanComments = fresh.filter((c) => c.author !== "Kiro" && c.author !== "kiro");
+          if (humanComments.length === 0) return;
+          const last = humanComments[humanComments.length - 1];
+          const intent = parseValidationComment(last.content);
+          if (intent === "approve") {
+            clearInterval(interval);
+            await handleApprovePhase();
+          } else if (intent === "request_changes") {
+            const feedback = extractFeedback(last.content);
+            clearInterval(interval);
+            const fb = feedback || last.content;
+            setFeedbackText(fb);
+            try {
+              const exec = await requestChanges(task.id, fb || "Cambios solicitados via comentario");
+              setExecution(exec);
+              setFeedbackText("");
+              onExecutionChanged?.();
+            } catch {
+              setAgentError("No se pudieron solicitar cambios.");
+            }
           }
         }
       } catch {
         // Ignore poll errors
       }
-    }, 5000);
+    }, 4000);
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -284,6 +296,10 @@ export function TaskDetailModal({
     const comment = await addComment(task.id, newComment, commentAuthor, task.workspace_id);
     setComments([...comments, comment]);
     setNewComment("");
+    // Show "responding" indicator if agent is active — R4.1
+    if (execution && execution.state !== "done" && execution.state !== "changes_requested") {
+      setWaitingForAgentReply(true);
+    }
   }
 
   return (
@@ -641,7 +657,11 @@ export function TaskDetailModal({
                   className="input-field text-sm flex-1"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Escribe un comentario..."
+                  placeholder={
+                    execution && execution.state !== "done"
+                      ? "Pregunta algo a Kiro..."
+                      : "Escribe un comentario..."
+                  }
                 />
                 <input
                   type="text"
@@ -672,8 +692,12 @@ export function TaskDetailModal({
                   />
                 ))
               )}
-              {shouldShowActivityIndicator(comments, agentNames, execution?.state ?? null) && (
-                <ActivityIndicator agentName={agentNames[0] ?? "Agente"} />
+              {(shouldShowActivityIndicator(comments, agentNames, execution?.state ?? null) ||
+                waitingForAgentReply) && (
+                <ActivityIndicator
+                  agentName={agentNames[0] ?? "Agente"}
+                  responding={waitingForAgentReply}
+                />
               )}
               <div ref={commentsEndRef} />
             </div>

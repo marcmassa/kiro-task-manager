@@ -127,6 +127,7 @@ function createFullTestDb(): Database {
       max_iterations INTEGER NOT NULL DEFAULT 50,
       max_retries INTEGER NOT NULL DEFAULT 3,
       tool_timeout_ms INTEGER NOT NULL DEFAULT 30000,
+      max_chat_turns_per_execution INTEGER NOT NULL DEFAULT 10,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );

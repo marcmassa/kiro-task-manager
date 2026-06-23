@@ -3,6 +3,7 @@ export interface Task {
   title: string;
   description: string;
   status: "todo" | "in_progress" | "done";
+  sdd_phase: string | null;
   priority_id: number;
   category_id: number;
   due_date: string | null;
@@ -272,7 +273,7 @@ export interface Workspace {
 // ── FEAT-011: Workspace Git types ─────────────────────────────────────────
 
 /** Estado de conexión del repositorio. */
-export type RepoStatus = "connected" | "disconnected" | "error" | "not_configured";
+export type RepoStatus = "connected" | "disconnected" | "error" | "not_configured" | "cloning";
 
 /** Tipo de referencia de fichero a tarea. */
 export type FileReferenceType = "context" | "output" | "modified";
@@ -339,6 +340,15 @@ export interface GitBranchInfo {
 
 // ── FEAT-011: Multi-Workspace Extension (R22-R25) ───────────────────────────
 
+export type WorkspaceProjectType = "normal" | "sdd" | "custom";
+
+/** A user-defined pipeline column (custom workspace type). */
+export interface WorkspaceColumn {
+  id: string;
+  label: string;
+  color: string;
+}
+
 /** Representación de un workspace. */
 export interface Workspace {
   id: number;
@@ -347,9 +357,12 @@ export interface Workspace {
   repoPath: string | null;
   repoRemoteUrl: string | null;
   repoDefaultBranch: string;
-  repoStatus: RepoStatus | "cloning";
+  repoStatus: RepoStatus;
   repoCurrentBranch: string | null;
   gitTokenConfigured: boolean;
+  projectType: WorkspaceProjectType;
+  /** Pipeline columns for this workspace. Empty for "normal" type. */
+  customColumns: WorkspaceColumn[];
   createdAt: string;
   updatedAt: string;
 }

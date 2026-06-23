@@ -17,6 +17,7 @@ import {
   createTask,
   updateTask,
   updateTaskStatus,
+  updateTaskColumn,
   deleteTask,
 } from "./api";
 import { KanbanColumn } from "./components/KanbanColumn";
@@ -134,17 +135,11 @@ export default function App() {
   // ── Derived data ─────────────────────────────────────────────────────────
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
+  // Custom pipeline columns for the active workspace (empty for "normal" type)
+  const customColumns = activeWorkspace?.customColumns ?? [];
+
   const todoTasks = tasks.filter(
     (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "todo",
-  );
-  const requirementsTasks = tasks.filter(
-    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "requirements",
-  );
-  const designTasks = tasks.filter(
-    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "design",
-  );
-  const sddTasksTasks = tasks.filter(
-    (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "tasks",
   );
   const inProgressTasks = tasks.filter(
     (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "in_progress",
@@ -152,10 +147,19 @@ export default function App() {
   const doneTasks = tasks.filter(
     (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "done",
   );
+  // Dynamic custom columns — task counts per column ID
+  const columnTasks = new Map(
+    customColumns.map((col) => [
+      col.id,
+      tasks.filter((t) => effectiveColumn(t, executions.get(t.id) ?? null) === col.id),
+    ]),
+  );
   const workspaceSelector = (
     <WorkspaceSelector
+      workspaces={workspaces}
       activeWorkspaceId={activeWorkspaceId}
       onWorkspaceChange={handleWorkspaceChange}
+      onWorkspaceCreated={(ws) => setWorkspaces((prev) => [...prev, ws])}
     />
   );
 
@@ -216,20 +220,30 @@ export default function App() {
     }
   }
 
-  async function handleDrop(taskId: number, targetStatus: TaskStatus) {
+  async function handleDrop(taskId: number, targetColumn: string) {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
-    if (task.status === targetStatus) return;
+    // No-op: already in this column
+    if (effectiveColumn(task, executions.get(task.id) ?? null) === targetColumn) return;
 
     const previousTasks = tasks;
-    setTasks(tasks.map((t) => (t.id === taskId ? { ...t, status: targetStatus } : t)));
+    const standardStatuses: string[] = ["todo", "in_progress", "done"];
+    setTasks(
+      tasks.map((t) =>
+        t.id === taskId
+          ? standardStatuses.includes(targetColumn)
+            ? { ...t, status: targetColumn as TaskStatus, sdd_phase: null }
+            : { ...t, sdd_phase: targetColumn as Task["sdd_phase"] }
+          : t,
+      ),
+    );
 
     try {
-      const updated = await updateTaskStatus(taskId, targetStatus, activeWorkspaceId);
+      const updated = await updateTaskColumn(taskId, targetColumn, activeWorkspaceId);
       setTasks((current) => current.map((t) => (t.id === taskId ? updated : t)));
     } catch (error) {
       setTasks(previousTasks);
-      console.error("Failed to update task status:", error);
+      console.error("Failed to move task:", error);
     }
   }
 
@@ -343,11 +357,10 @@ export default function App() {
             <HomePage
               tasks={tasks}
               todoCount={todoTasks.length}
-              requirementsCount={requirementsTasks.length}
-              designCount={designTasks.length}
-              tasksCount={sddTasksTasks.length}
               inProgressCount={inProgressTasks.length}
               doneCount={doneTasks.length}
+              customColumns={customColumns}
+              columnCounts={new Map(customColumns.map((c) => [c.id, columnTasks.get(c.id)?.length ?? 0]))}
               onNavigate={(page) => setCurrentPage(page as Page)}
               activeWorkspace={activeWorkspace}
               workspaceSelector={workspaceSelector}
@@ -387,53 +400,35 @@ export default function App() {
               </div>
             )}
 
-            {/* Stats Bar */}
+            {/* Stats Bar — same flex + overflow-x-auto as the kanban columns so
+                cards align 1-to-1 with their column. min/max-w mirror .kanban-column. */}
             <div className="px-8 py-5">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="stat-card">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-muted-400">Por Hacer</span>
-                    <span className="text-lg font-bold text-white">{todoTasks.length}</span>
+              <div className="flex gap-6 overflow-x-auto pb-1">
+                {[
+                  { label: "Por Hacer", count: todoTasks.length, bar: "bg-accent" },
+                  ...customColumns.map((col) => ({
+                    label: col.label,
+                    count: columnTasks.get(col.id)?.length ?? 0,
+                    bar: `bg-${col.color}-500`,
+                  })),
+                  { label: "En Progreso", count: inProgressTasks.length, bar: "bg-warning" },
+                  { label: "Completadas", count: doneTasks.length, bar: "bg-success" },
+                ].map((col) => (
+                  <div key={col.label} className="stat-card flex-1 min-w-[320px] max-w-[400px]">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-medium text-muted-400 leading-tight">{col.label}</span>
+                      <span className={`text-lg font-bold ${col.count > 0 ? "text-white" : "text-muted-600"}`}>
+                        {col.count}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${col.bar} rounded-full transition-all duration-500`}
+                        style={{ width: tasks.length ? `${(col.count / tasks.length) * 100}%` : "0%" }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-accent rounded-full transition-all duration-500"
-                      style={{
-                        width: tasks.length ? `${(todoTasks.length / tasks.length) * 100}%` : "0%",
-                      }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="stat-card">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-muted-400">En Progreso</span>
-                    <span className="text-lg font-bold text-white">{inProgressTasks.length}</span>
-                  </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-warning rounded-full transition-all duration-500"
-                      style={{
-                        width: tasks.length
-                          ? `${(inProgressTasks.length / tasks.length) * 100}%`
-                          : "0%",
-                      }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="stat-card">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-muted-400">Completadas</span>
-                    <span className="text-lg font-bold text-white">{doneTasks.length}</span>
-                  </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-success rounded-full transition-all duration-500"
-                      style={{
-                        width: tasks.length ? `${(doneTasks.length / tasks.length) * 100}%` : "0%",
-                      }}
-                    ></div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -462,39 +457,21 @@ export default function App() {
                   onStatusChange={handleStatusChange}
                   onDrop={handleDrop}
                 />
-                <KanbanColumn
-                  title="Requirements"
-                  tasks={requirementsTasks}
-                  color="purple"
-                  executions={executions}
-                  onViewTask={handleViewTask}
-                  onEditTask={handleEditTask}
-                  onDeleteTask={handleDeleteRequest}
-                  onStatusChange={handleStatusChange}
-                  isSdd
-                />
-                <KanbanColumn
-                  title="Diseño"
-                  tasks={designTasks}
-                  color="indigo"
-                  executions={executions}
-                  onViewTask={handleViewTask}
-                  onEditTask={handleEditTask}
-                  onDeleteTask={handleDeleteRequest}
-                  onStatusChange={handleStatusChange}
-                  isSdd
-                />
-                <KanbanColumn
-                  title="Tasks"
-                  tasks={sddTasksTasks}
-                  color="yellow"
-                  executions={executions}
-                  onViewTask={handleViewTask}
-                  onEditTask={handleEditTask}
-                  onDeleteTask={handleDeleteRequest}
-                  onStatusChange={handleStatusChange}
-                  isSdd
-                />
+                {customColumns.map((col) => (
+                  <KanbanColumn
+                    key={col.id}
+                    title={col.label}
+                    columnId={col.id}
+                    tasks={columnTasks.get(col.id) ?? []}
+                    color={col.color}
+                    executions={executions}
+                    onViewTask={handleViewTask}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteRequest}
+                    onStatusChange={handleStatusChange}
+                    onDrop={handleDrop}
+                  />
+                ))}
                 <KanbanColumn
                   title="En Progreso"
                   status="in_progress"
@@ -528,6 +505,8 @@ export default function App() {
           <StatsDashboard
             tasks={tasks}
             executions={executions}
+            customColumns={customColumns}
+            columnCounts={new Map(customColumns.map((c) => [c.id, columnTasks.get(c.id)?.length ?? 0]))}
             loading={loading}
             error={error}
             onRetry={loadData}

@@ -197,3 +197,43 @@ export function buildSddPhasePrompt(
 
   return sections.join("\n\n");
 }
+
+/**
+ * Función pura: construye el system prompt para el modo chat conversacional.
+ * Se usa cuando el agente responde a mensajes del usuario en una tarea con
+ * ejecución activa, sin ejecutar herramientas de edición de ficheros.
+ *
+ * R3.1, R3.2, R3.3, R3.4
+ */
+export function buildChatPrompt(taskContext: TaskContext, phaseOutput?: string): string {
+  const sections: string[] = [];
+
+  sections.push(
+    `## Rol\n\nEres Kiro, un asistente de tareas. Estás en **modo conversación**: responde las preguntas del usuario sobre esta tarea, su estado, tu plan o tus outputs anteriores.\n\nIMPORTANTE: En este modo NO editas ficheros, NO haces commits, NO ejecutas código. Solo respondes preguntas de forma clara y concisa en español.`,
+  );
+
+  const dueDateLine = taskContext.dueDate ? `- **Fecha límite:** ${taskContext.dueDate}` : "";
+  sections.push(
+    [
+      `## Tarea en Curso`,
+      ``,
+      `- **Título:** ${taskContext.title}`,
+      `- **Descripción:** ${taskContext.description}`,
+      `- **Prioridad:** ${taskContext.priority}`,
+      `- **Categoría:** ${taskContext.category}`,
+      dueDateLine,
+    ]
+      .filter((l) => l !== "")
+      .join("\n"),
+  );
+
+  if (phaseOutput) {
+    sections.push(`## Último Output de Fase Aprobado\n\n${phaseOutput}`);
+  }
+
+  sections.push(
+    `## Instrucciones de Respuesta\n\n- Responde siempre en español.\n- Sé conciso: una respuesta de 2-5 frases suele ser suficiente.\n- Si el usuario pide algo que requiere editar código, explica que eso se hace a través del ciclo de ejecución de tarea (aprobar / solicitar cambios), no en el chat.\n- Si no tienes suficiente información para responder, indícalo con claridad.`,
+  );
+
+  return sections.join("\n\n");
+}

@@ -100,7 +100,20 @@ if (!process.env.LINEAR_ENCRYPTION_SALT) {
 const agentEngine = new AgentEngine(db);
 
 // ── FEAT-011: Workspace row mapper ──────────────────────────────────────────
+const SDD_DEFAULT_COLUMNS = [
+  { id: "requirements", label: "Requirements", color: "purple" },
+  { id: "design",       label: "Diseño",       color: "indigo" },
+  { id: "tasks",        label: "Tasks",         color: "yellow" },
+];
+
 function mapWorkspaceRow(row: any): any {
+  const type = row.project_type ?? "normal";
+  let customColumns: unknown[] = [];
+  if (type === "sdd") {
+    customColumns = SDD_DEFAULT_COLUMNS;
+  } else if (type === "custom" && row.visible_columns) {
+    try { customColumns = JSON.parse(row.visible_columns); } catch {}
+  }
   return {
     id: row.id,
     name: row.name,
@@ -111,6 +124,8 @@ function mapWorkspaceRow(row: any): any {
     repoStatus: row.repo_status,
     repoCurrentBranch: row.repo_current_branch,
     gitTokenConfigured: !!row.git_token_encrypted,
+    projectType: type,
+    customColumns,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -121,7 +136,9 @@ function seedWorkspaceData(db: any, workspaceId: number) {
     .query("SELECT COUNT(*) as c FROM categories WHERE workspace_id = ?")
     .get(workspaceId) as { c: number };
   if (catCount.c === 0) {
-    const ins = db.prepare("INSERT INTO categories (name, color, workspace_id) VALUES (?, ?, ?)");
+    const ins = db.prepare(
+      "INSERT OR IGNORE INTO categories (name, color, workspace_id) VALUES (?, ?, ?)",
+    );
     ins.run("Desarrollo", "#0972D3", workspaceId);
     ins.run("Diseño", "#FF9900", workspaceId);
     ins.run("Marketing", "#037F0C", workspaceId);
@@ -133,7 +150,7 @@ function seedWorkspaceData(db: any, workspaceId: number) {
     .get(workspaceId) as { c: number };
   if (prioCount.c === 0) {
     const ins = db.prepare(
-      "INSERT INTO priorities (name, level, color, workspace_id) VALUES (?, ?, ?, ?)",
+      "INSERT OR IGNORE INTO priorities (name, level, color, workspace_id) VALUES (?, ?, ?, ?)",
     );
     ins.run("Baja", 1, "#037F0C", workspaceId);
     ins.run("Media", 2, "#FF9900", workspaceId);
@@ -297,6 +314,48 @@ const app = new Elysia()
       )
       .get(params.id);
     return task;
+  })
+
+  // Move task to any Kanban column — handles both SDD columns and regular statuses
+  .patch("/api/tasks/:id/column", ({ params, query, body, set }) => {
+    const q = query as Record<string, string>;
+    const wsId = q.workspace_id ? Number(q.workspace_id) : 1;
+    const existing = db.query("SELECT workspace_id FROM tasks WHERE id = ?").get(params.id) as any;
+    if (!existing) {
+      set.status = 404;
+      return { error: "Tarea no encontrada" };
+    }
+    if (existing.workspace_id !== wsId) {
+      set.status = 404;
+      return { error: "Tarea no encontrada en este workspace" };
+    }
+    const { column } = body as any;
+    if (!column || typeof column !== "string") {
+      set.status = 400;
+      return { error: "Columna no válida" };
+    }
+    const standardStatuses = ["todo", "in_progress", "done"];
+    if (standardStatuses.includes(column)) {
+      db.prepare(
+        "UPDATE tasks SET status = ?, sdd_phase = NULL, updated_at = datetime('now') WHERE id = ?",
+      ).run(column, params.id);
+    } else {
+      // SDD columns ("requirements", "design", "tasks") and custom workspace columns
+      // are all stored in sdd_phase; the frontend effectiveColumn() routes by sdd_phase first.
+      db.prepare(
+        "UPDATE tasks SET sdd_phase = ?, updated_at = datetime('now') WHERE id = ?",
+      ).run(column, params.id);
+    }
+    return db
+      .query(
+        `SELECT t.*, p.name as priority_name, p.color as priority_color, p.level as priority_level,
+                c.name as category_name, c.color as category_color
+         FROM tasks t
+         JOIN priorities p ON t.priority_id = p.id
+         JOIN categories c ON t.category_id = c.id
+         WHERE t.id = ?`,
+      )
+      .get(params.id);
   })
 
   // Delete task (Fase 9: verify workspace ownership)
@@ -511,6 +570,9 @@ const app = new Elysia()
   .put("/api/ai-provider", async ({ body, set }) => {
     const result = await saveAiProviderConfig(db, body);
     if (result.status !== 200) set.status = result.status;
+    // If a provider was successfully saved, give the engine a chance to start
+    // (in case autoStart=true but engine was disabled waiting for a provider).
+    if (result.status === 200) agentEngine.tryStart();
     return result.body;
   })
 
@@ -1195,16 +1257,31 @@ const app = new Elysia()
   })
 
   .post("/api/workspaces", ({ body, set }) => {
-    const { name, remoteUrl, branch } = body as any;
+    const { name, remoteUrl, branch, projectType, customColumns } = body as any;
     if (!name?.trim()) {
       set.status = 422;
       return { error: "El nombre es obligatorio" };
     }
+    const validTypes = ["normal", "sdd", "custom"];
+    const type = validTypes.includes(projectType) ? projectType : "normal";
+    const colsJson =
+      type === "custom" && Array.isArray(customColumns)
+        ? JSON.stringify(customColumns)
+        : null;
     const slug = slugify(name.trim());
+    let id: number;
     try {
-      db.prepare(
-        "INSERT INTO workspaces (name, slug, repo_remote_url, repo_default_branch) VALUES (?, ?, ?, ?)",
-      ).run(name.trim(), slug, remoteUrl ?? null, branch ?? "main");
+      // Wrap INSERT + seed in a transaction so no orphaned rows on failure
+      db.transaction(() => {
+        db.prepare(
+          "INSERT INTO workspaces (name, slug, repo_remote_url, repo_default_branch, project_type, visible_columns) VALUES (?, ?, ?, ?, ?, ?)",
+        ).run(name.trim(), slug, remoteUrl ?? null, branch ?? "main", type, colsJson);
+        id = (db.query("SELECT last_insert_rowid() AS id").get() as any).id;
+        db.prepare(
+          "UPDATE workspaces SET repo_path = ?, updated_at = datetime('now') WHERE id = ?",
+        ).run(path.resolve(WORKSPACES_DIR, slug), id);
+        seedWorkspaceData(db, id);
+      })();
     } catch (e: any) {
       if (e.message?.includes("UNIQUE")) {
         set.status = 409;
@@ -1212,30 +1289,21 @@ const app = new Elysia()
       }
       throw e;
     }
-    const id = (db.query("SELECT last_insert_rowid() AS id").get() as any).id;
-    // Create workspace directory on disk
+    // Create workspace directory on disk (outside transaction — FS ops can't roll back)
     const wsDir = path.resolve(WORKSPACES_DIR, slug);
     if (!existsSync(wsDir)) {
       mkdirSync(wsDir, { recursive: true });
-      // Initialize with metadata file
       Bun.write(
         path.join(wsDir, ".workspace.json"),
         JSON.stringify(
-          { id, name: name.trim(), slug, createdAt: new Date().toISOString() },
+          { id: id!, name: name.trim(), slug, createdAt: new Date().toISOString() },
           null,
           2,
         ),
       );
-      // Create data subdirectory
       mkdirSync(path.join(wsDir, "data"), { recursive: true });
     }
-    // Set repo_path to the workspace directory
-    db.prepare(
-      "UPDATE workspaces SET repo_path = ?, updated_at = datetime('now') WHERE id = ?",
-    ).run(wsDir, id);
-    // Seed default categories and priorities for the new workspace
-    seedWorkspaceData(db, id);
-    return mapWorkspaceRow(db.query("SELECT * FROM workspaces WHERE id = ?").get(id));
+    return mapWorkspaceRow(db.query("SELECT * FROM workspaces WHERE id = ?").get(id!));
   })
 
   .put("/api/workspaces/:id", async ({ params, body, set }) => {

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import type { Task, AgentExecution } from "../types";
+import type { Task, AgentExecution, WorkspaceColumn } from "../types";
+import { columnColorTokens } from "../utils/columnColors";
 import { ChartRenderer } from "./ChartRenderer";
 import { calculateStats } from "../utils/statsCalculator";
 import type { StatsData } from "../utils/statsCalculator";
@@ -74,6 +75,8 @@ function MetricTile({ label, value, sub, variant }: MetricTileProps) {
 interface StatsDashboardProps {
   tasks: Task[];
   executions?: Map<number, AgentExecution>;
+  customColumns?: WorkspaceColumn[];
+  columnCounts?: Map<string, number>;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -84,12 +87,15 @@ interface StatsDashboardProps {
 export function StatsDashboard({
   tasks,
   executions,
+  customColumns = [],
+  columnCounts = new Map(),
   loading,
   error,
   onRetry,
   workspaceSelector,
   activeWorkspaceName,
 }: StatsDashboardProps) {
+  const hasCustomColumns = customColumns.length > 0;
   const { stats, derivedError } = useMemo<{
     stats: StatsData | null;
     derivedError: string | null;
@@ -100,18 +106,6 @@ export function StatsDashboard({
       return { stats: null, derivedError: "Error al calcular las estadísticas. Intenta de nuevo." };
     }
   }, [tasks]);
-
-  const sddPhaseCounts = useMemo(() => {
-    if (!executions) return null;
-    const counts = { requirements: 0, design: 0, tasks: 0, execution: 0 };
-    for (const exec of executions.values()) {
-      if (exec.state !== "done" && exec.sdd_phase && exec.sdd_phase in counts) {
-        counts[exec.sdd_phase as keyof typeof counts]++;
-      }
-    }
-    const total = counts.requirements + counts.design + counts.tasks + counts.execution;
-    return total > 0 ? counts : null;
-  }, [executions]);
 
   const displayError = error || derivedError;
 
@@ -165,26 +159,33 @@ export function StatsDashboard({
   const latePercent =
     complianceTotal > 0 ? Math.round((s.completedLate / complianceTotal) * 100) : 0;
 
-  const totalForStatus = s.statusDistribution.reduce((n, d) => n + d.value, 0);
+  const customExtra = customColumns.reduce((sum, c) => sum + (columnCounts.get(c.id) ?? 0), 0);
+  const totalForStatus = s.statusDistribution.reduce((n, d) => n + d.value, 0) + customExtra;
   const totalForPriority = s.priorityDistribution.reduce((n, d) => n + d.value, 0);
   const totalForCategory = s.categoryDistribution.reduce((n, d) => n + d.value, 0);
 
-  // Map statsCalculator color values to Tailwind bg-* token classes
-  const statusRows = s.statusDistribution.map((d) => ({
-    ...d,
-    color:
-      d.label === "Por Hacer"
-        ? "bg-accent"
-        : d.label === "En Progreso"
-          ? "bg-warning"
-          : "bg-success",
-    textColor:
-      d.label === "Por Hacer"
-        ? "text-accent"
-        : d.label === "En Progreso"
-          ? "text-warning"
-          : "text-success",
-  }));
+  const pct = (v: number) => (totalForStatus > 0 ? (v / totalForStatus) * 100 : 0);
+
+  const customRows = customColumns.map((col) => {
+    const value = columnCounts.get(col.id) ?? 0;
+    const tokens = columnColorTokens(col.color);
+    return { label: col.label, value, percent: pct(value), color: tokens.dot, textColor: tokens.text };
+  });
+
+  const statusRows = [
+    ...s.statusDistribution
+      .filter((d) => d.label === "Por Hacer")
+      .map((d) => ({ ...d, percent: pct(d.value), color: "bg-accent", textColor: "text-accent" })),
+    ...customRows,
+    ...s.statusDistribution
+      .filter((d) => d.label !== "Por Hacer")
+      .map((d) => ({
+        ...d,
+        percent: pct(d.value),
+        color: d.label === "En Progreso" ? "bg-warning" : "bg-success",
+        textColor: d.label === "En Progreso" ? "text-warning" : "text-success",
+      })),
+  ];
 
   const priorityRows = s.priorityDistribution.map((d) => ({
     ...d,
@@ -378,7 +379,6 @@ export function StatsDashboard({
                 {totalForStatus} tareas
               </p>
               <StatsTable rows={statusRows} />
-              {/* sr-only: contrato R12.5 */}
               <div className="sr-only">
                 <DataTable
                   aria-label="Distribución de tareas por estado"
@@ -394,7 +394,6 @@ export function StatsDashboard({
                   }))}
                 />
               </div>
-              {/* sr-only: contrato R12.8 */}
               <div className="sr-only">
                 <ChartRenderer
                   type="horizontal-bar"
@@ -403,65 +402,6 @@ export function StatsDashboard({
                 />
               </div>
             </Card>
-
-            {/* Por prioridad */}
-            <Card>
-              <SectionHeader label="Por prioridad" dotColor="ds-dot-danger bg-danger" />
-              <p className="text-xs text-muted-500 -mt-2 mb-4 tabular-nums">
-                {totalForPriority} tareas
-              </p>
-              <div className="flex gap-5 items-center">
-                <div className="w-40 shrink-0">
-                  <ChartRenderer
-                    type="donut"
-                    data={s.priorityDistribution}
-                    title="Distribución de tareas por prioridad"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <StatsTable rows={priorityRows} showBar={false} />
-                </div>
-              </div>
-            </Card>
-
-            {/* Pipeline SDD */}
-            {sddPhaseCounts && (
-              <Card>
-                <SectionHeader label="Pipeline SDD activo" dotColor="ds-dot-accent bg-purple-500" />
-                <p className="text-xs text-muted-500 -mt-2 mb-4">Tareas en ciclo SDD en curso</p>
-                <div className="space-y-2">
-                  {(
-                    [
-                      { label: "Requirements", count: sddPhaseCounts.requirements, bar: "bg-purple-500" },
-                      { label: "Diseño", count: sddPhaseCounts.design, bar: "bg-indigo-500" },
-                      { label: "Tasks", count: sddPhaseCounts.tasks, bar: "bg-yellow-500" },
-                      { label: "Ejecución", count: sddPhaseCounts.execution, bar: "bg-warning" },
-                    ] as const
-                  ).map((phase) => {
-                    const total =
-                      sddPhaseCounts.requirements +
-                      sddPhaseCounts.design +
-                      sddPhaseCounts.tasks +
-                      sddPhaseCounts.execution;
-                    const pct = total > 0 ? Math.round((phase.count / total) * 100) : 0;
-                    return (
-                      <div key={phase.label} className="flex items-center gap-3">
-                        <span className="text-xs text-muted-400 w-24 shrink-0">{phase.label}</span>
-                        <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${phase.bar} transition-[width] duration-500`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-white tabular-nums w-4 text-right">
-                          {phase.count}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            )}
 
             {/* Por categoría */}
             <Card>
@@ -497,6 +437,21 @@ export function StatsDashboard({
                   <StatsTable rows={activeWeeklyRows} unit="tareas" />
                 </div>
               )}
+            </Card>
+
+            {/* Por prioridad */}
+            <Card>
+              <SectionHeader label="Por prioridad" dotColor="ds-dot-danger bg-danger" />
+              <p className="text-xs text-muted-500 -mt-2 mb-4 tabular-nums">
+                {totalForPriority} tareas
+              </p>
+              <ChartRenderer
+                type="donut"
+                data={s.priorityDistribution}
+                title="Distribución de tareas por prioridad"
+              />
+              <div className="h-px bg-white/5 my-4" />
+              <StatsTable rows={priorityRows} />
             </Card>
           </div>
         </section>

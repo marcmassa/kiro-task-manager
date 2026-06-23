@@ -183,6 +183,15 @@ db.exec("INSERT OR IGNORE INTO agents (id, name, kind) VALUES ('kiro', 'Kiro', '
 // FEAT-010: seed the singleton agent engine config row (idempotent).
 db.exec("INSERT OR IGNORE INTO agent_engine_config (id) VALUES (1)");
 
+// FEAT-013: add max_chat_turns_per_execution to agent_engine_config (idempotent).
+try {
+  db.exec(
+    "ALTER TABLE agent_engine_config ADD COLUMN max_chat_turns_per_execution INTEGER NOT NULL DEFAULT 10",
+  );
+} catch {
+  // Column already exists — ignore.
+}
+
 // Seed priorities
 const priorityCount = db.query("SELECT COUNT(*) as count FROM priorities").get() as {
   count: number;
@@ -324,6 +333,19 @@ if (!tableColumns("agent_executions").has("phase_output")) {
   db.exec("ALTER TABLE agent_executions ADD COLUMN phase_output TEXT DEFAULT NULL");
 }
 
+// Manual SDD: allow user to place a task in a SDD column without an agent execution
+if (!tableColumns("tasks").has("sdd_phase")) {
+  db.exec("ALTER TABLE tasks ADD COLUMN sdd_phase TEXT DEFAULT NULL");
+}
+
+// Workspace project type: drives which Kanban columns and stats are shown
+if (!tableColumns("workspaces").has("project_type")) {
+  db.exec("ALTER TABLE workspaces ADD COLUMN project_type TEXT NOT NULL DEFAULT 'normal'");
+}
+if (!tableColumns("workspaces").has("visible_columns")) {
+  db.exec("ALTER TABLE workspaces ADD COLUMN visible_columns TEXT DEFAULT NULL");
+}
+
 // Add workspace_id to tasks (backward compatible, default 1)
 if (!tableColumns("tasks").has("workspace_id")) {
   db.exec("ALTER TABLE tasks ADD COLUMN workspace_id INTEGER DEFAULT 1");
@@ -343,8 +365,12 @@ if (!tableColumns("comments").has("workspace_id")) {
   db.exec("ALTER TABLE comments ADD COLUMN workspace_id INTEGER DEFAULT 1");
 }
 
-// Recreate categories with UNIQUE(name, workspace_id) if not already done.
-// Condition: workspace_id column exists but the composite unique is absent.
+// Recreate categories with UNIQUE(name, workspace_id).
+// Uses RENAME instead of DROP TABLE to avoid FK constraint failures:
+//   1. legacy_alter_table=ON → RENAME does NOT update FK refs in tasks, so tasks still
+//      references "categories" by name after the rename.
+//   2. Create new "categories" with composite unique, copy data.
+//   3. DROP _categories_old — safe because nothing has an FK pointing to "_categories_old".
 {
   const schema = tableSchema("categories");
   const hasCols = tableColumns("categories").has("workspace_id");
@@ -352,25 +378,40 @@ if (!tableColumns("comments").has("workspace_id")) {
     schema.includes("workspace_id") && schema.includes("UNIQUE(name, workspace_id)");
   if (hasCols && !hasComposite) {
     try {
-      db.exec("BEGIN TRANSACTION");
+      db.exec("PRAGMA legacy_alter_table = ON");
+      db.exec("PRAGMA foreign_keys = OFF");
+      db.exec("DROP TABLE IF EXISTS _categories_old");
+      db.exec("ALTER TABLE categories RENAME TO _categories_old");
       db.exec(
-        "CREATE TABLE categories_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, color TEXT NOT NULL DEFAULT '#6366f1', workspace_id INTEGER NOT NULL DEFAULT 1, UNIQUE(name, workspace_id))",
+        "CREATE TABLE categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, color TEXT NOT NULL DEFAULT '#6366f1', workspace_id INTEGER NOT NULL DEFAULT 1, UNIQUE(name, workspace_id))",
       );
       db.exec(
-        "INSERT INTO categories_new (id, name, color, workspace_id) SELECT id, name, color, COALESCE(workspace_id, 1) FROM categories",
+        "INSERT INTO categories (id, name, color, workspace_id) SELECT id, name, color, COALESCE(workspace_id, 1) FROM _categories_old",
       );
-      db.exec("DROP TABLE categories");
-      db.exec("ALTER TABLE categories_new RENAME TO categories");
-      db.exec("COMMIT");
-    } catch {
+      db.exec("DROP TABLE _categories_old");
+      console.log("[migration] categories: composite unique constraint applied");
+    } catch (e) {
+      console.error("[migration] categories composite unique failed:", e);
+      // If categories was renamed but new table not yet created, restore it.
       try {
-        db.exec("ROLLBACK");
+        const hasCat = db
+          .query("SELECT name FROM sqlite_master WHERE type='table' AND name='categories'")
+          .get();
+        const hasOld = db
+          .query("SELECT name FROM sqlite_master WHERE type='table' AND name='_categories_old'")
+          .get();
+        if (!hasCat && hasOld) {
+          db.exec("ALTER TABLE _categories_old RENAME TO categories");
+        }
       } catch {}
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+      db.exec("PRAGMA legacy_alter_table = OFF");
     }
   }
 }
 
-// Recreate priorities with UNIQUE(name, workspace_id) if not already done.
+// Recreate priorities with UNIQUE(name, workspace_id) — same RENAME strategy.
 {
   const schema = tableSchema("priorities");
   const hasCols = tableColumns("priorities").has("workspace_id");
@@ -378,20 +419,69 @@ if (!tableColumns("comments").has("workspace_id")) {
     schema.includes("workspace_id") && schema.includes("UNIQUE(name, workspace_id)");
   if (hasCols && !hasComposite) {
     try {
-      db.exec("BEGIN TRANSACTION");
+      db.exec("PRAGMA legacy_alter_table = ON");
+      db.exec("PRAGMA foreign_keys = OFF");
+      db.exec("DROP TABLE IF EXISTS _priorities_old");
+      db.exec("ALTER TABLE priorities RENAME TO _priorities_old");
       db.exec(
-        "CREATE TABLE priorities_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, level INTEGER NOT NULL, color TEXT NOT NULL, workspace_id INTEGER NOT NULL DEFAULT 1, UNIQUE(name, workspace_id))",
+        "CREATE TABLE priorities (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, level INTEGER NOT NULL, color TEXT NOT NULL, workspace_id INTEGER NOT NULL DEFAULT 1, UNIQUE(name, workspace_id))",
       );
       db.exec(
-        "INSERT INTO priorities_new (id, name, level, color, workspace_id) SELECT id, name, level, color, COALESCE(workspace_id, 1) FROM priorities",
+        "INSERT INTO priorities (id, name, level, color, workspace_id) SELECT id, name, level, color, COALESCE(workspace_id, 1) FROM _priorities_old",
       );
-      db.exec("DROP TABLE priorities");
-      db.exec("ALTER TABLE priorities_new RENAME TO priorities");
-      db.exec("COMMIT");
-    } catch {
+      db.exec("DROP TABLE _priorities_old");
+      console.log("[migration] priorities: composite unique constraint applied");
+    } catch (e) {
+      console.error("[migration] priorities composite unique failed:", e);
       try {
-        db.exec("ROLLBACK");
+        const hasPrio = db
+          .query("SELECT name FROM sqlite_master WHERE type='table' AND name='priorities'")
+          .get();
+        const hasOld = db
+          .query("SELECT name FROM sqlite_master WHERE type='table' AND name='_priorities_old'")
+          .get();
+        if (!hasPrio && hasOld) {
+          db.exec("ALTER TABLE _priorities_old RENAME TO priorities");
+        }
       } catch {}
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+      db.exec("PRAGMA legacy_alter_table = OFF");
+    }
+  }
+}
+
+// Seed categories/priorities for any workspace that is missing them (created
+// before the seeding fix or from a failed creation that left an orphan row).
+{
+  const workspaceIds = (
+    db.query("SELECT id FROM workspaces").all() as { id: number }[]
+  ).map((r) => r.id);
+  for (const wid of workspaceIds) {
+    const catCount = (
+      db.query("SELECT COUNT(*) AS c FROM categories WHERE workspace_id = ?").get(wid) as any
+    ).c;
+    if (catCount === 0) {
+      const catIns = db.prepare(
+        "INSERT OR IGNORE INTO categories (name, color, workspace_id) VALUES (?, ?, ?)",
+      );
+      catIns.run("Desarrollo", "#0972D3", wid);
+      catIns.run("Diseño", "#FF9900", wid);
+      catIns.run("Marketing", "#037F0C", wid);
+      catIns.run("Investigación", "#6366f1", wid);
+      catIns.run("Personal", "#252F3E", wid);
+    }
+    const prioCount = (
+      db.query("SELECT COUNT(*) AS c FROM priorities WHERE workspace_id = ?").get(wid) as any
+    ).c;
+    if (prioCount === 0) {
+      const prioIns = db.prepare(
+        "INSERT OR IGNORE INTO priorities (name, level, color, workspace_id) VALUES (?, ?, ?, ?)",
+      );
+      prioIns.run("Baja", 1, "#037F0C", wid);
+      prioIns.run("Media", 2, "#FF9900", wid);
+      prioIns.run("Alta", 3, "#D91515", wid);
+      prioIns.run("Urgente", 4, "#920B0B", wid);
     }
   }
 }

@@ -99,6 +99,18 @@ export async function updateTaskStatus(
   });
 }
 
+export async function updateTaskColumn(
+  id: number,
+  column: string,
+  workspaceId?: number,
+): Promise<Task> {
+  return request<Task>(`${BASE_URL}/tasks/${id}/column?workspace_id=${workspaceId || 1}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ column }),
+  });
+}
+
 export async function deleteTask(id: number, workspaceId?: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/tasks/${id}?workspace_id=${workspaceId || 1}`, {
     method: "DELETE",
@@ -450,11 +462,19 @@ export async function createWorkspace(data: {
   name: string;
   remoteUrl?: string;
   branch?: string;
+  projectType?: "normal" | "sdd" | "custom";
+  customColumns?: import("./types").WorkspaceColumn[];
 }): Promise<Workspace> {
   return request<Workspace>(`${BASE_URL}/workspaces`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: data.name, remoteUrl: data.remoteUrl, branch: data.branch }),
+    body: JSON.stringify({
+      name: data.name,
+      remoteUrl: data.remoteUrl,
+      branch: data.branch,
+      projectType: data.projectType,
+      customColumns: data.customColumns,
+    }),
   });
 }
 
