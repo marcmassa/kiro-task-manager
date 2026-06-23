@@ -1,5 +1,6 @@
 import type {
   Task,
+  Workspace,
   Comment,
   Category,
   Priority,
@@ -390,6 +391,60 @@ export async function triggerAgentRun(): Promise<AgentRunResult> {
   return request<AgentRunResult>(`${BASE_URL}/agent/run`, {
     method: "POST",
   });
+}
+
+// ── FEAT-011: Multi-Workspace CRUD (R22-R25) ──────────────────────────────────
+
+/** GET /api/workspaces — lista todos los workspaces. */
+export async function fetchWorkspaces(): Promise<Workspace[]> {
+  return request<Workspace[]>(`${BASE_URL}/workspaces`);
+}
+
+/** GET /api/workspaces/:id — obtiene un workspace por ID. */
+export async function fetchWorkspace(id: number): Promise<Workspace> {
+  return request<Workspace>(`${BASE_URL}/workspaces/${id}`);
+}
+
+/** POST /api/workspaces — crea un nuevo workspace. */
+export async function createWorkspace(data: {
+  name: string;
+  remoteUrl?: string;
+  branch?: string;
+}): Promise<Workspace> {
+  return request<Workspace>(`${BASE_URL}/workspaces`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: data.name, remoteUrl: data.remoteUrl, branch: data.branch }),
+  });
+}
+
+/** PUT /api/workspaces/:id — actualiza configuración del workspace. */
+export async function updateWorkspace(
+  id: number,
+  data: {
+    name?: string;
+    repoPath?: string;
+    remoteUrl?: string;
+    branch?: string;
+    gitToken?: string;
+  },
+): Promise<Workspace> {
+  return request<Workspace>(`${BASE_URL}/workspaces/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+/** DELETE /api/workspaces/:id — elimina un workspace. */
+export async function deleteWorkspace(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/workspaces/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+}
+
+/** POST /api/workspaces/:id/clone — clona el repositorio remoto del workspace. */
+export async function cloneWorkspace(id: number): Promise<{ ok: boolean; error?: string }> {
+  return request(`${BASE_URL}/workspaces/${id}/clone`, { method: "POST" });
 }
 
 // ── FEAT-011: Workspace Git ──────────────────────────────────────────────

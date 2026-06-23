@@ -248,6 +248,23 @@ export interface AgentRunResult {
   message: string;
 }
 
+// ── FEAT-011: Workspace types ────────────────────────────────────────────
+
+/** Un workspace (proyecto) con su repositorio asociado. */
+export interface Workspace {
+  id: number;
+  name: string;
+  slug: string;
+  repoPath: string | null;
+  repoRemoteUrl: string | null;
+  repoDefaultBranch: string;
+  repoStatus: RepoStatus;
+  repoCurrentBranch: string | null;
+  gitTokenConfigured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── FEAT-011: Workspace Git types ─────────────────────────────────────────
 
 /** Estado de conexión del repositorio. */

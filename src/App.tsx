@@ -1,10 +1,19 @@
-import { useState, useEffect } from "react";
-import { Task, Category, Priority, TaskStatus, TaskFormData, AgentExecution } from "./types";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Task,
+  Category,
+  Priority,
+  TaskStatus,
+  TaskFormData,
+  AgentExecution,
+  Workspace,
+} from "./types";
 import {
   fetchTasks,
   fetchCategories,
   fetchPriorities,
   fetchAllExecutions,
+  fetchWorkspaces,
   createTask,
   updateTask,
   updateTaskStatus,
@@ -17,6 +26,7 @@ import { ConfirmDialog } from "./components/ConfirmDialog";
 import { HomePage } from "./components/HomePage";
 import { StatsDashboard } from "./components/StatsDashboard";
 import { SettingsPage } from "./components/SettingsPage";
+import { WorkspaceBar } from "./components/WorkspaceBar";
 import { KiroIllustration } from "./components/KiroIllustration";
 import { PageHeader } from "./components/ui/PageHeader";
 import { WorkspacePage } from "./components/WorkspacePage";
@@ -33,6 +43,8 @@ import {
 
 type Page = "home" | "kanban" | "stats" | "config" | "workspace";
 
+const WS_KEY = "workshop-kiro:activeWorkspaceId";
+
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -47,28 +59,43 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("home");
+
+  // ── Workspace state ──────────────────────────────────────────────────────────
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<number>(() => {
-    const stored = localStorage.getItem("activeWorkspaceId");
-    return stored ? Number(stored) : 1;
+    const stored = localStorage.getItem(WS_KEY);
+    return stored ? Number(stored) : 0;
   });
 
+  // Load workspaces on mount
   useEffect(() => {
-    loadData();
+    fetchWorkspaces()
+      .then((data) => {
+        setWorkspaces(data);
+        // If no active workspace is set, use the first one
+        if (data.length > 0 && !data.find((w) => w.id === activeWorkspaceId)) {
+          const targetId = data[0].id;
+          setActiveWorkspaceId(targetId);
+          localStorage.setItem(WS_KEY, String(targetId));
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  async function loadData() {
+  // Reload tasks when workspace changes
+  const loadData = useCallback(async () => {
     setError(null);
     setLoading(true);
     try {
+      const wsId = activeWorkspaceId || undefined;
       const [tasksData, catsData, priosData] = await Promise.all([
-        fetchTasks(),
+        fetchTasks(wsId),
         fetchCategories(),
         fetchPriorities(),
       ]);
       setTasks(tasksData);
       setCategories(catsData);
       setPriorities(priosData);
-      // Agent executions are best-effort: a failure here must not block the board.
       try {
         const execs = await fetchAllExecutions();
         setExecutions(new Map(execs.map((e) => [e.task_id, e])));
@@ -81,12 +108,24 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  function handleWorkspaceChange(id: number) {
+    setActiveWorkspaceId(id);
+    localStorage.setItem(WS_KEY, String(id));
   }
 
+  // ── Derived data ─────────────────────────────────────────────────────────
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const todoTasks = tasks.filter((t) => t.status === "todo");
   const inProgressTasks = tasks.filter((t) => t.status === "in_progress");
   const doneTasks = tasks.filter((t) => t.status === "done");
 
+  // ── Task handlers ────────────────────────────────────────────────────────
   function handleNewTask() {
     setEditingTask(null);
     setShowTaskModal(true);
@@ -160,6 +199,7 @@ export default function App() {
     }
   }
 
+  // ── Loading / Error screens ───────────────────────────────────────────────
   if (loading && tasks.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-surface-600">
@@ -191,7 +231,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-surface-600 flex">
-      {/* Sidebar */}
+      {/* Sidebar — solo íconos de navegación */}
       <aside className="sidebar" aria-label="Navegación principal">
         <nav className="flex flex-col items-center gap-2 flex-1">
           {/* Logo */}
@@ -255,171 +295,191 @@ export default function App() {
         </nav>
       </aside>
 
-      {/* Page Content */}
-      {currentPage === "home" && (
-        <>
-          {error && tasks.length > 0 && (
-            <div className="ml-[72px] mx-8 mt-4 flex items-center gap-3 p-4 rounded-xl bg-danger/5 border border-danger/20">
-              <KiroIllustration mood="error" size={40} animated={false} />
-              <p className="text-sm text-danger-400 flex-1">{error}</p>
-              <button
-                onClick={loadData}
-                className="btn-danger text-sm"
-                aria-label="Reintentar carga de tareas"
-              >
-                Reintentar
-              </button>
-            </div>
-          )}
-          <HomePage
-            tasks={tasks}
-            todoCount={todoTasks.length}
-            inProgressCount={inProgressTasks.length}
-            doneCount={doneTasks.length}
-            onNavigate={(page) => setCurrentPage(page as Page)}
-          />
-        </>
-      )}
+      {/* Main content area — with workspace bar */}
+      <div className="flex-1 ml-[72px] flex flex-col min-h-screen overflow-hidden">
+        {/* Workspace bar — visible en todas las páginas */}
+        <WorkspaceBar
+          activeWorkspaceId={activeWorkspaceId}
+          onWorkspaceChange={handleWorkspaceChange}
+        />
 
-      {currentPage === "kanban" && (
-        <div className="flex-1 ml-[72px] flex flex-col min-h-screen">
-          <PageHeader
-            title="Tablero de Tareas"
-            subtitle={`${tasks.length} tareas · ${doneTasks.length} completadas`}
-            actions={
-              <button onClick={handleNewTask} className="btn-primary flex items-center gap-2">
-                <PlusIcon size={18} />
-                <span>Nueva Tarea</span>
-              </button>
-            }
-          />
-
-          {/* Error banner when refresh fails but tasks are already loaded */}
-          {error && tasks.length > 0 && (
-            <div className="mx-8 mt-4 flex items-center gap-3 p-4 rounded-xl bg-danger/5 border border-danger/20">
-              <KiroIllustration mood="error" size={40} animated={false} />
-              <p className="text-sm text-danger-400 flex-1">{error}</p>
-              <button
-                onClick={loadData}
-                className="btn-danger text-sm"
-                aria-label="Reintentar carga de tareas"
-              >
-                Reintentar
-              </button>
-            </div>
+        {/* Page content */}
+        <div className="flex-1 overflow-y-auto">
+          {currentPage === "home" && (
+            <>
+              {error && tasks.length > 0 && (
+                <div className="mx-8 mt-4 flex items-center gap-3 p-4 rounded-xl bg-danger/5 border border-danger/20">
+                  <KiroIllustration mood="error" size={40} animated={false} />
+                  <p className="text-sm text-danger-400 flex-1">{error}</p>
+                  <button
+                    onClick={loadData}
+                    className="btn-danger text-sm"
+                    aria-label="Reintentar carga de tareas"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
+              <HomePage
+                tasks={tasks}
+                todoCount={todoTasks.length}
+                inProgressCount={inProgressTasks.length}
+                doneCount={doneTasks.length}
+                onNavigate={(page) => setCurrentPage(page as Page)}
+              />
+            </>
           )}
 
-          {/* Stats Bar */}
-          <div className="px-8 py-5">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="stat-card">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-muted-400">Por Hacer</span>
-                  <span className="text-lg font-bold text-white">{todoTasks.length}</span>
-                </div>
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent rounded-full transition-all duration-500"
-                    style={{
-                      width: tasks.length ? `${(todoTasks.length / tasks.length) * 100}%` : "0%",
-                    }}
-                  ></div>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-muted-400">En Progreso</span>
-                  <span className="text-lg font-bold text-white">{inProgressTasks.length}</span>
-                </div>
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-warning rounded-full transition-all duration-500"
-                    style={{
-                      width: tasks.length
-                        ? `${(inProgressTasks.length / tasks.length) * 100}%`
-                        : "0%",
-                    }}
-                  ></div>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-muted-400">Completadas</span>
-                  <span className="text-lg font-bold text-white">{doneTasks.length}</span>
-                </div>
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-success rounded-full transition-all duration-500"
-                    style={{
-                      width: tasks.length ? `${(doneTasks.length / tasks.length) * 100}%` : "0%",
-                    }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {currentPage === "kanban" && (
+            <div className="flex flex-col min-h-full">
+              <PageHeader
+                title="Tablero de Tareas"
+                subtitle={`${tasks.length} tareas · ${doneTasks.length} completadas · ${activeWorkspace?.name ?? "Workspace"}`}
+                actions={
+                  <button onClick={handleNewTask} className="btn-primary flex items-center gap-2">
+                    <PlusIcon size={18} />
+                    <span>Nueva Tarea</span>
+                  </button>
+                }
+              />
 
-          {/* Celebration: all tasks completed */}
-          {tasks.length > 0 && todoTasks.length === 0 && inProgressTasks.length === 0 && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <KiroIllustration mood="celebrando" size={100} />
-              <p className="text-sm text-success-400 font-medium">
-                ¡Felicidades! Todas las tareas están completadas 🎉
-              </p>
+              {/* Error banner when refresh fails but tasks are already loaded */}
+              {error && tasks.length > 0 && (
+                <div className="mx-8 mt-4 flex items-center gap-3 p-4 rounded-xl bg-danger/5 border border-danger/20">
+                  <KiroIllustration mood="error" size={40} animated={false} />
+                  <p className="text-sm text-danger-400 flex-1">{error}</p>
+                  <button
+                    onClick={loadData}
+                    className="btn-danger text-sm"
+                    aria-label="Reintentar carga de tareas"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
+
+              {/* Stats Bar */}
+              <div className="px-8 py-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="stat-card">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-muted-400">Por Hacer</span>
+                      <span className="text-lg font-bold text-white">{todoTasks.length}</span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-accent rounded-full transition-all duration-500"
+                        style={{
+                          width: tasks.length
+                            ? `${(todoTasks.length / tasks.length) * 100}%`
+                            : "0%",
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-muted-400">En Progreso</span>
+                      <span className="text-lg font-bold text-white">{inProgressTasks.length}</span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-warning rounded-full transition-all duration-500"
+                        style={{
+                          width: tasks.length
+                            ? `${(inProgressTasks.length / tasks.length) * 100}%`
+                            : "0%",
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-muted-400">Completadas</span>
+                      <span className="text-lg font-bold text-white">{doneTasks.length}</span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-success rounded-full transition-all duration-500"
+                        style={{
+                          width: tasks.length
+                            ? `${(doneTasks.length / tasks.length) * 100}%`
+                            : "0%",
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Celebration: all tasks completed */}
+              {tasks.length > 0 && todoTasks.length === 0 && inProgressTasks.length === 0 && (
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <KiroIllustration mood="celebrando" size={100} />
+                  <p className="text-sm text-success-400 font-medium">
+                    ¡Felicidades! Todas las tareas están completadas 🎉
+                  </p>
+                </div>
+              )}
+
+              {/* Kanban Board */}
+              <main className="flex-1 px-8 pb-8">
+                <div className="flex gap-6 overflow-x-auto pb-4">
+                  <KanbanColumn
+                    title="Por Hacer"
+                    status="todo"
+                    tasks={todoTasks}
+                    color="accent"
+                    executions={executions}
+                    onViewTask={handleViewTask}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteRequest}
+                    onStatusChange={handleStatusChange}
+                    onDrop={handleDrop}
+                  />
+                  <KanbanColumn
+                    title="En Progreso"
+                    status="in_progress"
+                    tasks={inProgressTasks}
+                    color="warning"
+                    executions={executions}
+                    onViewTask={handleViewTask}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteRequest}
+                    onStatusChange={handleStatusChange}
+                    onDrop={handleDrop}
+                  />
+                  <KanbanColumn
+                    title="Completadas"
+                    status="done"
+                    tasks={doneTasks}
+                    color="success"
+                    executions={executions}
+                    onViewTask={handleViewTask}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteRequest}
+                    onStatusChange={handleStatusChange}
+                    onDrop={handleDrop}
+                  />
+                </div>
+              </main>
             </div>
           )}
 
-          {/* Kanban Board */}
-          <main className="flex-1 px-8 pb-8">
-            <div className="flex gap-6 overflow-x-auto pb-4">
-              <KanbanColumn
-                title="Por Hacer"
-                status="todo"
-                tasks={todoTasks}
-                color="accent"
-                executions={executions}
-                onViewTask={handleViewTask}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteRequest}
-                onStatusChange={handleStatusChange}
-                onDrop={handleDrop}
-              />
-              <KanbanColumn
-                title="En Progreso"
-                status="in_progress"
-                tasks={inProgressTasks}
-                color="warning"
-                executions={executions}
-                onViewTask={handleViewTask}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteRequest}
-                onStatusChange={handleStatusChange}
-                onDrop={handleDrop}
-              />
-              <KanbanColumn
-                title="Completadas"
-                status="done"
-                tasks={doneTasks}
-                color="success"
-                executions={executions}
-                onViewTask={handleViewTask}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteRequest}
-                onStatusChange={handleStatusChange}
-                onDrop={handleDrop}
-              />
-            </div>
-          </main>
+          {currentPage === "stats" && (
+            <StatsDashboard tasks={tasks} loading={loading} error={error} onRetry={loadData} />
+          )}
+
+          {currentPage === "config" && (
+            <SettingsPage
+              loading={loading}
+              error={error}
+              onRetry={loadData}
+              onDataChanged={loadData}
+            />
+          )}
         </div>
-      )}
-
-      {currentPage === "stats" && (
-        <StatsDashboard tasks={tasks} loading={loading} error={error} onRetry={loadData} />
-      )}
-
-      {currentPage === "config" && (
-        <SettingsPage loading={loading} error={error} onRetry={loadData} onDataChanged={loadData} />
-      )}
+      </div>
 
       {currentPage === "workspace" && <WorkspacePage />}
 
