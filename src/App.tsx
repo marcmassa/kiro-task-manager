@@ -134,12 +134,6 @@ export default function App() {
   // ── Derived data ─────────────────────────────────────────────────────────
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
-  // SDD columns: only show if there are tasks in SDD phases
-  const hasSddTasks = tasks.some((t) => {
-    const exec = executions.get(t.id) ?? null;
-    return exec && exec.state !== "done" && exec.sdd_phase != null;
-  });
-
   const todoTasks = tasks.filter(
     (t) => effectiveColumn(t, executions.get(t.id) ?? null) === "todo",
   );
@@ -349,6 +343,9 @@ export default function App() {
             <HomePage
               tasks={tasks}
               todoCount={todoTasks.length}
+              requirementsCount={requirementsTasks.length}
+              designCount={designTasks.length}
+              tasksCount={sddTasksTasks.length}
               inProgressCount={inProgressTasks.length}
               doneCount={doneTasks.length}
               onNavigate={(page) => setCurrentPage(page as Page)}
@@ -465,45 +462,39 @@ export default function App() {
                   onStatusChange={handleStatusChange}
                   onDrop={handleDrop}
                 />
-                {hasSddTasks && (
-                  <KanbanColumn
-                    title="Requirements"
-                    tasks={requirementsTasks}
-                    color="purple"
-                    executions={executions}
-                    onViewTask={handleViewTask}
-                    onEditTask={handleEditTask}
-                    onDeleteTask={handleDeleteRequest}
-                    onStatusChange={handleStatusChange}
-                    isSdd
-                  />
-                )}
-                {hasSddTasks && (
-                  <KanbanColumn
-                    title="Diseño"
-                    tasks={designTasks}
-                    color="indigo"
-                    executions={executions}
-                    onViewTask={handleViewTask}
-                    onEditTask={handleEditTask}
-                    onDeleteTask={handleDeleteRequest}
-                    onStatusChange={handleStatusChange}
-                    isSdd
-                  />
-                )}
-                {hasSddTasks && (
-                  <KanbanColumn
-                    title="Tasks"
-                    tasks={sddTasksTasks}
-                    color="yellow"
-                    executions={executions}
-                    onViewTask={handleViewTask}
-                    onEditTask={handleEditTask}
-                    onDeleteTask={handleDeleteRequest}
-                    onStatusChange={handleStatusChange}
-                    isSdd
-                  />
-                )}
+                <KanbanColumn
+                  title="Requirements"
+                  tasks={requirementsTasks}
+                  color="purple"
+                  executions={executions}
+                  onViewTask={handleViewTask}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteRequest}
+                  onStatusChange={handleStatusChange}
+                  isSdd
+                />
+                <KanbanColumn
+                  title="Diseño"
+                  tasks={designTasks}
+                  color="indigo"
+                  executions={executions}
+                  onViewTask={handleViewTask}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteRequest}
+                  onStatusChange={handleStatusChange}
+                  isSdd
+                />
+                <KanbanColumn
+                  title="Tasks"
+                  tasks={sddTasksTasks}
+                  color="yellow"
+                  executions={executions}
+                  onViewTask={handleViewTask}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteRequest}
+                  onStatusChange={handleStatusChange}
+                  isSdd
+                />
                 <KanbanColumn
                   title="En Progreso"
                   status="in_progress"
@@ -536,6 +527,7 @@ export default function App() {
         {currentPage === "stats" && (
           <StatsDashboard
             tasks={tasks}
+            executions={executions}
             loading={loading}
             error={error}
             onRetry={loadData}

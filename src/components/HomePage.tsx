@@ -15,6 +15,9 @@ import { PageHeader } from "./ui/PageHeader";
 interface HomePageProps {
   tasks: Task[];
   todoCount: number;
+  requirementsCount: number;
+  designCount: number;
+  tasksCount: number;
   inProgressCount: number;
   doneCount: number;
   onNavigate: (page: string) => void;
@@ -25,6 +28,9 @@ interface HomePageProps {
 export function HomePage({
   tasks,
   todoCount,
+  requirementsCount,
+  designCount,
+  tasksCount,
   inProgressCount,
   doneCount,
   onNavigate,
@@ -207,6 +213,48 @@ export function HomePage({
               </div>
               <p className="text-lg font-semibold text-white">{doneCount}</p>
             </div>
+          </div>
+        </div>
+
+        {/* SDD Pipeline */}
+        <div className="home-card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-200">Pipeline SDD</h2>
+            <button
+              onClick={() => onNavigate("kanban")}
+              className="text-xs text-accent-400 hover:text-accent-300 flex items-center gap-1 transition-colors"
+            >
+              Ver tablero <ArrowRightIcon size={12} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+            {(
+              [
+                { label: "Por Hacer", count: todoCount, dot: "bg-muted-500" },
+                { label: "Requirements", count: requirementsCount, dot: "bg-purple-400" },
+                { label: "Diseño", count: designCount, dot: "bg-indigo-400" },
+                { label: "Tasks", count: tasksCount, dot: "bg-yellow-400" },
+                { label: "En Progreso", count: inProgressCount, dot: "bg-warning" },
+                { label: "Completadas", count: doneCount, dot: "bg-success" },
+              ] as const
+            ).map((col, i, arr) => (
+              <div key={col.label} className="flex items-center gap-1 shrink-0">
+                <div className="flex flex-col items-center gap-1 px-2">
+                  <span
+                    className={`text-base font-bold ${col.count > 0 ? "text-white" : "text-muted-600"}`}
+                  >
+                    {col.count}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
+                    <span className="text-[10px] text-muted-400 whitespace-nowrap">{col.label}</span>
+                  </div>
+                </div>
+                {i < arr.length - 1 && (
+                  <ArrowRightIcon size={10} className="text-muted-600 shrink-0" />
+                )}
+              </div>
+            ))}
           </div>
         </div>
 

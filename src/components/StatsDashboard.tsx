@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Task } from "../types";
+import type { Task, AgentExecution } from "../types";
 import { ChartRenderer } from "./ChartRenderer";
 import { calculateStats } from "../utils/statsCalculator";
 import type { StatsData } from "../utils/statsCalculator";
@@ -73,6 +73,7 @@ function MetricTile({ label, value, sub, variant }: MetricTileProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 interface StatsDashboardProps {
   tasks: Task[];
+  executions?: Map<number, AgentExecution>;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -82,6 +83,7 @@ interface StatsDashboardProps {
 
 export function StatsDashboard({
   tasks,
+  executions,
   loading,
   error,
   onRetry,
@@ -98,6 +100,18 @@ export function StatsDashboard({
       return { stats: null, derivedError: "Error al calcular las estadísticas. Intenta de nuevo." };
     }
   }, [tasks]);
+
+  const sddPhaseCounts = useMemo(() => {
+    if (!executions) return null;
+    const counts = { requirements: 0, design: 0, tasks: 0, execution: 0 };
+    for (const exec of executions.values()) {
+      if (exec.state !== "done" && exec.sdd_phase && exec.sdd_phase in counts) {
+        counts[exec.sdd_phase as keyof typeof counts]++;
+      }
+    }
+    const total = counts.requirements + counts.design + counts.tasks + counts.execution;
+    return total > 0 ? counts : null;
+  }, [executions]);
 
   const displayError = error || derivedError;
 
@@ -409,6 +423,45 @@ export function StatsDashboard({
                 </div>
               </div>
             </Card>
+
+            {/* Pipeline SDD */}
+            {sddPhaseCounts && (
+              <Card>
+                <SectionHeader label="Pipeline SDD activo" dotColor="ds-dot-accent bg-purple-500" />
+                <p className="text-xs text-muted-500 -mt-2 mb-4">Tareas en ciclo SDD en curso</p>
+                <div className="space-y-2">
+                  {(
+                    [
+                      { label: "Requirements", count: sddPhaseCounts.requirements, bar: "bg-purple-500" },
+                      { label: "Diseño", count: sddPhaseCounts.design, bar: "bg-indigo-500" },
+                      { label: "Tasks", count: sddPhaseCounts.tasks, bar: "bg-yellow-500" },
+                      { label: "Ejecución", count: sddPhaseCounts.execution, bar: "bg-warning" },
+                    ] as const
+                  ).map((phase) => {
+                    const total =
+                      sddPhaseCounts.requirements +
+                      sddPhaseCounts.design +
+                      sddPhaseCounts.tasks +
+                      sddPhaseCounts.execution;
+                    const pct = total > 0 ? Math.round((phase.count / total) * 100) : 0;
+                    return (
+                      <div key={phase.label} className="flex items-center gap-3">
+                        <span className="text-xs text-muted-400 w-24 shrink-0">{phase.label}</span>
+                        <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${phase.bar} transition-[width] duration-500`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-white tabular-nums w-4 text-right">
+                          {phase.count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
 
             {/* Por categoría */}
             <Card>
