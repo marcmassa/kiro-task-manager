@@ -333,6 +333,13 @@ try {
   db.exec("ALTER TABLE workspace_settings ADD COLUMN repo_current_branch TEXT DEFAULT NULL");
 } catch {}
 
+// FEAT-011: workspace-git — git token column for push/pull authentication
+try {
+  db.exec(
+    "ALTER TABLE workspace_settings ADD COLUMN git_token_encrypted TEXT NOT NULL DEFAULT ''",
+  );
+} catch {}
+
 // FEAT-011: workspace-git — file references and changes tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS task_file_references (

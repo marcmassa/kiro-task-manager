@@ -29,6 +29,8 @@ import type {
   FileChange,
   FileContentResponse,
   DirectoryEntry,
+  GitStatusFile,
+  GitBranchInfo,
 } from "./types";
 
 const BASE_URL = "/api";
@@ -463,4 +465,103 @@ export async function fetchFileContent(path: string): Promise<FileContentRespons
 export async function fetchDirectoryTree(path?: string): Promise<{ entries: DirectoryEntry[] }> {
   const params = path ? `?path=${encodeURIComponent(path)}` : "";
   return request<{ entries: DirectoryEntry[] }>(`${BASE_URL}/workspace/tree${params}`);
+}
+
+/** PUT /api/workspace/file — save file content to workspace. */
+export async function saveFileContent(
+  filePath: string,
+  content: string,
+): Promise<{ ok: boolean; size: number }> {
+  return request<{ ok: boolean; size: number }>(`${BASE_URL}/workspace/file`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: filePath, content }),
+  });
+}
+
+/** POST /api/workspace/upload — upload a file to the workspace. */
+export async function uploadWorkspaceFile(
+  file: File,
+  dirPath?: string,
+): Promise<{ ok: boolean; filePath: string; size: number }> {
+  const form = new FormData();
+  form.append("file", file);
+  const params = dirPath ? `?path=${encodeURIComponent(dirPath)}` : "";
+  return request<{ ok: boolean; filePath: string; size: number }>(
+    `${BASE_URL}/workspace/upload${params}`,
+    { method: "POST", body: form },
+  );
+}
+
+/** GET /api/workspace/changes — list recent file changes across all tasks. */
+export async function fetchWorkspaceChanges(limit?: number): Promise<FileChange[]> {
+  const params = limit ? `?limit=${limit}` : "";
+  return request<FileChange[]>(`${BASE_URL}/workspace/changes${params}`);
+}
+
+// ── FEAT-011: Git Operations (R16-R20) ──────────────────────────────────────
+
+/** GET /api/workspace/git/status — lista de ficheros con estado Git. */
+export async function fetchGitStatus(): Promise<{ files: GitStatusFile[] }> {
+  return request<{ files: GitStatusFile[] }>(`${BASE_URL}/workspace/git/status`);
+}
+
+/** POST /api/workspace/git/stage — añade ficheros al staging area. */
+export async function gitStageFiles(paths: string[]): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/stage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paths }),
+  });
+}
+
+/** POST /api/workspace/git/unstage — quita ficheros del staging area. */
+export async function gitUnstageFiles(paths: string[]): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/unstage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paths }),
+  });
+}
+
+/** POST /api/workspace/git/commit — crea un commit con mensaje. */
+export async function gitCommitChanges(
+  message: string,
+): Promise<{ ok: boolean; hash: string }> {
+  return request<{ ok: boolean; hash: string }>(`${BASE_URL}/workspace/git/commit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+}
+
+/** POST /api/workspace/git/push — push al remoto (requiere token). */
+export async function gitPushChanges(): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/push`, {
+    method: "POST",
+  });
+}
+
+/** POST /api/workspace/git/pull — pull del remoto (requiere token). */
+export async function gitPullChanges(): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/pull`, {
+    method: "POST",
+  });
+}
+
+/** GET /api/workspace/git/branches — lista de ramas. */
+export async function fetchGitBranches(): Promise<GitBranchInfo> {
+  return request<GitBranchInfo>(`${BASE_URL}/workspace/git/branches`);
+}
+
+/** POST /api/workspace/git/checkout — cambiar o crear rama. */
+export async function gitCheckoutBranch(
+  branch: string,
+  create?: boolean,
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${BASE_URL}/workspace/git/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ branch, create }),
+  });
 }

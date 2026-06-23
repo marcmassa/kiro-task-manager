@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import db from "./db/database";
 import path from "path";
-import { existsSync, statSync, readdirSync } from "node:fs";
+import { existsSync, statSync, readdirSync, mkdirSync } from "node:fs";
 import { AgentEngine } from "./src/agent/engine";
 import {
   validateRepoPath,
@@ -49,7 +49,17 @@ import {
   applyMcpConfig,
 } from "./src/utils/mcpHandlers";
 import { probeMcpServer } from "./src/utils/mcpProbe";
-import { decryptApiKey } from "./src/utils/crypto";
+import { decryptApiKey, encryptApiKey } from "./src/utils/crypto";
+import {
+  gitStatus,
+  gitStage,
+  gitUnstage,
+  gitCommit,
+  gitPush,
+  gitPull,
+  gitBranches,
+  gitCheckout,
+} from "./src/utils/gitOperations";
 
 const PUBLIC_DIR = path.resolve(import.meta.dir, "public");
 const PACKAGE_ROOT = import.meta.dir;
@@ -410,7 +420,7 @@ const app = new Elysia()
   .get("/api/workspace/repo", () => {
     const row = db
       .query(
-        "SELECT repo_path, repo_remote_url, repo_default_branch, repo_status, repo_current_branch FROM workspace_settings WHERE id = 1",
+        "SELECT repo_path, repo_remote_url, repo_default_branch, repo_status, repo_current_branch, git_token_encrypted FROM workspace_settings WHERE id = 1",
       )
       .get() as any;
     return {
@@ -419,23 +429,41 @@ const app = new Elysia()
       repoDefaultBranch: row?.repo_default_branch ?? "main",
       repoStatus: row?.repo_status ?? "not_configured",
       currentBranch: row?.repo_current_branch ?? null,
+      gitTokenConfigured: !!(row?.git_token_encrypted),
     };
   })
 
-  .put("/api/workspace/repo", ({ body, set }) => {
-    const { repoPath, repoRemoteUrl, repoDefaultBranch } = body as any;
+  .put("/api/workspace/repo", async ({ body, set }) => {
+    const { repoPath, repoRemoteUrl, repoDefaultBranch, gitToken } = body as any;
+
+    // Handle git token: encrypt and store (or clear)
+    if (gitToken !== undefined) {
+      if (gitToken && gitToken.trim()) {
+        const encrypted = await encryptApiKey(gitToken.trim());
+        db.prepare("UPDATE workspace_settings SET git_token_encrypted = ? WHERE id = 1").run(
+          encrypted,
+        );
+      } else {
+        // Clear token
+        db.prepare("UPDATE workspace_settings SET git_token_encrypted = '' WHERE id = 1").run();
+      }
+    }
 
     if (repoPath === null || repoPath === undefined || repoPath.trim() === "") {
       // Disconnect / clear config
       db.prepare(
         "UPDATE workspace_settings SET repo_path = NULL, repo_remote_url = ?, repo_default_branch = ?, repo_status = 'not_configured', repo_current_branch = NULL WHERE id = 1",
       ).run(repoRemoteUrl ?? null, repoDefaultBranch ?? "main");
+      const tokenRow = db
+        .query("SELECT git_token_encrypted FROM workspace_settings WHERE id = 1")
+        .get() as any;
       return {
         repoPath: null,
         repoRemoteUrl: repoRemoteUrl ?? null,
         repoDefaultBranch: repoDefaultBranch ?? "main",
         repoStatus: "not_configured",
         currentBranch: null,
+        gitTokenConfigured: !!(tokenRow?.git_token_encrypted),
       };
     }
 
@@ -456,12 +484,16 @@ const app = new Elysia()
       result.currentBranch,
     );
 
+    const tokenRow = db
+      .query("SELECT git_token_encrypted FROM workspace_settings WHERE id = 1")
+      .get() as any;
     return {
       repoPath: result.repoPath,
       repoRemoteUrl: repoRemoteUrl ?? null,
       repoDefaultBranch: repoDefaultBranch ?? "main",
       repoStatus: "connected",
       currentBranch: result.currentBranch,
+      gitTokenConfigured: !!(tokenRow?.git_token_encrypted),
     };
   })
 
@@ -647,6 +679,284 @@ const app = new Elysia()
         return a.name.localeCompare(b.name);
       });
     return { entries };
+  })
+
+  .put("/api/workspace/file", async ({ body, set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado" };
+    }
+    const { path: filePath, content } = body as { path?: string; content?: string };
+    if (!filePath || content === undefined || content === null) {
+      set.status = 400;
+      return { error: "Se requieren los campos 'path' y 'content'" };
+    }
+    const resolved = resolveInSandbox(ws.repo_path, filePath);
+    if (!resolved) {
+      set.status = 422;
+      return { error: "Ruta inválida o fuera del directorio de trabajo" };
+    }
+    // Determine change type
+    const existed = existsSync(resolved);
+    const changeType = existed ? "modified" : "created";
+    // Ensure parent directory exists
+    const dir = path.dirname(resolved);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    // Write file
+    await Bun.write(resolved, content);
+    const size = Buffer.byteLength(content, "utf-8");
+    // Register File_Change (manual edit, no agent_execution_id, task_id = 0)
+    db.prepare(
+      "INSERT INTO task_file_changes (task_id, file_path, change_type, agent_execution_id) VALUES (0, ?, ?, NULL)",
+    ).run(filePath, changeType);
+    return { ok: true, size };
+  })
+
+  .post("/api/workspace/upload", async ({ query, body, set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado" };
+    }
+    const dirPath = (query.path as string) || "";
+    let targetDir: string;
+    if (dirPath) {
+      const resolved = resolveInSandbox(ws.repo_path, dirPath);
+      if (!resolved) {
+        set.status = 422;
+        return { error: "Ruta de directorio inválida o fuera del workspace" };
+      }
+      targetDir = resolved;
+    } else {
+      targetDir = ws.repo_path;
+    }
+    // Ensure target directory exists
+    if (!existsSync(targetDir)) {
+      mkdirSync(targetDir, { recursive: true });
+    }
+    // Handle multipart file upload
+    const formData = body as any;
+    const file = formData?.file;
+    if (!file || !(file instanceof Blob)) {
+      set.status = 400;
+      return { error: "Se requiere un fichero en el campo 'file'" };
+    }
+    const filename = (file as File).name || "uploaded_file";
+    const filePath = path.join(targetDir, filename);
+    // Verify the resolved path is still in sandbox
+    const relativePath = dirPath ? `${dirPath}/${filename}` : filename;
+    const sandboxCheck = resolveInSandbox(ws.repo_path, relativePath);
+    if (!sandboxCheck) {
+      set.status = 422;
+      return { error: "El nombre del fichero produce una ruta inválida" };
+    }
+    // Write the uploaded file
+    const content = await file.arrayBuffer();
+    await Bun.write(filePath, content);
+    const size = content.byteLength;
+    // Register File_Change
+    db.prepare(
+      "INSERT INTO task_file_changes (task_id, file_path, change_type, agent_execution_id) VALUES (0, ?, 'created', NULL)",
+    ).run(relativePath);
+    return { ok: true, filePath: relativePath, size };
+  })
+
+  .get("/api/workspace/changes", ({ query }) => {
+    const limit = Number(query.limit) || 50;
+    const rows = db
+      .query(
+        "SELECT id, task_id, file_path, change_type, agent_execution_id, created_at FROM task_file_changes ORDER BY created_at DESC LIMIT ?",
+      )
+      .all(limit) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      taskId: r.task_id,
+      filePath: r.file_path,
+      changeType: r.change_type,
+      agentExecutionId: r.agent_execution_id,
+      createdAt: r.created_at,
+    }));
+  })
+
+  // ── FEAT-011: Git Operations (R16-R20) — Human-only endpoints ─────────────
+
+  .get("/api/workspace/git/status", async ({ set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado o desconectado" };
+    }
+    try {
+      const files = await gitStatus(ws.repo_path);
+      return { files };
+    } catch (e) {
+      set.status = 500;
+      return { error: e instanceof Error ? e.message : "Error al obtener estado Git" };
+    }
+  })
+
+  .post("/api/workspace/git/stage", async ({ body, set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado o desconectado" };
+    }
+    const { paths } = body as { paths?: string[] };
+    if (!paths || !Array.isArray(paths) || paths.length === 0) {
+      set.status = 400;
+      return { error: "Se requiere un array 'paths' con al menos un fichero" };
+    }
+    try {
+      await gitStage(ws.repo_path, paths);
+      return { ok: true };
+    } catch (e) {
+      set.status = 500;
+      return { error: e instanceof Error ? e.message : "Error al hacer stage" };
+    }
+  })
+
+  .post("/api/workspace/git/unstage", async ({ body, set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado o desconectado" };
+    }
+    const { paths } = body as { paths?: string[] };
+    if (!paths || !Array.isArray(paths) || paths.length === 0) {
+      set.status = 400;
+      return { error: "Se requiere un array 'paths' con al menos un fichero" };
+    }
+    try {
+      await gitUnstage(ws.repo_path, paths);
+      return { ok: true };
+    } catch (e) {
+      set.status = 500;
+      return { error: e instanceof Error ? e.message : "Error al hacer unstage" };
+    }
+  })
+
+  .post("/api/workspace/git/commit", async ({ body, set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado o desconectado" };
+    }
+    const { message } = body as { message?: string };
+    if (!message || !message.trim()) {
+      set.status = 400;
+      return { error: "Se requiere un mensaje de commit" };
+    }
+    try {
+      const hash = await gitCommit(ws.repo_path, message.trim());
+      return { ok: true, hash };
+    } catch (e) {
+      set.status = 500;
+      return { error: e instanceof Error ? e.message : "Error al hacer commit" };
+    }
+  })
+
+  .post("/api/workspace/git/push", async ({ set }) => {
+    const ws = db
+      .query(
+        "SELECT repo_path, repo_status, git_token_encrypted FROM workspace_settings WHERE id = 1",
+      )
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado o desconectado" };
+    }
+    if (!ws.git_token_encrypted) {
+      set.status = 422;
+      return { error: "Se requiere configurar un token de acceso en Configuración" };
+    }
+    try {
+      await gitPush(ws.repo_path, ws.git_token_encrypted);
+      return { ok: true };
+    } catch (e) {
+      set.status = 500;
+      return { error: e instanceof Error ? e.message : "Error al hacer push" };
+    }
+  })
+
+  .post("/api/workspace/git/pull", async ({ set }) => {
+    const ws = db
+      .query(
+        "SELECT repo_path, repo_status, git_token_encrypted FROM workspace_settings WHERE id = 1",
+      )
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado o desconectado" };
+    }
+    if (!ws.git_token_encrypted) {
+      set.status = 422;
+      return { error: "Se requiere configurar un token de acceso en Configuración" };
+    }
+    try {
+      await gitPull(ws.repo_path, ws.git_token_encrypted);
+      return { ok: true };
+    } catch (e) {
+      set.status = 500;
+      return { error: e instanceof Error ? e.message : "Error al hacer pull" };
+    }
+  })
+
+  .get("/api/workspace/git/branches", async ({ set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado o desconectado" };
+    }
+    try {
+      const info = await gitBranches(ws.repo_path);
+      return info;
+    } catch (e) {
+      set.status = 500;
+      return { error: e instanceof Error ? e.message : "Error al listar ramas" };
+    }
+  })
+
+  .post("/api/workspace/git/checkout", async ({ body, set }) => {
+    const ws = db
+      .query("SELECT repo_path, repo_status FROM workspace_settings WHERE id = 1")
+      .get() as any;
+    if (!ws || ws.repo_status !== "connected" || !ws.repo_path) {
+      set.status = 422;
+      return { error: "Repositorio no configurado o desconectado" };
+    }
+    const { branch, create } = body as { branch?: string; create?: boolean };
+    if (!branch || !branch.trim()) {
+      set.status = 400;
+      return { error: "Se requiere el nombre de la rama" };
+    }
+    try {
+      await gitCheckout(ws.repo_path, branch.trim(), create);
+      // Update current branch in DB
+      db.prepare("UPDATE workspace_settings SET repo_current_branch = ? WHERE id = 1").run(
+        branch.trim(),
+      );
+      return { ok: true, branch: branch.trim() };
+    } catch (e) {
+      set.status = 500;
+      return { error: e instanceof Error ? e.message : "Error al cambiar de rama" };
+    }
   })
 
   // ── FEAT-010: Agent Engine routes ─────────────────────────────────────────

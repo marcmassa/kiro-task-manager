@@ -299,3 +299,19 @@ export interface FileContentResponse {
   size: number;
   language: string;
 }
+
+
+// ── FEAT-011: Git Operations Extension (R16-R20) ────────────────────────────
+
+/** Estado de un fichero en git status. */
+export interface GitStatusFile {
+  path: string;
+  status: "modified" | "added" | "deleted" | "renamed" | "untracked";
+  staged: boolean;
+}
+
+/** Información de ramas del repositorio. */
+export interface GitBranchInfo {
+  branches: string[];
+  current: string;
+}

@@ -19,9 +19,18 @@ import { StatsDashboard } from "./components/StatsDashboard";
 import { SettingsPage } from "./components/SettingsPage";
 import { KiroIllustration } from "./components/KiroIllustration";
 import { PageHeader } from "./components/ui/PageHeader";
-import { PlusIcon, KanbanIcon, HomeIcon, ChartIcon, SettingsIcon, LayersIcon } from "./Icons";
+import { WorkspacePage } from "./components/WorkspacePage";
+import {
+  PlusIcon,
+  KanbanIcon,
+  HomeIcon,
+  ChartIcon,
+  SettingsIcon,
+  LayersIcon,
+  CodeIcon,
+} from "./Icons";
 
-type Page = "home" | "kanban" | "stats" | "config";
+type Page = "home" | "kanban" | "stats" | "config" | "workspace";
 
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -201,6 +210,14 @@ export default function App() {
             onClick={() => setCurrentPage("kanban")}
           >
             <KanbanIcon size={20} />
+          </button>
+          <button
+            className={`sidebar-item ${currentPage === "workspace" ? "active" : ""}`}
+            aria-label="Workspace"
+            title="Workspace"
+            onClick={() => setCurrentPage("workspace")}
+          >
+            <CodeIcon size={20} />
           </button>
           <button
             className={`sidebar-item ${currentPage === "stats" ? "active" : ""}`}
@@ -390,6 +407,8 @@ export default function App() {
       {currentPage === "config" && (
         <SettingsPage loading={loading} error={error} onRetry={loadData} onDataChanged={loadData} />
       )}
+
+      {currentPage === "workspace" && <WorkspacePage />}
 
       {/* Modals */}
       {showTaskModal && (

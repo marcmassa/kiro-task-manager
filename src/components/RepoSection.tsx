@@ -14,6 +14,8 @@ export function RepoSection(): JSX.Element {
   const [repoPath, setRepoPath] = useState("");
   const [repoRemoteUrl, setRepoRemoteUrl] = useState("");
   const [repoDefaultBranch, setRepoDefaultBranch] = useState("main");
+  const [gitToken, setGitToken] = useState("");
+  const [gitTokenConfigured, setGitTokenConfigured] = useState(false);
   const [validating, setValidating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [validationResult, setValidationResult] = useState<{
@@ -31,6 +33,7 @@ export function RepoSection(): JSX.Element {
       setRepoPath(cfg.repoPath ?? "");
       setRepoRemoteUrl(cfg.repoRemoteUrl ?? "");
       setRepoDefaultBranch(cfg.repoDefaultBranch || "main");
+      setGitTokenConfigured(!!(cfg as any).gitTokenConfigured);
     } catch {
       // silently ignore — user will see "No configurado"
     }
@@ -73,12 +76,19 @@ export function RepoSection(): JSX.Element {
     setSaving(true);
     setSaveMessage(null);
     try {
-      const updated = await updateRepoConfig({
+      const payload: any = {
         repoPath: repoPath.trim() || null,
         repoRemoteUrl: repoRemoteUrl.trim() || null,
         repoDefaultBranch: repoDefaultBranch.trim() || "main",
-      });
+      };
+      // Only send gitToken if user typed something (or wants to clear it)
+      if (gitToken !== "") {
+        payload.gitToken = gitToken;
+      }
+      const updated = await updateRepoConfig(payload);
       setConfig(updated);
+      setGitTokenConfigured(!!(updated as any).gitTokenConfigured);
+      setGitToken(""); // clear after save
       setSaveMessage({ kind: "ok", text: "Configuración guardada" });
       setTimeout(() => setSaveMessage(null), 2500);
     } catch (e) {
@@ -183,6 +193,37 @@ export function RepoSection(): JSX.Element {
             className="input-field"
             aria-label="Rama por defecto del repositorio"
           />
+        </label>
+
+        {/* Git token field */}
+        <label className="block">
+          <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+            Token de acceso personal
+          </span>
+          <div className="flex items-center gap-2">
+            <input
+              type="password"
+              value={gitToken}
+              onChange={(e) => setGitToken(e.target.value)}
+              placeholder="ghp_xxxxxxxxxxxx"
+              className="input-field flex-1"
+              aria-label="Token de acceso personal para Git"
+              autoComplete="off"
+            />
+            <span
+              className={`text-xs px-2 py-1 rounded-full shrink-0 ${
+                gitTokenConfigured
+                  ? "bg-green-900/30 text-green-400 border border-green-700/50"
+                  : "bg-gray-800/50 text-gray-500 border border-gray-700/50"
+              }`}
+              aria-label={gitTokenConfigured ? "Token configurado" : "Sin token"}
+            >
+              {gitTokenConfigured ? "✓ Token configurado" : "Sin token"}
+            </span>
+          </div>
+          <p className="text-xs text-muted-500 mt-1">
+            Necesario para push/pull. Se cifra antes de almacenarse.
+          </p>
         </label>
       </div>
 
