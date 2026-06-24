@@ -3,6 +3,7 @@ import { Task, TaskStatus, AgentExecution } from "../types";
 import { TaskCard } from "./TaskCard";
 import { KiroIllustration } from "./KiroIllustration";
 import { columnColorTokens } from "../utils/columnColors";
+import { useT } from "../i18n/useT";
 
 interface KanbanColumnProps {
   title: string;
@@ -43,6 +44,7 @@ export function KanbanColumn({
   onStatusChange,
   onDrop,
 }: KanbanColumnProps) {
+  const t = useT();
   const colors = resolveColor(color);
   const [isDragOver, setIsDragOver] = useState(false);
   const dropTarget = columnId ?? status;
@@ -101,7 +103,7 @@ export function KanbanColumn({
         {tasks.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center border border-dashed border-white/10 rounded-xl">
             <KiroIllustration mood="vacio" size={48} className="opacity-70" />
-            <p className="text-sm text-muted-400">No hay tareas aquí</p>
+            <p className="text-sm text-muted-400">{t("kanban.emptyColumn")}</p>
           </div>
         ) : (
           tasks.map((task) => (

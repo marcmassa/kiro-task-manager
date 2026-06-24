@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { GitBranchInfo } from "../types";
+import { useT } from "../i18n/useT";
 
 interface BranchSelectorProps {
   branchInfo: GitBranchInfo | null;
@@ -18,6 +19,7 @@ export function BranchSelector({
   hasChanges,
   onCheckout,
 }: BranchSelectorProps): JSX.Element {
+  const t = useT();
   const [showNewBranch, setShowNewBranch] = useState(false);
   const [newBranchName, setNewBranchName] = useState("");
   const [showWarning, setShowWarning] = useState(false);
@@ -58,21 +60,21 @@ export function BranchSelector({
     <div className="flex items-center gap-2 relative">
       {/* Branch dropdown */}
       <label htmlFor="branch-select" className="sr-only">
-        Rama actual
+        {t("branch.current")}
       </label>
       <select
         id="branch-select"
         value={branchInfo?.current ?? ""}
         onChange={(e) => handleBranchChange(e.target.value)}
         className="bg-surface-400 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-muted-200 focus:outline-none focus:ring-2 focus:ring-accent min-w-[140px]"
-        aria-label="Seleccionar rama"
+        aria-label={t("branch.select")}
       >
         {branchInfo?.branches.map((b) => (
           <option key={b} value={b}>
             {b}
           </option>
         ))}
-        {!branchInfo && <option value="">Cargando...</option>}
+        {!branchInfo && <option value="">{t("branch.loading")}</option>}
       </select>
 
       {/* New branch button/input */}
@@ -85,16 +87,16 @@ export function BranchSelector({
             onKeyDown={(e) => e.key === "Enter" && handleCreateBranch()}
             placeholder="nombre-rama"
             className="bg-surface-400 border border-white/10 rounded-lg px-2 py-1 text-sm text-muted-200 w-32 focus:outline-none focus:ring-2 focus:ring-accent"
-            aria-label="Nombre de la nueva rama"
+            aria-label={t("branch.newBranchName")}
             autoFocus
           />
           <button
             onClick={handleCreateBranch}
             disabled={!newBranchName.trim()}
             className="text-xs px-2 py-1 bg-success-600 hover:bg-success-500 disabled:bg-surface-400 disabled:text-muted-500 text-white rounded-lg transition-colors"
-            aria-label="Crear nueva rama"
+            aria-label={t("branch.createBranch")}
           >
-            Crear
+            {t("action.create")}
           </button>
           <button
             onClick={() => {
@@ -102,7 +104,7 @@ export function BranchSelector({
               setNewBranchName("");
             }}
             className="text-xs px-2 py-1 text-muted-400 hover:text-white transition-colors"
-            aria-label="Cancelar creación de rama"
+            aria-label={t("branch.cancelBranchCreation")}
           >
             ✕
           </button>
@@ -111,9 +113,9 @@ export function BranchSelector({
         <button
           onClick={() => setShowNewBranch(true)}
           className="text-xs px-2 py-1.5 bg-surface-400/80 hover:bg-surface-300 text-muted-300 rounded-lg transition-colors"
-          aria-label="Nueva rama"
+          aria-label={t("branch.newBranch")}
         >
-          + Rama
+          {t("branch.newBranchButton")}
         </button>
       )}
 
@@ -121,22 +123,22 @@ export function BranchSelector({
       {showWarning && (
         <div className="absolute top-full left-0 mt-2 z-50 bg-surface-400 border border-warning-500/50 rounded-lg p-3 shadow-card min-w-[260px]">
           <p className="text-sm text-warning-300 mb-2">
-            ⚠️ Hay cambios sin commitear. ¿Cambiar de rama igualmente?
+            {t("branch.uncommittedWarning")}
           </p>
           <div className="flex gap-2">
             <button
               onClick={confirmChange}
               className="text-xs px-3 py-1 bg-warning-600 hover:bg-warning-500 text-white rounded-lg transition-colors"
-              aria-label="Confirmar cambio de rama"
+              aria-label={t("branch.confirmChange")}
             >
-              Cambiar
+              {t("branch.switch")}
             </button>
             <button
               onClick={cancelChange}
               className="text-xs px-3 py-1 bg-surface-400/80 hover:bg-surface-300 text-muted-300 rounded-lg transition-colors"
-              aria-label="Cancelar cambio de rama"
+              aria-label={t("branch.cancelChange")}
             >
-              Cancelar
+              {t("action.cancel")}
             </button>
           </div>
         </div>

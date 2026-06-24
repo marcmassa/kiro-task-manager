@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { WarningIcon } from "../Icons";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
 
 interface ConfirmDialogProps {
   title: string;
@@ -33,9 +35,12 @@ export function ConfirmDialog({
   message,
   onConfirm,
   onCancel,
-  confirmLabel = "Eliminar",
-  cancelLabel = "Cancelar",
+  confirmLabel,
+  cancelLabel,
 }: ConfirmDialogProps) {
+  const t = useT();
+  const resolvedConfirmLabel = confirmLabel ?? i18n.t("action.delete");
+  const resolvedCancelLabel = cancelLabel ?? i18n.t("action.cancel");
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -93,17 +98,17 @@ export function ConfirmDialog({
             ref={confirmRef}
             onClick={onConfirm}
             className="btn-danger flex-1"
-            aria-label={`${confirmLabel} — acción destructiva`}
+            aria-label={t("confirm.destructiveLabel", { label: resolvedConfirmLabel })}
           >
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </button>
           <button
             ref={cancelRef}
             onClick={onCancel}
             className="btn-secondary flex-1"
-            aria-label={cancelLabel}
+            aria-label={resolvedCancelLabel}
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
         </div>
       </div>

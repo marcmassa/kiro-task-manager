@@ -1,3 +1,5 @@
+import { useT } from "../i18n/useT";
+
 interface EditorTab {
   id: string;
   filePath: string;
@@ -17,6 +19,7 @@ export function EditorTabs({
   onTabSelect,
   onTabClose,
 }: EditorTabsProps): JSX.Element {
+  const t = useT();
   if (tabs.length === 0) {
     return <div className="h-9 border-b border-white/5 bg-surface-400/30" />;
   }
@@ -25,7 +28,7 @@ export function EditorTabs({
     <div
       className="flex items-center gap-0 h-9 border-b border-white/5 bg-surface-400/30 overflow-x-auto"
       role="tablist"
-      aria-label="Pestañas del editor"
+      aria-label={t("editor.label")}
     >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
@@ -42,13 +45,13 @@ export function EditorTabs({
                 : "text-muted-400 hover:text-muted-300 hover:bg-white/5"
             }`}
             onClick={() => onTabSelect(tab.id)}
-            aria-label={`${fileName}${tab.isDirty ? " (sin guardar)" : ""}`}
+            aria-label={`${fileName}${tab.isDirty ? ` ${t("editor.unsavedIndicator")}` : ""}`}
           >
             {/* Dirty indicator */}
             {tab.isDirty && (
               <span
                 className="w-2 h-2 rounded-full bg-warning shrink-0"
-                aria-label="Cambios sin guardar"
+                aria-label={t("editor.changesUnsaved")}
               />
             )}
             <span className="truncate max-w-[120px]">{fileName}</span>
@@ -60,7 +63,7 @@ export function EditorTabs({
                 onTabClose(tab.id);
               }}
               className="ml-1 w-4 h-4 flex items-center justify-center rounded hover:bg-white/10 text-muted-500 hover:text-white transition-colors"
-              aria-label={`Cerrar ${fileName}`}
+              aria-label={t("editor.closeFile", { name: fileName })}
             >
               ×
             </button>

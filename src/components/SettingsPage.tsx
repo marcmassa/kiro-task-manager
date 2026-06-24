@@ -3,6 +3,8 @@ import { DownloadIcon, TrashIcon, CheckCircleIcon, BellIcon } from "../Icons";
 import { PageHeader } from "./ui/PageHeader";
 import { SectionHeader } from "./ui/SectionHeader";
 import { LoadingState, ErrorState } from "./ui/StateView";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { IntegrationCard } from "./IntegrationCard";
 import { McpServersSection, McpServerForm } from "./McpServersSection";
@@ -83,6 +85,10 @@ export function SettingsPage({
   onWorkspaceChange,
   workspaceSelector,
 }: SettingsPageProps) {
+  const t = useT();
+  const [lang, setLang] = useState<"es" | "en">(
+    () => (i18n.language === "en" ? "en" : "es"),
+  );
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [linearStatus, setLinearStatus] = useState<LinearIntegrationStatus>({
@@ -394,6 +400,12 @@ export function SettingsPage({
     await loadAll();
   }
 
+  function handleLanguageChange(newLang: "es" | "en") {
+    setLang(newLang);
+    localStorage.setItem("lang", newLang);
+    i18n.changeLanguage(newLang);
+  }
+
   if (loading || (!settings && !externalError && !localError)) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-screen">
@@ -573,44 +585,66 @@ export function SettingsPage({
           </div>
         </section>
 
-        {/* ── 4. Gestión de datos ────────────────────────────────── */}
-        <section aria-label="Gestión de datos">
-          <SectionHeader label="Gestión de datos" dotColor="bg-danger" />
+        {/* ── 4. Apariencia ───────────────────────────────────────── */}
+        <section aria-label={t("settings.appearance")}>
+          <SectionHeader label={t("settings.appearance")} dotColor="bg-accent" />
+          <div className="home-card">
+            <p className="text-sm font-medium text-muted-300 mb-3">{t("settings.language")}</p>
+            <div className="flex gap-2">
+              {(["es", "en"] as const).map((code) => (
+                <button
+                  key={code}
+                  onClick={() => handleLanguageChange(code)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-200 ${
+                    lang === code
+                      ? "bg-accent/20 border-accent/40 text-accent-300"
+                      : "bg-surface-400/50 border-white/10 text-muted-300 hover:border-white/20 hover:text-white"
+                  }`}
+                  aria-pressed={lang === code}
+                >
+                  {t(code === "es" ? "settings.language_es" : "settings.language_en")}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── 5. Gestión de datos ────────────────────────────────── */}
+        <section aria-label={t("settings.data")}>
+          <SectionHeader label={t("settings.data")} dotColor="bg-danger" />
           <div className="home-card space-y-4">
             {/* Export row */}
             <div className="flex items-center justify-between gap-4 flex-wrap p-4 rounded-xl bg-surface-400/30 border border-white/5">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white">Exportar tareas (JSON)</p>
-                <p className="text-xs text-muted-400 mt-0.5">
-                  Descarga una copia de seguridad con tareas, comentarios, categorías y prioridades.
-                </p>
+                <p className="text-sm font-medium text-white">{t("settings.exportTitle")}</p>
+                <p className="text-xs text-muted-400 mt-0.5">{t("settings.exportDesc")}</p>
               </div>
               <button
                 onClick={handleExport}
                 className="btn-secondary flex items-center gap-2 shrink-0"
-                aria-label="Exportar todas las tareas en JSON"
+                aria-label={t("settings.exportLabel")}
               >
                 <DownloadIcon size={16} />
-                <span>Exportar</span>
+                <span>{t("settings.exportBtn")}</span>
               </button>
             </div>
 
             {/* Delete row */}
             <div className="flex items-center justify-between gap-4 flex-wrap p-4 rounded-xl bg-danger/5 border border-danger/10">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white">Eliminar todas las tareas</p>
+                <p className="text-sm font-medium text-white">{t("settings.deleteAllTitle")}</p>
                 <p className="text-xs text-muted-400 mt-0.5">
-                  Borra de forma permanente todas las tareas y comentarios.{" "}
-                  <span className="font-semibold text-danger-400">No se puede deshacer.</span>
+                  {t("settings.deleteAllLabel")}{" "}
+                  <span className="font-semibold text-danger-400">{t("settings.deleteAllWarn")}</span>
                 </p>
               </div>
               <button
                 onClick={() => setShowDeleteAllConfirm(true)}
                 className="btn-danger flex items-center gap-2 shrink-0"
-                aria-label="Eliminar todas las tareas"
+                aria-label={t("settings.deleteAllAriaLabel")}
               >
                 <TrashIcon size={16} />
-                <span>Eliminar todas</span>
+                <span>{t("settings.deleteAllButton")}</span>
               </button>
             </div>
           </div>

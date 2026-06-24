@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchWorkspaceChanges } from "../api";
 import type { FileChange } from "../types";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
+
+const LOCALE_MAP: Record<string, string> = { es: "es-ES", en: "en-GB" };
 
 interface ChangesLogPanelProps {
   workspaceId: number;
@@ -8,8 +12,9 @@ interface ChangesLogPanelProps {
 }
 
 function formatTimestamp(dateStr: string): string {
+  const locale = LOCALE_MAP[i18n.language] ?? "es-ES";
   const d = new Date(dateStr);
-  return d.toLocaleString("es-ES", {
+  return d.toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -33,17 +38,18 @@ function changeTypeDot(changeType: string): string {
 function changeTypeLabel(changeType: string): string {
   switch (changeType) {
     case "created":
-      return "creado";
+      return i18n.t("change.created");
     case "modified":
-      return "modificado";
+      return i18n.t("change.modified");
     case "deleted":
-      return "eliminado";
+      return i18n.t("change.deleted");
     default:
       return changeType;
   }
 }
 
 export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelProps): JSX.Element {
+  const t = useT();
   const [collapsed, setCollapsed] = useState(false);
   const [changes, setChanges] = useState<FileChange[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +90,7 @@ export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelPro
   return (
     <section
       className="border-t border-white/5 bg-surface-400/20"
-      aria-label="Registro de cambios del workspace"
+      aria-label={t("workspace.changesPanel")}
     >
       {/* Header toggle */}
       <button
@@ -96,7 +102,7 @@ export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelPro
         <span className="text-[10px]" aria-hidden="true">
           {collapsed ? "▶" : "▼"}
         </span>
-        <span>Registro de cambios</span>
+        <span>{t("workspace.changesLog")}</span>
         <span className="ml-auto text-muted-500">({changes.length})</span>
       </button>
 
@@ -104,9 +110,9 @@ export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelPro
       {!collapsed && (
         <div id="changes-log-content" className="max-h-[180px] overflow-y-auto px-4 pb-3 space-y-1">
           {loading ? (
-            <p className="text-xs text-muted-500">Cargando cambios...</p>
+            <p className="text-xs text-muted-500">{t("workspace.loadingChanges")}</p>
           ) : changes.length === 0 ? (
-            <p className="text-xs text-muted-500">No hay cambios registrados.</p>
+            <p className="text-xs text-muted-500">{t("workspace.noChanges")}</p>
           ) : (
             changes.map((change) => (
               <div
@@ -121,7 +127,7 @@ export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelPro
                     onFileClick(change.filePath);
                   }
                 }}
-                aria-label={`Abrir ${change.filePath} (${changeTypeLabel(change.changeType)})`}
+                aria-label={t("workspace.openChange", { path: change.filePath, type: changeTypeLabel(change.changeType) })}
               >
                 {/* Colored dot */}
                 <span
@@ -134,7 +140,7 @@ export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelPro
                 </span>
                 {/* Origin */}
                 <span className="text-[10px] text-muted-500 shrink-0">
-                  {change.agentExecutionId ? "agente" : "manual"}
+                  {change.agentExecutionId ? t("change.agent") : t("change.manual")}
                 </span>
                 {/* Timestamp */}
                 <span className="text-[10px] text-muted-500 shrink-0">

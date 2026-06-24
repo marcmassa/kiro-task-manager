@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { Workspace } from "../types";
 import { PlusIcon, LayersIcon } from "../Icons";
 import { CreateWorkspaceModal } from "./CreateWorkspaceModal";
+import { useT } from "../i18n/useT";
 
 interface WorkspaceSelectorProps {
   workspaces: Workspace[];
@@ -23,6 +24,7 @@ export function WorkspaceSelector({
   onWorkspaceChange,
   onWorkspaceCreated,
 }: WorkspaceSelectorProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -119,7 +121,7 @@ export function WorkspaceSelector({
             aria-label="Crear nuevo workspace"
           >
             <PlusIcon size={14} />
-            <span className="text-xs">Nuevo workspace</span>
+            <span className="text-xs">{t("workspace.newWorkspace")}</span>
           </button>
         </div>
       )}

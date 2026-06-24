@@ -34,6 +34,7 @@ import { ActivityIndicator } from "./ActivityIndicator";
 import { isAgentComment, shouldShowActivityIndicator } from "../utils/commentUtils";
 import { TaskFileChanges } from "./TaskFileChanges";
 import { SddPhaseSteps } from "./SddPhaseSteps";
+import { useT } from "../i18n/useT";
 
 interface TaskDetailModalProps {
   task: Task;
@@ -83,6 +84,7 @@ export function TaskDetailModal({
   onStatusChange,
   onExecutionChanged,
 }: TaskDetailModalProps) {
+  const t = useT();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [commentAuthor, setCommentAuthor] = useState("Usuario");
@@ -349,7 +351,7 @@ export function TaskDetailModal({
           {/* Description */}
           {task.description && (
             <div>
-              <h3 className="text-sm font-medium text-muted-400 mb-2">Descripción</h3>
+              <h3 className="text-sm font-medium text-muted-400 mb-2">{t("task.description")}</h3>
               <p className="text-gray-300 text-sm leading-relaxed">{task.description}</p>
             </div>
           )}
@@ -715,7 +717,7 @@ export function TaskDetailModal({
               >
                 <path d="M216,72H131.31L104,44.69A15.86,15.86,0,0,0,92.69,40H40A16,16,0,0,0,24,56V200.62A15.4,15.4,0,0,0,39.38,216H216.89A15.13,15.13,0,0,0,232,200.89V88A16,16,0,0,0,216,72ZM40,56H92.69l16,16H40ZM216,200H40V88H216Z" />
               </svg>
-              <h3 className="text-sm font-semibold text-gray-300">Cambios de archivos</h3>
+              <h3 className="text-sm font-semibold text-gray-300">{t("task.fileChangesSection")}</h3>
             </div>
             <TaskFileChanges
               taskId={task.id}

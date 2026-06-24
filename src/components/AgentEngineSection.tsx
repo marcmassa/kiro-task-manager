@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchAgentStatus, fetchAgentConfig, updateAgentConfig, triggerAgentRun } from "../api";
 import type { AgentStatusResponse, AgentEngineConfig } from "../types";
+import { useT } from "../i18n/useT";
 
 /** Color map for the status badge. */
 const STATUS_STYLES: Record<string, { badge: string; dot: string; label: string }> = {
@@ -37,6 +38,7 @@ const STATUS_STYLES: Record<string, { badge: string; dot: string; label: string 
  * Requirements: 11.1, 11.2, 11.3, 11.4
  */
 export function AgentEngineSection(): JSX.Element {
+  const t = useT();
   const [status, setStatus] = useState<AgentStatusResponse | null>(null);
   const [config, setConfig] = useState<AgentEngineConfig | null>(null);
   const [running, setRunning] = useState(false);
@@ -168,7 +170,7 @@ export function AgentEngineSection(): JSX.Element {
         {/* Auto-start toggle */}
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-400/30 border border-white/5">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white">Auto-inicio</p>
+            <p className="text-sm font-medium text-white">{t("agent.autoStart")}</p>
             <p className="text-xs text-muted-400 mt-0.5">
               Iniciar automáticamente cuando el servidor arranca
             </p>
@@ -197,7 +199,7 @@ export function AgentEngineSection(): JSX.Element {
         {/* Max chat turns */}
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-400/30 border border-white/5">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white">Máx. respuestas por tarea</p>
+            <p className="text-sm font-medium text-white">{t("agent.maxResponses")}</p>
             <p className="text-xs text-muted-400 mt-0.5">
               Límite de respuestas de chat por ejecución activa
             </p>
@@ -227,7 +229,7 @@ export function AgentEngineSection(): JSX.Element {
         {/* Poll interval */}
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-400/30 border border-white/5">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white">Intervalo de polling</p>
+            <p className="text-sm font-medium text-white">{t("agent.pollingInterval")}</p>
             <p className="text-xs text-muted-400 mt-0.5">
               Frecuencia con la que el agente busca tareas (ms)
             </p>
@@ -240,7 +242,7 @@ export function AgentEngineSection(): JSX.Element {
               max={300000}
               step={1000}
               value={config?.pollIntervalMs ?? 30000}
-              aria-label="Intervalo de polling en milisegundos"
+              aria-label={t("agent.pollingIntervalLabel")}
               disabled={saving}
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10);

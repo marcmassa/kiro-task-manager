@@ -2,6 +2,8 @@ import { useState } from "react";
 import { createWorkspace } from "../api";
 import type { Workspace, WorkspaceColumn, WorkspaceProjectType } from "../types";
 import { COLUMN_COLOR_KEYS, columnColorTokens } from "../utils/columnColors";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
 
 interface CreateWorkspaceModalProps {
   onCreated: (ws: Workspace) => void;
@@ -46,6 +48,7 @@ function slugify(s: string) {
 }
 
 export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModalProps) {
+  const t = useT();
   const [name, setName] = useState("");
   const [remoteUrl, setRemoteUrl] = useState("");
   const [branch, setBranch] = useState("main");
@@ -89,7 +92,7 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
       });
       onCreated(ws);
     } catch (e: any) {
-      setError(e.message || "Error al crear workspace");
+      setError(e.message || i18n.t("modal.errorCreate"));
     } finally {
       setSaving(false);
     }
@@ -105,7 +108,7 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-white/10 sticky top-0 bg-surface-500 z-10">
-          <h2 className="text-lg font-semibold text-white">Nuevo workspace</h2>
+          <h2 className="text-lg font-semibold text-white">{t("modal.newWorkspace")}</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
@@ -127,7 +130,7 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
-              aria-label="Nombre del workspace"
+              aria-label={t("modal.workspaceNameLabel")}
             />
           </div>
 
@@ -176,16 +179,16 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
           {projectType === "custom" && (
             <div className="rounded-xl border border-white/10 bg-surface-600 p-4 space-y-3">
               <div>
-                <p className="text-xs font-medium text-muted-300 mb-1">Columnas del pipeline</p>
+                <p className="text-xs font-medium text-muted-300 mb-1">{t("modal.pipelineColumns")}</p>
                 <p className="text-[10px] text-muted-500">
-                  Las columnas Por Hacer, En Progreso y Completadas son fijas. Añade las intermedias que necesites.
+                  {t("modal.fixedColumnsNote")}
                 </p>
               </div>
 
               {/* Fixed start */}
               <div className="flex items-center gap-2 opacity-50">
                 <div className="w-2 h-2 rounded-full bg-accent" />
-                <span className="text-xs text-muted-400">Por Hacer</span>
+                <span className="text-xs text-muted-400">{t("kanban.col_todo")}</span>
               </div>
 
               {/* Custom columns list */}
@@ -199,22 +202,22 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
                     {/* Color picker */}
                     <div className="flex gap-1">
                       {COLUMN_COLOR_KEYS.slice(0, 6).map((ck) => {
-                        const t = columnColorTokens(ck);
+                        const colorTok = columnColorTokens(ck);
                         return (
                           <button
                             key={ck}
                             type="button"
                             title={ck}
-                            aria-label={`Color ${ck}`}
+                            aria-label={t("modal.colorLabel", { color: ck })}
                             onClick={() => updateColumnColor(col.id, ck)}
-                            className={`w-3.5 h-3.5 rounded-full ${t.dot} transition-transform ${col.color === ck ? "ring-1 ring-white scale-125" : "opacity-60 hover:opacity-100"}`}
+                            className={`w-3.5 h-3.5 rounded-full ${colorTok.dot} transition-transform ${col.color === ck ? "ring-1 ring-white scale-125" : "opacity-60 hover:opacity-100"}`}
                           />
                         );
                       })}
                     </div>
                     <button
                       type="button"
-                      aria-label={`Eliminar columna ${col.label}`}
+                      aria-label={t("modal.removeColumn", { label: col.label })}
                       onClick={() => removeColumn(col.id)}
                       className="text-muted-500 hover:text-danger transition-colors text-xs ml-1"
                     >
@@ -232,21 +235,21 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
                   value={newColLabel}
                   onChange={(e) => setNewColLabel(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addColumn())}
-                  placeholder="Nueva columna..."
-                  aria-label="Nombre de nueva columna"
+                  placeholder={t("modal.newColumnPlaceholder")}
+                  aria-label={t("modal.newColumnName")}
                   className="flex-1 px-2 py-1 text-xs rounded-lg bg-surface-500 border border-white/10 text-white placeholder-muted-600 focus:outline-none focus:border-accent"
                 />
                 <div className="flex gap-1">
                   {COLUMN_COLOR_KEYS.slice(0, 6).map((ck) => {
-                    const t = columnColorTokens(ck);
+                    const colorTok = columnColorTokens(ck);
                     return (
                       <button
                         key={ck}
                         type="button"
                         title={ck}
-                        aria-label={`Seleccionar color ${ck}`}
+                        aria-label={t("modal.selectColor", { color: ck })}
                         onClick={() => setNewColColor(ck)}
-                        className={`w-3.5 h-3.5 rounded-full ${t.dot} transition-transform ${newColColor === ck ? "ring-1 ring-white scale-125" : "opacity-60 hover:opacity-100"}`}
+                        className={`w-3.5 h-3.5 rounded-full ${colorTok.dot} transition-transform ${newColColor === ck ? "ring-1 ring-white scale-125" : "opacity-60 hover:opacity-100"}`}
                       />
                     );
                   })}
@@ -257,18 +260,18 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
                   disabled={!newColLabel.trim()}
                   className="text-xs px-2 py-1 rounded-lg bg-accent/20 text-accent-300 hover:bg-accent/30 transition-colors disabled:opacity-30"
                 >
-                  Añadir
+                  {t("action.add")}
                 </button>
               </div>
 
               {/* Fixed end */}
               <div className="flex items-center gap-2 opacity-50">
                 <div className="w-2 h-2 rounded-full bg-warning" />
-                <span className="text-xs text-muted-400">En Progreso</span>
+                <span className="text-xs text-muted-400">{t("kanban.col_inProgress")}</span>
               </div>
               <div className="flex items-center gap-2 opacity-50">
                 <div className="w-2 h-2 rounded-full bg-success" />
-                <span className="text-xs text-muted-400">Completadas</span>
+                <span className="text-xs text-muted-400">{t("kanban.col_done")}</span>
               </div>
             </div>
           )}
@@ -285,7 +288,7 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
                 placeholder="https://github.com/user/repo.git"
                 value={remoteUrl}
                 onChange={(e) => setRemoteUrl(e.target.value)}
-                aria-label="URL remota del repositorio"
+                aria-label={t("modal.remoteUrl")}
               />
             </div>
             <div>
@@ -298,7 +301,7 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
                 placeholder="main"
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
-                aria-label="Rama por defecto"
+                aria-label={t("modal.defaultBranch")}
               />
             </div>
           </div>
@@ -309,14 +312,14 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
               className="px-4 py-2 rounded-lg bg-surface-400 text-muted-300 hover:bg-surface-300 transition-colors text-sm"
               onClick={onClose}
             >
-              Cancelar
+              {t("action.cancel")}
             </button>
             <button
               type="submit"
               className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors text-sm disabled:opacity-50"
               disabled={saving || !name.trim() || (projectType === "custom" && customColumns.length === 0)}
             >
-              {saving ? "Creando..." : "Crear workspace"}
+              {saving ? t("modal.creating") : t("modal.createWorkspace")}
             </button>
           </div>
         </form>

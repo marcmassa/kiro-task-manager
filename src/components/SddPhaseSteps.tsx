@@ -1,5 +1,6 @@
 import { SDD_PHASES, phaseLabel, type SddPhase } from "../utils/sddLifecycle";
 import { sddPhaseStyle } from "../utils/sddPhaseDisplay";
+import { useT } from "../i18n/useT";
 
 interface SddPhaseStepsProps {
   currentPhase: SddPhase;
@@ -8,10 +9,11 @@ interface SddPhaseStepsProps {
 }
 
 export function SddPhaseSteps({ currentPhase, inReview }: SddPhaseStepsProps) {
+  const t = useT();
   const currentIdx = SDD_PHASES.indexOf(currentPhase);
 
   return (
-    <div className="flex items-center gap-1 flex-wrap" role="list" aria-label="Fases SDD">
+    <div className="flex items-center gap-1 flex-wrap" role="list" aria-label={t("agent.sddPhases")}>
       {SDD_PHASES.map((phase, idx) => {
         const isPast = idx < currentIdx;
         const isCurrent = idx === currentIdx;

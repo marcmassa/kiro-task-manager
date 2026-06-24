@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PencilIcon, TrashIcon } from "../Icons";
 import type { McpServer, McpServerInput, McpTestResult, McpTransport } from "../types";
+import { useT } from "../i18n/useT";
 
 interface McpServersSectionProps {
   servers: McpServer[];
@@ -91,6 +92,7 @@ export function McpServersSection({
   testResults,
   error,
 }: McpServersSectionProps) {
+  const t = useT();
   return (
     <section aria-label="Lista de servidores MCP">
       {/* Error banner */}
@@ -108,8 +110,8 @@ export function McpServersSection({
       {servers.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <ServerIcon className="text-muted-600 mb-4" size={48} />
-          <p className="text-sm font-medium text-muted-400">No hay servidores MCP registrados</p>
-          <p className="text-xs text-muted-500 mt-1">Añade uno usando el botón de arriba</p>
+          <p className="text-sm font-medium text-muted-400">{t("mcp.noServers")}</p>
+          <p className="text-xs text-muted-500 mt-1">{t("mcp.addHint")}</p>
         </div>
       )}
 

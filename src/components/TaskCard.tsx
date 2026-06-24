@@ -13,6 +13,10 @@ import {
 import { agentStateDisplay } from "../utils/agentStateDisplay";
 import { phaseLabel } from "../utils/sddLifecycle";
 import { sddPhaseStyle } from "../utils/sddPhaseDisplay";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
+
+const DATE_LOCALE_MAP: Record<string, string> = { es: "es-ES", en: "en-GB" };
 
 interface TaskCardProps {
   task: Task;
@@ -31,8 +35,9 @@ function getNextStatus(current: TaskStatus): TaskStatus | null {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "";
+  const locale = DATE_LOCALE_MAP[i18n.language] ?? "es-ES";
   const date = new Date(dateStr);
-  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  return date.toLocaleDateString(locale, { day: "numeric", month: "short" });
 }
 
 function isOverdue(dateStr: string | null): boolean {
@@ -64,6 +69,7 @@ export function TaskCard({
   onDelete,
   onStatusChange,
 }: TaskCardProps) {
+  const t = useT();
   const [isDragging, setIsDragging] = useState(false);
   const nextStatus = getNextStatus(task.status);
   const overdue = task.status !== "done" && isOverdue(task.due_date);
@@ -95,7 +101,7 @@ export function TaskCard({
       onClick={onView}
       tabIndex={0}
       role="button"
-      aria-label={`Ver detalles de tarea: ${task.title}`}
+      aria-label={t("task.viewLabel", { title: task.title })}
       onKeyDown={handleKeyDown}
       draggable
       aria-grabbed={isDragging}
@@ -152,8 +158,8 @@ export function TaskCard({
         >
           <CalendarIcon size={13} />
           <span>{formatDate(task.due_date)}</span>
-          {overdue && <span className="font-medium">(vencida)</span>}
-          {isToday && <span className="font-medium">(hoy)</span>}
+          {overdue && <span className="font-medium">{t("task.overdueLabel")}</span>}
+          {isToday && <span className="font-medium">{t("task.todayLabel")}</span>}
         </div>
       )}
 
@@ -165,16 +171,16 @@ export function TaskCard({
         <button
           onClick={onEdit}
           className="p-1.5 rounded-lg hover:bg-white/10 text-muted-400 hover:text-accent-300 transition-colors"
-          aria-label="Editar tarea"
-          title="Editar"
+          aria-label={t("task.editLabel")}
+          title={t("action.edit")}
         >
           <PencilIcon size={15} />
         </button>
         <button
           onClick={onDelete}
           className="p-1.5 rounded-lg hover:bg-danger/10 text-muted-400 hover:text-danger-400 transition-colors"
-          aria-label="Eliminar tarea"
-          title="Eliminar"
+          aria-label={t("task.deleteLabel")}
+          title={t("action.delete")}
         >
           <TrashIcon size={15} />
         </button>
@@ -183,9 +189,9 @@ export function TaskCard({
             onClick={() => onStatusChange(nextStatus)}
             className="ml-auto p-1.5 rounded-lg hover:bg-success/10 text-muted-400 hover:text-success-400 transition-colors flex items-center gap-1"
             aria-label={
-              nextStatus === "in_progress" ? "Mover a En Progreso" : "Marcar como Completada"
+              nextStatus === "in_progress" ? t("task.moveToInProgress") : t("task.markAsDone")
             }
-            title={nextStatus === "in_progress" ? "Mover a En Progreso" : "Marcar como Completada"}
+            title={nextStatus === "in_progress" ? t("task.moveToInProgress") : t("task.markAsDone")}
           >
             {nextStatus === "done" ? <CheckCircleIcon size={15} /> : <ArrowRightIcon size={15} />}
           </button>

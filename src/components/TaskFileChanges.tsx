@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { fetchTaskChanges } from "../api";
 import type { FileChange } from "../types";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
+
+const LOCALE_MAP: Record<string, string> = { es: "es-ES", en: "en-GB" };
 
 interface TaskFileChangesProps {
   taskId: number;
@@ -23,18 +27,19 @@ function changeTypeDot(changeType: string): string {
 function changeTypeLabel(changeType: string): string {
   switch (changeType) {
     case "created":
-      return "Creado";
+      return i18n.t("change.created");
     case "modified":
-      return "Modificado";
+      return i18n.t("change.modified");
     case "deleted":
-      return "Eliminado";
+      return i18n.t("change.deleted");
     default:
       return changeType;
   }
 }
 
 function formatTimestamp(dateStr: string): string {
-  return new Date(dateStr).toLocaleString("es-ES", {
+  const locale = LOCALE_MAP[i18n.language] ?? "es-ES";
+  return new Date(dateStr).toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -70,6 +75,7 @@ function groupByExecution(changes: FileChange[]): GroupedChanges[] {
 }
 
 export function TaskFileChanges({ taskId, onFileClick }: TaskFileChangesProps): JSX.Element {
+  const t = useT();
   const [changes, setChanges] = useState<FileChange[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -90,7 +96,7 @@ export function TaskFileChanges({ taskId, onFileClick }: TaskFileChangesProps): 
   if (loading) {
     return (
       <div className="py-3">
-        <p className="text-xs text-muted-500">Cargando cambios de archivos...</p>
+        <p className="text-xs text-muted-500">{t("task.loadingFileChanges")}</p>
       </div>
     );
   }
@@ -98,7 +104,7 @@ export function TaskFileChanges({ taskId, onFileClick }: TaskFileChangesProps): 
   if (changes.length === 0) {
     return (
       <div className="py-3">
-        <p className="text-sm text-muted-400">No hay cambios registrados para esta tarea.</p>
+        <p className="text-sm text-muted-400">{t("task.noFileChanges")}</p>
       </div>
     );
   }
@@ -108,7 +114,7 @@ export function TaskFileChanges({ taskId, onFileClick }: TaskFileChangesProps): 
     groups.length > 1 || (groups.length === 1 && groups[0].executionId !== null);
 
   return (
-    <div className="space-y-3" aria-label="Cambios de archivos de la tarea">
+    <div className="space-y-3" aria-label={t("task.fileChanges")}>
       {groups.map((group, idx) => (
         <div key={`${group.executionId ?? "manual"}-${idx}`}>
           {/* Group separator */}
@@ -117,8 +123,8 @@ export function TaskFileChanges({ taskId, onFileClick }: TaskFileChangesProps): 
               <div className="h-px flex-1 bg-white/5" />
               <span className="text-[10px] text-muted-500 shrink-0">
                 {group.executionId
-                  ? `Ejecución del agente · ${formatTimestamp(group.createdAt)}`
-                  : `Manual · ${formatTimestamp(group.createdAt)}`}
+                  ? t("task.executionGroup", { time: formatTimestamp(group.createdAt) })
+                  : t("task.manualGroup", { time: formatTimestamp(group.createdAt) })}
               </span>
               <div className="h-px flex-1 bg-white/5" />
             </div>
@@ -139,7 +145,7 @@ export function TaskFileChanges({ taskId, onFileClick }: TaskFileChangesProps): 
                     onFileClick(change.filePath);
                   }
                 }}
-                aria-label={`Abrir ${change.filePath} (${changeTypeLabel(change.changeType).toLowerCase()})`}
+                aria-label={t("task.openFilePath", { path: change.filePath, type: changeTypeLabel(change.changeType) })}
               >
                 {/* Colored dot */}
                 <span

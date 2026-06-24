@@ -13,6 +13,8 @@ import {
 } from "../api";
 import type { RepoConfig } from "../types";
 import { DownloadIcon } from "../Icons";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
 
 interface OpenTab {
   id: string;
@@ -60,6 +62,7 @@ export function WorkspacePage({
   workspaceName,
   workspaceSelector,
 }: WorkspacePageProps): JSX.Element {
+  const t = useT();
   const [repoConfig, setRepoConfig] = useState<RepoConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [tabs, setTabs] = useState<OpenTab[]>([]);
@@ -130,7 +133,7 @@ export function WorkspacePage({
     (tabId: string) => {
       const tab = tabs.find((t) => t.id === tabId);
       if (tab?.isDirty) {
-        if (!confirm("Hay cambios sin guardar. ¿Cerrar de todas formas?")) {
+        if (!confirm(i18n.t("workspace.unsavedChanges"))) {
           return;
         }
       }
@@ -226,7 +229,7 @@ export function WorkspacePage({
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-muted-400">Cargando workspace...</p>
+        <p className="text-sm text-muted-400">{t("workspace.loading")}</p>
       </div>
     );
   }
@@ -246,11 +249,9 @@ export function WorkspacePage({
               <path d="M216,72H131.31L104,44.69A15.86,15.86,0,0,0,92.69,40H40A16,16,0,0,0,24,56V200.62A15.4,15.4,0,0,0,39.38,216H216.89A15.13,15.13,0,0,0,232,200.89V88A16,16,0,0,0,216,72ZM40,56H92.69l16,16H40ZM216,200H40V88H216Z" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold text-white mb-2">Workspace no configurado</h2>
+          <h2 className="text-lg font-semibold text-white mb-2">{t("workspace.notConfigured")}</h2>
           <p className="text-sm text-muted-400 mb-4">
-            Configura un repositorio Git en la sección de{" "}
-            <span className="text-accent-300 font-medium">Configuración → Repositorio</span> para
-            explorar y editar ficheros.
+            {t("workspace.notConfigured_desc")}
           </p>
         </div>
       </div>
@@ -262,46 +263,46 @@ export function WorkspacePage({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <PageHeader
-        title="Workspace"
-        subtitle={`Editor y explorador · ${workspaceName ?? "Workspace activo"}`}
+        title={t("workspace.title")}
+        subtitle={t("workspace.subtitle", { name: workspaceName ?? t("workspace.defaultName") })}
         actions={workspaceSelector}
       />
       {/* Action bar */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-surface-400/20">
         <h2 className="text-sm font-medium text-muted-300 mr-auto">
-          {workspaceName ?? "Workspace"}
+          {workspaceName ?? t("workspace.title")}
         </h2>
         <button
           onClick={() => fileInputRef.current?.click()}
           className="btn-secondary text-xs flex items-center gap-1.5"
-          aria-label="Subir fichero al workspace"
+          aria-label={t("workspace.uploadFile")}
         >
           <svg width="14" height="14" fill="currentColor" viewBox="0 0 256 256">
             <path d="M240,136v64a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V136a8,8,0,0,1,16,0v64H224V136a8,8,0,0,1,16,0ZM85.66,77.66,120,43.31V128a8,8,0,0,0,16,0V43.31l34.34,34.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,77.66Z" />
           </svg>
-          Subir fichero
+          {t("action.upload")}
         </button>
         <button
           onClick={() => handleSave(activeTab?.content ?? "")}
           disabled={!activeTab?.isDirty || saving}
           className="btn-primary text-xs flex items-center gap-1.5"
-          aria-label="Guardar fichero (Ctrl+S)"
+          aria-label={t("workspace.saveFile")}
         >
-          {saving ? "Guardando..." : "Guardar"}
+          {saving ? t("action.saving") : t("action.save")}
         </button>
         <button
           onClick={handleDownload}
           disabled={!activeTab}
           className="btn-secondary text-xs flex items-center gap-1.5"
-          aria-label="Descargar fichero activo"
+          aria-label={t("workspace.downloadFile")}
         >
           <DownloadIcon size={14} />
-          Descargar
+          {t("action.download")}
         </button>
         <button
           onClick={() => setGitPanelOpen((v) => !v)}
           className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${gitPanelOpen ? "bg-accent text-white" : "bg-surface-400/50 text-muted-300 hover:bg-surface-400"}`}
-          aria-label={gitPanelOpen ? "Cerrar panel Git" : "Abrir panel Git"}
+          aria-label={gitPanelOpen ? t("workspace.closeGit") : t("workspace.openGit")}
         >
           <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
             <path d="M15.698 7.287L8.712.302a1.03 1.03 0 00-1.457 0l-1.45 1.45 1.84 1.84a1.223 1.223 0 011.55 1.56l1.773 1.774a1.224 1.224 0 011.267 2.025 1.226 1.226 0 01-2.002-1.334L8.49 5.873v4.46a1.226 1.226 0 11-.956.019V5.764a1.226 1.226 0 01-.666-1.608L5.058 2.346l-4.756 4.756a1.03 1.03 0 000 1.457l6.986 6.986a1.03 1.03 0 001.457 0l6.953-6.953a1.031 1.031 0 000-1.305z" />
@@ -313,7 +314,7 @@ export function WorkspacePage({
           type="file"
           className="sr-only"
           onChange={handleUpload}
-          aria-label="Seleccionar fichero para subir"
+          aria-label={t("workspace.selectUpload")}
         />
       </div>
 
@@ -322,7 +323,7 @@ export function WorkspacePage({
         {/* Left panel — tree (full height) */}
         <aside
           className="w-[280px] shrink-0 border-r border-white/5 overflow-y-auto bg-surface-500/30 p-2"
-          aria-label="Panel explorador de archivos"
+          aria-label={t("workspace.explorer")}
         >
           <WorkspaceTreeView
             workspaceId={workspaceId}
@@ -354,7 +355,7 @@ export function WorkspacePage({
               ) : (
                 <div className="flex-1 flex items-center justify-center bg-surface-500/20">
                   <p className="text-sm text-muted-500">
-                    Selecciona un fichero del explorador para editarlo
+                    {t("workspace.selectFile")}
                   </p>
                 </div>
               )}
@@ -364,7 +365,7 @@ export function WorkspacePage({
 
             {/* Git panel */}
             {gitPanelOpen && (
-              <aside className="w-[300px] shrink-0 overflow-y-auto" aria-label="Panel de Git">
+              <aside className="w-[300px] shrink-0 overflow-y-auto" aria-label={t("workspace.gitPanel")}>
                 <GitPanel workspaceId={workspaceId} onFileClick={handleFileClick} />
               </aside>
             )}

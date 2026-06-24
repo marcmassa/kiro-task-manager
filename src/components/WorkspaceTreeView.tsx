@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { fetchWorkspaceTree, saveWorkspaceFile, createWorkspaceDir } from "../api";
 import type { DirectoryEntry } from "../types";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
 
 interface WorkspaceTreeViewProps {
   workspaceId: number;
@@ -141,6 +143,7 @@ function CreateInput({
   onConfirm: (name: string) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -176,7 +179,7 @@ function CreateInput({
           onBlur={onCancel}
           placeholder={kind === "dir" ? "nueva-carpeta" : "nuevo-fichero.ts"}
           className="flex-1 min-w-0 bg-surface-400/60 border border-accent/40 rounded px-1.5 py-0.5 text-[11.5px] font-mono text-gray-200 placeholder-muted-600 outline-none focus:border-accent/80"
-          aria-label={kind === "dir" ? "Nombre de la nueva carpeta" : "Nombre del nuevo fichero"}
+          aria-label={kind === "dir" ? t("workspace.newFolderName") : t("workspace.newFileName")}
         />
         <button
           onMouseDown={(e) => {
@@ -185,7 +188,7 @@ function CreateInput({
             if (trimmed) onConfirm(trimmed);
           }}
           className="shrink-0 text-[10px] text-accent-300 hover:text-accent-200 px-1"
-          aria-label="Confirmar"
+          aria-label={t("action.confirm")}
         >
           ✓
         </button>
@@ -217,6 +220,7 @@ function TreeItem({
   onCreateConfirm: (name: string) => void;
   onCreateCancel: () => void;
 }) {
+  const t = useT();
   const isDir = node.type === "directory";
 
   function handleClick() {
@@ -253,8 +257,8 @@ function TreeItem({
         role="button"
         aria-label={
           isDir
-            ? `${node.expanded ? "Colapsar" : "Expandir"} directorio: ${node.name}`
-            : `Abrir fichero: ${node.name}`
+            ? t(node.expanded ? "workspace.dirCollapse" : "workspace.dirExpand", { name: node.name })
+            : t("workspace.openFilePath", { name: node.name })
         }
       >
         <span className="w-3 shrink-0 flex items-center justify-center" aria-hidden="true">
@@ -304,8 +308,8 @@ function TreeItem({
               e.stopPropagation();
               onAddRef(node.path);
             }}
-            aria-label={`Añadir ${node.name} como referencia`}
-            title="Añadir como referencia"
+            aria-label={t("workspace.addRefLabel", { name: node.name })}
+            title={t("workspace.addRef")}
           >
             +ref
           </button>
@@ -345,7 +349,7 @@ function TreeItem({
               className="text-[11px] text-muted-600 italic"
               style={{ paddingLeft: `${8 + (depth + 1) * 12}px` }}
             >
-              vacío
+              {t("workspace.empty")}
             </li>
           )}
         </ul>
@@ -362,6 +366,7 @@ export function WorkspaceTreeView({
   onAddReference,
   repoConfigured,
 }: WorkspaceTreeViewProps) {
+  const t = useT();
   const [roots, setRoots] = useState<TreeNode[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -401,7 +406,7 @@ export function WorkspaceTreeView({
       setRoots(nodes);
       setLoaded(true);
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Error al cargar el directorio");
+      setLoadError(err instanceof Error ? err.message : i18n.t("error.loadFailed"));
     } finally {
       setRootLoading(false);
     }
@@ -556,9 +561,7 @@ export function WorkspaceTreeView({
     return (
       <div className="rounded-xl bg-surface-400/30 border border-white/5 p-4">
         <p className="text-sm text-muted-400">
-          No hay repositorio configurado. Configura uno en{" "}
-          <span className="text-accent-300">Configuración → Repositorio</span> para explorar
-          ficheros.
+          {t("workspace.notConfiguredExplorer")}
         </p>
       </div>
     );
@@ -571,7 +574,7 @@ export function WorkspaceTreeView({
           <svg width="12" height="12" viewBox="0 0 12 12" className="animate-spin shrink-0" fill="none">
             <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="14 6" />
           </svg>
-          <span>Cargando árbol de ficheros…</span>
+          <span>{t("workspace.loadingTree")}</span>
         </div>
       </div>
     );
@@ -599,14 +602,14 @@ export function WorkspaceTreeView({
           />
         </svg>
         <span className="text-[11px] font-medium text-muted-400 tracking-wide uppercase mr-auto">
-          Explorador
+          {t("workspace.explorerLabel")}
         </span>
 
         {/* New file button */}
         <button
           onClick={() => startCreating("file")}
-          title={`Nuevo fichero en ${contextLabel}`}
-          aria-label="Nuevo fichero"
+          title={`${t("workspace.newFile")} ${t("workspace.creatingIn")} ${contextLabel}`}
+          aria-label={t("workspace.newFile")}
           className={`p-1 rounded transition-colors ${
             creating?.kind === "file"
               ? "bg-accent/20 text-accent-300"
@@ -629,8 +632,8 @@ export function WorkspaceTreeView({
         {/* New folder button */}
         <button
           onClick={() => startCreating("dir")}
-          title={`Nueva carpeta en ${contextLabel}`}
-          aria-label="Nueva carpeta"
+          title={`${t("workspace.newFolder")} ${t("workspace.creatingIn")} ${contextLabel}`}
+          aria-label={t("workspace.newFolder")}
           className={`p-1 rounded transition-colors ${
             creating?.kind === "dir"
               ? "bg-accent/20 text-accent-300"
@@ -657,16 +660,16 @@ export function WorkspaceTreeView({
             <path d="M8 2v9M4 7l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="text-[10px] text-muted-500">
-            {creating.kind === "file" ? "Nuevo fichero" : "Nueva carpeta"} en{" "}
+            {creating.kind === "file" ? t("workspace.newFile") : t("workspace.newFolder")} {t("workspace.creatingIn")}{" "}
             <span className="font-mono text-accent-400">{contextLabel}</span>
-            <span className="ml-2 opacity-60">— Esc para cancelar</span>
+            <span className="ml-2 opacity-60">— {t("workspace.escCancel")}</span>
           </span>
         </div>
       )}
 
       {/* Tree */}
       <div className="py-1">
-        <ul role="tree" aria-label="Estructura del proyecto">
+        <ul role="tree" aria-label={t("workspace.projectStructure")}>
           {roots.map((node) => (
             <TreeItem
               key={node.path}
@@ -694,7 +697,7 @@ export function WorkspaceTreeView({
           )}
 
           {roots.length === 0 && loaded && !creating && (
-            <li className="text-[11px] text-muted-600 px-3 py-2 italic">Directorio vacío</li>
+            <li className="text-[11px] text-muted-600 px-3 py-2 italic">{t("workspace.empty")}</li>
           )}
         </ul>
       </div>

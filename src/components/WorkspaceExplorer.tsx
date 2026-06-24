@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { fetchWorkspaceTree } from "../api";
 import type { DirectoryEntry } from "../types";
 import { FolderCodeIcon, CodeIcon } from "../Icons";
+import { useT } from "../i18n/useT";
 
 interface WorkspaceExplorerProps {
   workspaceId: number;
@@ -116,6 +117,7 @@ function TreeItem({
 }
 
 export function WorkspaceExplorer({ workspaceId, onOpenFile }: WorkspaceExplorerProps) {
+  const t = useT();
   const [roots, setRoots] = useState<TreeNode[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -242,7 +244,7 @@ export function WorkspaceExplorer({ workspaceId, onOpenFile }: WorkspaceExplorer
     <div className="rounded-xl bg-surface-400/30 border border-white/5 overflow-hidden">
       <div className="px-3 py-2 border-b border-white/5 bg-surface-400/20 flex items-center gap-2">
         <FolderCodeIcon className="text-accent-400" size={14} />
-        <span className="text-xs font-medium text-muted-400">Explorador de archivos</span>
+        <span className="text-xs font-medium text-muted-400">{t("workspace.explorerFiles")}</span>
       </div>
       <div className="overflow-y-auto p-2">
         {rootLoading && (
@@ -265,11 +267,11 @@ export function WorkspaceExplorer({ workspaceId, onOpenFile }: WorkspaceExplorer
               />
             ))}
             {roots.length === 0 && loaded && (
-              <li className="text-xs text-muted-500 px-2 py-3 text-center">Directorio vacío</li>
+              <li className="text-xs text-muted-500 px-2 py-3 text-center">{t("workspace.empty")}</li>
             )}
             {!loaded && !rootLoading && (
               <li className="text-xs text-muted-500 px-2 py-3 text-center">
-                Selecciona un workspace para explorar
+                {t("workspace.notConfiguredExplorer")}
               </li>
             )}
           </ul>

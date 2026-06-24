@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { GitStatusFile, GitBranchInfo } from "../types";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
 import {
   fetchGitStatus,
   gitStageFiles,
@@ -26,6 +28,7 @@ interface GitPanelProps {
  * Requirements: R17.2, R17.3, R18.5, R18.6, R18.7, R19.4, R19.5, R19.6
  */
 export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Element {
+  const t = useT();
   const [files, setFiles] = useState<GitStatusFile[]>([]);
   const [branchInfo, setBranchInfo] = useState<GitBranchInfo | null>(null);
   const [commitMessage, setCommitMessage] = useState("");
@@ -87,7 +90,7 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
     setError(null);
     try {
       const result = await gitCommitChanges(commitMessage.trim(), workspaceId);
-      showSuccess(`Commit creado: ${result.hash}`);
+      showSuccess(i18n.t("git.commitCreated", { hash: result.hash }));
       setCommitMessage("");
       await refresh();
     } catch (e) {
@@ -100,7 +103,7 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
     setError(null);
     try {
       await gitPushChanges(workspaceId);
-      showSuccess("Push completado");
+      showSuccess(i18n.t("git.pushCompleted"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al hacer push");
     } finally {
@@ -113,7 +116,7 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
     setError(null);
     try {
       await gitPullChanges(workspaceId);
-      showSuccess("Pull completado");
+      showSuccess(i18n.t("git.pullCompleted"));
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al hacer pull");
@@ -126,7 +129,7 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
     setError(null);
     try {
       await gitCheckoutBranch(branch, create, workspaceId);
-      showSuccess(`Rama: ${branch}`);
+      showSuccess(i18n.t("git.switchBranchSuccess", { branch }));
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al cambiar de rama");
@@ -139,7 +142,7 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
   return (
     <section
       className="flex flex-col h-full bg-surface-500 border-l border-white/5"
-      aria-label="Panel de Git"
+      aria-label={t("workspace.gitPanel")}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
@@ -148,9 +151,9 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
           onClick={refresh}
           disabled={loading}
           className="text-xs px-2 py-1 bg-surface-400/80 hover:bg-surface-300 text-muted-300 rounded-lg transition-colors disabled:opacity-50"
-          aria-label="Refrescar estado de Git"
+          aria-label={t("git.refreshLabel")}
         >
-          {loading ? "..." : "⟳ Refrescar"}
+          {loading ? "..." : `⟳ ${t("git.refresh")}`}
         </button>
       </div>
 
@@ -193,17 +196,17 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && canCommit && handleCommit()}
-            placeholder="Mensaje de commit..."
+            placeholder={t("git.commitMessagePlaceholder")}
             className="flex-1 bg-surface-400 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-muted-200 placeholder-muted-500 focus:outline-none focus:ring-2 focus:ring-accent"
-            aria-label="Mensaje de commit"
+            aria-label={t("git.commitMessage")}
           />
           <button
             onClick={handleCommit}
             disabled={!canCommit}
             className="px-3 py-1.5 text-sm bg-accent hover:bg-accent-500 disabled:bg-surface-400 disabled:text-muted-500 text-white rounded-lg transition-colors font-medium"
-            aria-label="Crear commit"
+            aria-label={t("git.commitLabel")}
           >
-            Commit
+            {t("git.commit")}
           </button>
         </div>
 
@@ -213,24 +216,24 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
             onClick={handlePush}
             disabled={pushLoading || !tokenConfigured}
             className="flex-1 px-3 py-1.5 text-xs bg-surface-400/80 hover:bg-surface-300 disabled:bg-surface-500 disabled:text-muted-600 text-muted-200 rounded-lg transition-colors"
-            aria-label="Push al remoto"
-            title={!tokenConfigured ? "Token no configurado" : "Push al remoto"}
+            aria-label={t("git.pushLabel")}
+            title={!tokenConfigured ? t("git.tokenNotConfigured") : t("git.pushLabel")}
           >
-            {pushLoading ? "Enviando..." : "↑ Push"}
+            {pushLoading ? t("git.pushing") : "↑ Push"}
           </button>
           <button
             onClick={handlePull}
             disabled={pullLoading || !tokenConfigured}
             className="flex-1 px-3 py-1.5 text-xs bg-surface-400/80 hover:bg-surface-300 disabled:bg-surface-500 disabled:text-muted-600 text-muted-200 rounded-lg transition-colors"
-            aria-label="Pull del remoto"
-            title={!tokenConfigured ? "Token no configurado" : "Pull del remoto"}
+            aria-label={t("git.pullLabel")}
+            title={!tokenConfigured ? t("git.tokenNotConfigured") : t("git.pullLabel")}
           >
-            {pullLoading ? "Descargando..." : "↓ Pull"}
+            {pullLoading ? t("git.pulling") : "↓ Pull"}
           </button>
         </div>
         {!tokenConfigured && (
           <p className="text-xs text-muted-500 text-center">
-            Configura un token en Ajustes para push/pull
+            {t("git.configureToken")}
           </p>
         )}
       </div>

@@ -10,7 +10,8 @@
     "mcp": "bun run mcp-server.ts",
     "start": "bun run server.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:i18n": "bun run scripts/check-i18n.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1072.0",
@@ -31,8 +32,10 @@
     "@lobehub/icons": "^5.10.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "elysia": "^1.0.0",
+    "i18next": "^26.3.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-i18next": "^17.0.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {

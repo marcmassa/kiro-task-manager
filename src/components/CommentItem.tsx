@@ -1,4 +1,8 @@
 import type { Comment, AgentState } from "../types";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
+
+const LOCALE_MAP: Record<string, string> = { es: "es-ES", en: "en-GB" };
 
 interface CommentItemProps {
   comment: Comment;
@@ -13,7 +17,9 @@ interface CommentItemProps {
  * R4.1, R4.2, R8.1, R8.2
  */
 export function CommentItem({ comment, isAgent }: CommentItemProps) {
-  const formattedDate = new Date(comment.created_at).toLocaleString("es-ES", {
+  const t = useT();
+  const locale = LOCALE_MAP[i18n.language] ?? "es-ES";
+  const formattedDate = new Date(comment.created_at).toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -49,7 +55,7 @@ export function CommentItem({ comment, isAgent }: CommentItemProps) {
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-semibold text-accent-300">{comment.author}</span>
             <span className="inline-flex items-center rounded-full bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium text-accent-300 uppercase tracking-wide">
-              Agente
+              {t("agent.label")}
             </span>
             <span className="text-[10px] text-muted-500">{formattedDate}</span>
           </div>

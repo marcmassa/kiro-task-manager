@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { LinkIcon, CheckCircleIcon, RefreshIcon, WarningIcon } from "../Icons";
 import type { LinearIntegrationStatus, SyncResult } from "../types";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
+
+const LOCALE_MAP: Record<string, string> = { es: "es-ES", en: "en-GB" };
 
 interface IntegrationCardProps {
   status: LinearIntegrationStatus;
@@ -40,6 +44,7 @@ export function IntegrationCard({
   onSync,
   onDisconnect,
 }: IntegrationCardProps) {
+  const t = useT();
   const [provider, setProvider] = useState("linear");
   const [apiKey, setApiKey] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -76,16 +81,17 @@ export function IntegrationCard({
   }
 
   function formatLastSync(iso: string | null | undefined): string {
-    if (!iso) return "Nunca";
+    if (!iso) return i18n.t("integration.neverSynced");
     try {
-      return new Date(iso).toLocaleString("es-ES", {
+      const locale = LOCALE_MAP[i18n.language] ?? "es-ES";
+      return new Date(iso).toLocaleString(locale, {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
         minute: "2-digit",
       });
     } catch {
-      return "Fecha desconocida";
+      return i18n.t("integration.unknownDate");
     }
   }
 
@@ -98,7 +104,7 @@ export function IntegrationCard({
       <div
         className="home-card border border-success/20 bg-gradient-to-br from-success/5 via-transparent to-accent/5"
         role="region"
-        aria-label="Integración con Linear"
+        aria-label={t("integration.linearLabel")}
       >
         <div className="flex items-start justify-between gap-6 flex-col md:flex-row">
           <div className="flex items-start gap-4 min-w-0 flex-1">
@@ -114,7 +120,7 @@ export function IntegrationCard({
                   </span>
                   <span className="badge bg-success/15 text-success-300 border border-success/20 text-[10px] inline-flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-4s" />
-                    Conectado
+                    {t("integration.connected")}
                   </span>
                 </div>
                 <p className="text-xs text-muted-400 truncate mt-0.5">{status.account.email}</p>
@@ -125,16 +131,16 @@ export function IntegrationCard({
                 <div className="flex items-center gap-2 mb-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-4s shrink-0" />
                   <span className="text-xs font-mono text-muted-400">
-                    Última sincronización: {lastSyncFormatted}
+                    {t("integration.lastSync", { time: lastSyncFormatted })}
                   </span>
                 </div>
                 {summary ? (
                   <p className="text-xs text-muted-500 ml-[18px]">
-                    {summary.found} issues encontradas · {summary.mappable} listas para importar
+                    {t("integration.issuesFound", { found: summary.found, mappable: summary.mappable })}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-600 ml-[18px]">
-                    Sin datos de sincronización todavía
+                    {t("integration.noSyncData")}
                   </p>
                 )}
               </div>
@@ -147,19 +153,19 @@ export function IntegrationCard({
               onClick={handleSync}
               disabled={syncing || submitting}
               className="btn-primary flex items-center gap-2"
-              aria-label="Sincronizar ahora con Linear"
+              aria-label={t("integration.syncNowLabel")}
               aria-busy={syncing}
             >
               <RefreshIcon size={16} className={syncing ? "animate-spin" : ""} />
-              <span>{syncing ? "Sincronizando..." : "Sincronizar ahora"}</span>
+              <span>{syncing ? t("integration.syncing") : t("integration.syncNow")}</span>
             </button>
             <button
               onClick={handleDisconnect}
               disabled={submitting}
               className="btn-danger whitespace-nowrap"
-              aria-label="Desconectar Linear"
+              aria-label={t("integration.disconnectLinear")}
             >
-              Desconectar
+              {t("action.disconnect")}
             </button>
           </div>
         </div>
@@ -167,17 +173,17 @@ export function IntegrationCard({
         {/* Mini dashboard — 3 stat cards */}
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div className="rounded-xl border border-white/10 bg-surface-400/50 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-muted-500">Último sync</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-500">{t("integration.lastSyncLabel")}</p>
             <p className="text-sm font-medium text-white mt-1">{lastSyncFormatted}</p>
           </div>
           <div className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2">
             <p className="text-[11px] uppercase tracking-wide text-accent-300">
-              Issues encontradas
+              {t("integration.issuesFoundLabel")}
             </p>
             <p className="text-sm font-medium text-white mt-1">{summary?.found ?? 0}</p>
           </div>
           <div className="rounded-xl border border-success/20 bg-success/10 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-success-300">Importables</p>
+            <p className="text-[11px] uppercase tracking-wide text-success-300">{t("integration.importableLabel")}</p>
             <p className="text-sm font-medium text-white mt-1">{summary?.mappable ?? 0}</p>
           </div>
         </div>
@@ -189,7 +195,7 @@ export function IntegrationCard({
             className="mt-4 flex items-center gap-2 text-xs text-accent-300"
           >
             <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            <span>Sincronizando...</span>
+            <span>{t("integration.syncing")}</span>
           </div>
         )}
         {error && (
@@ -206,7 +212,7 @@ export function IntegrationCard({
     <div
       className="home-card border border-white/10"
       role="region"
-      aria-label="Conectar integración"
+      aria-label={t("integration.connectLabel")}
     >
       {/* Header compacto — ícono + título + descripción discreta */}
       <div className="flex items-center gap-3 mb-5">
@@ -216,19 +222,19 @@ export function IntegrationCard({
         <div>
           <p className="text-sm font-medium text-white">Linear</p>
           <p className="text-xs text-muted-500">
-            Importa issues a tu kanban. Jira, Trello y Asana llegan pronto.
+            {t("integration.linearDesc")}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="block">
-          <span className="text-xs font-medium text-muted-300 mb-1.5 block">Proveedor</span>
+          <span className="text-xs font-medium text-muted-300 mb-1.5 block">{t("integration.provider")}</span>
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
             className="input-field"
-            aria-label="Seleccionar proveedor de integración"
+            aria-label={t("integration.selectProvider")}
           >
             {PROVIDERS.map((p) => (
               <option key={p.id} value={p.id} disabled={!p.enabled}>
@@ -237,11 +243,11 @@ export function IntegrationCard({
             ))}
           </select>
           <p className="text-[11px] text-muted-500 mt-1">
-            Jira, Trello y Asana llegarán en próximas versiones.
+            {t("integration.linearDesc")}
           </p>
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-muted-300 mb-1.5 block">API key personal</span>
+          <span className="text-xs font-medium text-muted-300 mb-1.5 block">{t("integration.apiKey")}</span>
           <input
             type="password"
             value={apiKey}
@@ -250,11 +256,10 @@ export function IntegrationCard({
             className="input-field font-mono text-sm"
             autoComplete="off"
             spellCheck={false}
-            aria-label="API key de Linear"
+            aria-label={t("integration.apiKeyLabel")}
           />
-          {/* Change 2: Helper text below API key input */}
           <p className="text-[10px] text-muted-400 mt-1">
-            Consíguelo en Linear → Settings → API keys
+            {t("integration.apiKeyHelper")}
           </p>
         </label>
       </div>
@@ -268,23 +273,23 @@ export function IntegrationCard({
 
       <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-500 max-w-md">
-          El API key se cifra antes de guardarse. Linear no se contacta hasta que pulses "Conectar".
+          {t("integration.securityNote")}
         </p>
         <button
           onClick={handleConnect}
           disabled={!apiKey.trim() || submitting}
           className="btn-primary flex items-center gap-2"
-          aria-label="Conectar con Linear"
+          aria-label={t("integration.connectLinear")}
         >
           {submitting ? (
             <>
               <div className="w-3 h-3 rounded-full bg-white/30 animate-pulse" />
-              <span>Conectando...</span>
+              <span>{t("integration.connecting")}</span>
             </>
           ) : (
             <>
               <CheckCircleIcon size={16} />
-              <span>Conectar</span>
+              <span>{t("action.connect")}</span>
             </>
           )}
         </button>

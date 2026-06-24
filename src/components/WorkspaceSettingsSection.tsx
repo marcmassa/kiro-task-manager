@@ -3,6 +3,7 @@ import type { Workspace } from "../types";
 import { fetchWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace } from "../api";
 import { RepoStatusBadge } from "./RepoStatusBadge";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { useT } from "../i18n/useT";
 import { LoadingState } from "./ui/StateView";
 import { PlusIcon, TrashIcon, PencilIcon, CheckCircleIcon, XIcon } from "../Icons";
 
@@ -25,6 +26,7 @@ export function WorkspaceSettingsSection({
   activeWorkspaceId,
   onWorkspaceChange,
 }: WorkspaceSettingsSectionProps): JSX.Element {
+  const t = useT();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -164,10 +166,10 @@ export function WorkspaceSettingsSection({
           <button
             onClick={() => setShowCreateForm(true)}
             className="btn-primary flex items-center gap-1.5 text-xs"
-            aria-label="Crear workspace"
+            aria-label={t("workspace.createWorkspace")}
           >
             <PlusIcon size={14} />
-            <span>Crear workspace</span>
+            <span>{t("workspace.createWorkspace")}</span>
           </button>
         )}
       </div>
@@ -179,7 +181,7 @@ export function WorkspaceSettingsSection({
           className="p-4 rounded-xl bg-surface-400/30 border border-white/10 space-y-3"
         >
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-white">Nuevo workspace</h4>
+            <h4 className="text-sm font-medium text-white">{t("workspace.newWorkspace")}</h4>
             <button
               type="button"
               onClick={() => setShowCreateForm(false)}
@@ -216,14 +218,14 @@ export function WorkspaceSettingsSection({
               />
             </div>
             <div>
-              <label className="block text-xs text-muted-300 mb-1">Rama por defecto</label>
+              <label className="block text-xs text-muted-300 mb-1">{t("workspace.defaultBranch")}</label>
               <input
                 type="text"
                 value={newBranch}
                 onChange={(e) => setNewBranch(e.target.value)}
                 className="input-field text-sm"
                 placeholder="main"
-                aria-label="Rama por defecto"
+                aria-label={t("workspace.defaultBranchLabel")}
               />
             </div>
           </div>
@@ -284,7 +286,7 @@ export function WorkspaceSettingsSection({
                   value={editBranch}
                   onChange={(e) => setEditBranch(e.target.value)}
                   className="input-field text-sm"
-                  aria-label="Rama por defecto"
+                  aria-label={t("workspace.defaultBranchLabel")}
                 />
               </div>
             ) : (

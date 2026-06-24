@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { GitStatusFile } from "../types";
+import { useT } from "../i18n/useT";
 
 interface GitStatusListProps {
   files: GitStatusFile[];
@@ -20,6 +21,7 @@ export function GitStatusList({
   onUnstage,
   onFileClick,
 }: GitStatusListProps): JSX.Element {
+  const t = useT();
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
 
   function toggleSelection(filePath: string) {
@@ -60,19 +62,19 @@ export function GitStatusList({
         <div>
           <div className="flex items-center justify-between px-2 py-1">
             <span className="text-xs font-medium text-muted-400 uppercase tracking-wide">
-              En staging ({stagedFiles.length})
+              {t("git.stagedSection", { count: stagedFiles.length })}
             </span>
             {selectedPaths.size > 0 && (
               <button
                 onClick={handleUnstageSelected}
                 className="text-xs text-warning-400 hover:text-warning-300 transition-colors"
-                aria-label="Quitar del staging los ficheros seleccionados"
+                aria-label={t("git.unstageLabel")}
               >
                 Unstage
               </button>
             )}
           </div>
-          <ul className="space-y-0.5" role="list" aria-label="Ficheros en staging">
+          <ul className="space-y-0.5" role="list" aria-label={t("git.stagedList")}>
             {stagedFiles.map((file) => (
               <FileItem
                 key={`staged-${file.path}`}
@@ -91,19 +93,19 @@ export function GitStatusList({
         <div>
           <div className="flex items-center justify-between px-2 py-1">
             <span className="text-xs font-medium text-muted-400 uppercase tracking-wide">
-              Cambios ({unstagedFiles.length})
+              {t("git.unstagedSection", { count: unstagedFiles.length })}
             </span>
             {selectedPaths.size > 0 && (
               <button
                 onClick={handleStageSelected}
                 className="text-xs text-success-400 hover:text-success-300 transition-colors"
-                aria-label="Añadir al staging los ficheros seleccionados"
+                aria-label={t("git.stageLabel")}
               >
                 Stage
               </button>
             )}
           </div>
-          <ul className="space-y-0.5" role="list" aria-label="Ficheros con cambios">
+          <ul className="space-y-0.5" role="list" aria-label={t("git.unstagedList")}>
             {unstagedFiles.map((file) => (
               <FileItem
                 key={`unstaged-${file.path}`}
@@ -119,7 +121,7 @@ export function GitStatusList({
 
       {files.length === 0 && (
         <p className="text-sm text-muted-500 text-center py-4">
-          No hay cambios en el directorio de trabajo
+          {t("git.noChangesDir")}
         </p>
       )}
     </div>
@@ -136,6 +138,7 @@ interface FileItemProps {
 }
 
 function FileItem({ file, selected, onToggle, onClick }: FileItemProps): JSX.Element {
+  const t = useT();
   const statusColors: Record<GitStatusFile["status"], string> = {
     modified: "text-warning-400",
     added: "text-success-400",
@@ -159,18 +162,18 @@ function FileItem({ file, selected, onToggle, onClick }: FileItemProps): JSX.Ele
         checked={selected}
         onChange={onToggle}
         className="w-3.5 h-3.5 rounded border-white/10 bg-surface-400 text-accent focus:ring-accent focus:ring-offset-0"
-        aria-label={`Seleccionar ${file.path}`}
+        aria-label={t("git.selectFilePath", { path: file.path })}
       />
       <span
         className={`text-xs font-mono font-bold w-4 text-center ${statusColors[file.status]}`}
-        aria-label={`Estado: ${file.status}`}
+        aria-label={t("git.fileStatus", { status: file.status })}
       >
         {statusLabels[file.status]}
       </span>
       <button
         onClick={onClick}
         className="flex-1 text-left text-sm text-muted-300 truncate hover:text-white transition-colors font-mono"
-        aria-label={`Abrir ${file.path}`}
+        aria-label={t("git.openFilePath", { path: file.path })}
       >
         {file.path}
       </button>
