@@ -85,7 +85,7 @@
   <!-- Accent underline -->
   <rect x="210" y="78" width="140" height="3" rx="1.5" fill="url(#g-accent)"/>
   <!-- Subtitle -->
-  <text x="210" y="106" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="#9ca3af">workshop-kiro — agente IA + Kanban en español</text>
+  <text x="210" y="106" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="#9ca3af">Agente IA + Kanban en español</text>
   <!-- Tech line -->
   <text x="210" y="128" font-family="system-ui,-apple-system,sans-serif" font-size="12" fill="#4b5563">Bun · Elysia · React 18 · SQLite · TypeScript strict · Tailwind CSS</text>
 
