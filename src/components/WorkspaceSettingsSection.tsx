@@ -218,7 +218,9 @@ export function WorkspaceSettingsSection({
               />
             </div>
             <div>
-              <label className="block text-xs text-muted-300 mb-1">{t("workspace.defaultBranch")}</label>
+              <label className="block text-xs text-muted-300 mb-1">
+                {t("workspace.defaultBranch")}
+              </label>
               <input
                 type="text"
                 value={newBranch}

@@ -267,7 +267,9 @@ export function WorkspaceExplorer({ workspaceId, onOpenFile }: WorkspaceExplorer
               />
             ))}
             {roots.length === 0 && loaded && (
-              <li className="text-xs text-muted-500 px-2 py-3 text-center">{t("workspace.empty")}</li>
+              <li className="text-xs text-muted-500 px-2 py-3 text-center">
+                {t("workspace.empty")}
+              </li>
             )}
             {!loaded && !rootLoading && (
               <li className="text-xs text-muted-500 px-2 py-3 text-center">

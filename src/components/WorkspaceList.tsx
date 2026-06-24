@@ -3,6 +3,7 @@ import type { Workspace } from "../types";
 import { fetchWorkspaces, updateWorkspace, deleteWorkspace } from "../api";
 import { RepoStatusBadge } from "./RepoStatusBadge";
 import { PlusIcon, TrashIcon, PencilIcon } from "../Icons";
+import { useT } from "../i18n/useT";
 
 interface WorkspaceListProps {
   onEdit: (ws: Workspace) => void;
@@ -10,6 +11,7 @@ interface WorkspaceListProps {
 }
 
 export function WorkspaceList({ onEdit, onRefresh }: WorkspaceListProps): JSX.Element {
+  const t = useT();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -32,17 +34,14 @@ export function WorkspaceList({ onEdit, onRefresh }: WorkspaceListProps): JSX.El
 
   async function handleDelete(ws: Workspace) {
     if (ws.id === 1) return; // Cannot delete default
-    if (
-      !confirm(`¿Eliminar workspace "${ws.name}"? Las tareas se moverán al workspace por defecto.`)
-    )
-      return;
+    if (!confirm(t("workspaceList.deleteConfirm", { name: ws.name }))) return;
     setDeletingId(ws.id);
     try {
       await deleteWorkspace(ws.id);
       await load();
       onRefresh();
     } catch (e: any) {
-      alert(e.message || "Error al eliminar workspace");
+      alert(e.message || t("workspaceList.deleteError"));
     } finally {
       setDeletingId(null);
     }
@@ -70,7 +69,7 @@ export function WorkspaceList({ onEdit, onRefresh }: WorkspaceListProps): JSX.El
             <p className="text-sm font-medium text-white truncate">{ws.name}</p>
             {ws.repoCurrentBranch && (
               <p className="text-xs text-muted-400 truncate">
-                {ws.repoPath ?? ws.repoRemoteUrl ?? "Sin repositorio"}
+                {ws.repoPath ?? ws.repoRemoteUrl ?? t("workspaceList.noRepo")}
               </p>
             )}
           </div>
@@ -83,8 +82,8 @@ export function WorkspaceList({ onEdit, onRefresh }: WorkspaceListProps): JSX.El
             <button
               className="p-1.5 rounded hover:bg-surface-400 text-muted-400 hover:text-white transition-colors"
               onClick={() => onEdit(ws)}
-              aria-label={`Editar workspace ${ws.name}`}
-              title="Editar"
+              aria-label={t("workspaceList.edit")}
+              title={t("workspaceList.edit")}
             >
               <PencilIcon size={14} />
             </button>
@@ -93,8 +92,8 @@ export function WorkspaceList({ onEdit, onRefresh }: WorkspaceListProps): JSX.El
                 className="p-1.5 rounded hover:bg-surface-400 text-muted-400 hover:text-danger transition-colors disabled:opacity-50"
                 onClick={() => handleDelete(ws)}
                 disabled={deletingId === ws.id}
-                aria-label={`Eliminar workspace ${ws.name}`}
-                title="Eliminar"
+                aria-label={t("workspaceList.deleteAria", { name: ws.name })}
+                title={t("workspaceList.delete")}
               >
                 <TrashIcon size={14} />
               </button>
@@ -103,9 +102,7 @@ export function WorkspaceList({ onEdit, onRefresh }: WorkspaceListProps): JSX.El
         </div>
       ))}
       {workspaces.length === 0 && (
-        <p className="text-sm text-muted-400 text-center py-6">
-          No hay workspaces. Crea uno nuevo para empezar.
-        </p>
+        <p className="text-sm text-muted-400 text-center py-6">{t("workspaceList.empty")}</p>
       )}
     </div>
   );

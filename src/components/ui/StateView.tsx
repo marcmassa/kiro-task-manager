@@ -1,3 +1,4 @@
+import { useT } from "../../i18n/useT";
 import { WarningIcon } from "../../Icons";
 import { Button } from "./Button";
 import { Card } from "./Card";
@@ -19,7 +20,8 @@ interface LoadingStateProps {
  *   indicador (R8.8, R10.6).
  */
 export function LoadingState({ message }: LoadingStateProps): JSX.Element {
-  const text = message != null && message.trim().length > 0 ? message : "Cargando...";
+  const t = useT();
+  const text = message != null && message.trim().length > 0 ? message : t("stateView.loading");
 
   return (
     <div
@@ -55,6 +57,7 @@ interface ErrorStateProps {
  * - El contenedor usa la superficie de `Card` (R8.7).
  */
 export function ErrorState({ message, onRetry }: ErrorStateProps): JSX.Element | null {
+  const t = useT();
   if (typeof onRetry !== "function") return null;
 
   return (
@@ -64,8 +67,8 @@ export function ErrorState({ message, onRetry }: ErrorStateProps): JSX.Element |
           <WarningIcon size={24} />
         </div>
         <p className="text-gray-200 text-sm">{message}</p>
-        <Button variant="primary" aria-label="Reintentar la carga" onClick={() => onRetry()}>
-          Reintentar
+        <Button variant="primary" aria-label={t("stateView.retryLabel")} onClick={() => onRetry()}>
+          {t("stateView.retry")}
         </Button>
       </div>
     </Card>

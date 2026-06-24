@@ -454,9 +454,9 @@ if (!tableColumns("comments").has("workspace_id")) {
 // Seed categories/priorities for any workspace that is missing them (created
 // before the seeding fix or from a failed creation that left an orphan row).
 {
-  const workspaceIds = (
-    db.query("SELECT id FROM workspaces").all() as { id: number }[]
-  ).map((r) => r.id);
+  const workspaceIds = (db.query("SELECT id FROM workspaces").all() as { id: number }[]).map(
+    (r) => r.id,
+  );
   for (const wid of workspaceIds) {
     const catCount = (
       db.query("SELECT COUNT(*) AS c FROM categories WHERE workspace_id = ?").get(wid) as any

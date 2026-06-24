@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ChartDataPoint } from "../utils/statsCalculator";
+import { useT } from "../i18n/useT";
 
 export type ChartType = "horizontal-bar" | "donut" | "vertical-bar" | "line-area";
 
@@ -29,6 +30,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
     percent: 0,
   });
 
+  const t = useT();
   const id = `chart-${title.replace(/\s+/g, "-").toLowerCase()}`;
 
   function handleTooltipShow(e: React.MouseEvent | React.FocusEvent, d: ChartDataPoint) {
@@ -69,7 +71,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
         className="w-full h-auto"
         viewBox={`0 0 ${viewW} ${viewH}`}
         role="img"
-        aria-label={`Gráfico: ${title}`}
+        aria-label={t("chart.graphAria", { title })}
         aria-describedby={`chart-table-${id}`}
       >
         <title>{title}</title>
@@ -82,7 +84,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
             fontSize={13}
             fontFamily="system-ui, -apple-system, sans-serif"
           >
-            Sin datos disponibles
+            {t("chart.noData")}
           </text>
         ) : (
           data.map((d, i) => {
@@ -111,7 +113,11 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
                   fill={d.color}
                   tabIndex={0}
                   role="graphics-symbol"
-                  aria-label={`${d.label}: ${d.value} tareas, ${d.percent.toFixed(1)}%`}
+                  aria-label={t("chart.dataAria", {
+                    label: d.label,
+                    value: d.value,
+                    percent: d.percent.toFixed(1),
+                  })}
                   onMouseEnter={(e) => handleTooltipShow(e, d)}
                   onMouseLeave={handleTooltipHide}
                   onFocus={(e) => handleTooltipShow(e, d)}
@@ -178,7 +184,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
             className="w-full h-auto"
             viewBox="0 0 200 200"
             role="img"
-            aria-label={`Gráfico: ${title}`}
+            aria-label={t("chart.graphAria", { title })}
             aria-describedby={`chart-table-${id}`}
           >
             <title>{title}</title>
@@ -201,7 +207,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
                   fontSize={13}
                   fontFamily="system-ui, -apple-system, sans-serif"
                 >
-                  Sin datos disponibles
+                  {t("chart.noData")}
                 </text>
               </>
             ) : (
@@ -225,7 +231,11 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
                         fill={d.color}
                         tabIndex={0}
                         role="graphics-symbol"
-                        aria-label={`${d.label}: ${d.value} tareas, ${d.percent.toFixed(1)}%`}
+                        aria-label={t("chart.dataAria", {
+                          label: d.label,
+                          value: d.value,
+                          percent: d.percent.toFixed(1),
+                        })}
                         onMouseEnter={(e) => handleTooltipShow(e, d)}
                         onMouseLeave={handleTooltipHide}
                         onFocus={(e) => handleTooltipShow(e, d)}
@@ -258,7 +268,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
                   fontSize={11}
                   fontFamily="system-ui, -apple-system, sans-serif"
                 >
-                  tareas
+                  {t("chart.tasks")}
                 </text>
               </>
             )}
@@ -307,7 +317,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
         className="w-full h-auto"
         viewBox={`0 0 ${viewW} ${viewH}`}
         role="img"
-        aria-label={`Gráfico: ${title}`}
+        aria-label={t("chart.graphAria", { title })}
         aria-describedby={`chart-table-${id}`}
       >
         <title>{title}</title>
@@ -320,7 +330,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
             fontSize={13}
             fontFamily="system-ui, -apple-system, sans-serif"
           >
-            Sin datos disponibles
+            {t("chart.noData")}
           </text>
         ) : (
           data.map((d, i) => {
@@ -351,7 +361,11 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
                   fill={d.color}
                   tabIndex={0}
                   role="graphics-symbol"
-                  aria-label={`${d.label}: ${d.value} tareas, ${d.percent.toFixed(1)}%`}
+                  aria-label={t("chart.dataAria", {
+                    label: d.label,
+                    value: d.value,
+                    percent: d.percent.toFixed(1),
+                  })}
                   onMouseEnter={(e) => handleTooltipShow(e, d)}
                   onMouseLeave={handleTooltipHide}
                   onFocus={(e) => handleTooltipShow(e, d)}
@@ -414,7 +428,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
         className="w-full h-auto"
         viewBox={`0 0 ${viewW} ${viewH}`}
         role="img"
-        aria-label={`Gráfico: ${title}`}
+        aria-label={t("chart.graphAria", { title })}
         aria-describedby={`chart-table-${id}`}
       >
         <title>{title}</title>
@@ -427,7 +441,7 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
             fontSize={13}
             fontFamily="system-ui, -apple-system, sans-serif"
           >
-            Sin datos disponibles
+            {t("chart.noData")}
           </text>
         ) : (
           <>
@@ -484,7 +498,11 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
                   onMouseLeave={handleTooltipHide}
                   tabIndex={0}
                   role="graphics-symbol"
-                  aria-label={`${p.label}: ${p.value} tareas`}
+                  aria-label={t("chart.dataAria", {
+                    label: p.label,
+                    value: p.value,
+                    percent: p.percent.toFixed(1),
+                  })}
                   onFocus={(e) => handleTooltipShow(e, p)}
                   onBlur={handleTooltipHide}
                   className="cursor-pointer focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
@@ -546,24 +564,22 @@ export function ChartRenderer({ type, data, title, insufficientWeeklyData }: Cha
         >
           <p className="font-medium text-white mb-0.5">{tooltip.label}</p>
           <p className="text-muted-400">
-            {tooltip.value} tareas
+            {tooltip.value} {t("chart.tasks")}
             {tooltip.percent > 0 && <> · {tooltip.percent.toFixed(1)}%</>}
           </p>
         </div>
       )}
       {insufficientWeeklyData && type === "line-area" && (
-        <p className="text-xs text-muted-500 text-center mt-2">
-          Datos insuficientes para mostrar tendencia
-        </p>
+        <p className="text-xs text-muted-500 text-center mt-2">{t("chart.insufficientData")}</p>
       )}
       {/* sr-only table for accessibility */}
       <table className="sr-only" id={`chart-table-${id}`}>
         <caption>{title}</caption>
         <thead>
           <tr>
-            <th scope="col">Categoría</th>
-            <th scope="col">Cantidad</th>
-            <th scope="col">Porcentaje</th>
+            <th scope="col">{t("chart.category")}</th>
+            <th scope="col">{t("chart.quantity")}</th>
+            <th scope="col">{t("chart.percentage")}</th>
           </tr>
         </thead>
         <tbody>

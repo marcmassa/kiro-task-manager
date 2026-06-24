@@ -80,7 +80,9 @@ export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelPro
     setChanges([]);
     setLoading(true);
     void loadChanges();
-    intervalRef.current = setInterval(() => { void loadChanges(); }, 5000);
+    intervalRef.current = setInterval(() => {
+      void loadChanges();
+    }, 5000);
     return () => {
       mountedRef.current = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -127,7 +129,10 @@ export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelPro
                     onFileClick(change.filePath);
                   }
                 }}
-                aria-label={t("workspace.openChange", { path: change.filePath, type: changeTypeLabel(change.changeType) })}
+                aria-label={t("workspace.openChange", {
+                  path: change.filePath,
+                  type: changeTypeLabel(change.changeType),
+                })}
               >
                 {/* Colored dot */}
                 <span

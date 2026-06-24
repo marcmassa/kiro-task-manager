@@ -102,8 +102,8 @@ const agentEngine = new AgentEngine(db);
 // ── FEAT-011: Workspace row mapper ──────────────────────────────────────────
 const SDD_DEFAULT_COLUMNS = [
   { id: "requirements", label: "Requirements", color: "purple" },
-  { id: "design",       label: "Diseño",       color: "indigo" },
-  { id: "tasks",        label: "Tasks",         color: "yellow" },
+  { id: "design", label: "Diseño", color: "indigo" },
+  { id: "tasks", label: "Tasks", color: "yellow" },
 ];
 
 function mapWorkspaceRow(row: any): any {
@@ -112,7 +112,9 @@ function mapWorkspaceRow(row: any): any {
   if (type === "sdd") {
     customColumns = SDD_DEFAULT_COLUMNS;
   } else if (type === "custom" && row.visible_columns) {
-    try { customColumns = JSON.parse(row.visible_columns); } catch {}
+    try {
+      customColumns = JSON.parse(row.visible_columns);
+    } catch {}
   }
   return {
     id: row.id,
@@ -171,8 +173,20 @@ const app = new Elysia()
   // Serve static files from public directory
   .get("/styles.css", () => Bun.file(path.join(PUBLIC_DIR, "styles.css")))
   .get("/dist/index.js", () => Bun.file(path.join(PUBLIC_DIR, "dist/index.js")))
-  .get("/favicon.svg", () => new Response(Bun.file(path.join(PUBLIC_DIR, "favicon.svg")), { headers: { "Content-Type": "image/svg+xml" } }))
-  .get("/banner.svg", () => new Response(Bun.file(path.join(PUBLIC_DIR, "banner.svg")), { headers: { "Content-Type": "image/svg+xml" } }))
+  .get(
+    "/favicon.svg",
+    () =>
+      new Response(Bun.file(path.join(PUBLIC_DIR, "favicon.svg")), {
+        headers: { "Content-Type": "image/svg+xml" },
+      }),
+  )
+  .get(
+    "/banner.svg",
+    () =>
+      new Response(Bun.file(path.join(PUBLIC_DIR, "banner.svg")), {
+        headers: { "Content-Type": "image/svg+xml" },
+      }),
+  )
 
   // Get all tasks with related data (Fase 9: filter by workspace_id)
   .get("/api/tasks", ({ query }) => {
@@ -344,9 +358,10 @@ const app = new Elysia()
     } else {
       // SDD columns ("requirements", "design", "tasks") and custom workspace columns
       // are all stored in sdd_phase; the frontend effectiveColumn() routes by sdd_phase first.
-      db.prepare(
-        "UPDATE tasks SET sdd_phase = ?, updated_at = datetime('now') WHERE id = ?",
-      ).run(column, params.id);
+      db.prepare("UPDATE tasks SET sdd_phase = ?, updated_at = datetime('now') WHERE id = ?").run(
+        column,
+        params.id,
+      );
     }
     return db
       .query(
@@ -1267,9 +1282,7 @@ const app = new Elysia()
     const validTypes = ["normal", "sdd", "custom"];
     const type = validTypes.includes(projectType) ? projectType : "normal";
     const colsJson =
-      type === "custom" && Array.isArray(customColumns)
-        ? JSON.stringify(customColumns)
-        : null;
+      type === "custom" && Array.isArray(customColumns) ? JSON.stringify(customColumns) : null;
     const slug = slugify(name.trim());
     let id: number;
     try {
@@ -1554,13 +1567,28 @@ const app = new Elysia()
 
   .post("/api/workspaces/:id/mkdir", ({ params, body, set }) => {
     const ws = db.query("SELECT * FROM workspaces WHERE id = ?").get(Number(params.id)) as any;
-    if (!ws) { set.status = 404; return { error: "Workspace no encontrado" }; }
-    if (!ws.repo_path) { set.status = 422; return { error: "Workspace sin directorio" }; }
+    if (!ws) {
+      set.status = 404;
+      return { error: "Workspace no encontrado" };
+    }
+    if (!ws.repo_path) {
+      set.status = 422;
+      return { error: "Workspace sin directorio" };
+    }
     const { path: dirPath } = body as { path?: string };
-    if (!dirPath) { set.status = 400; return { error: "Se requiere el campo 'path'" }; }
+    if (!dirPath) {
+      set.status = 400;
+      return { error: "Se requiere el campo 'path'" };
+    }
     const resolved = resolveInSandbox(ws.repo_path, dirPath);
-    if (!resolved) { set.status = 422; return { error: "Ruta inválida o fuera del directorio de trabajo" }; }
-    if (existsSync(resolved)) { set.status = 409; return { error: "La carpeta ya existe" }; }
+    if (!resolved) {
+      set.status = 422;
+      return { error: "Ruta inválida o fuera del directorio de trabajo" };
+    }
+    if (existsSync(resolved)) {
+      set.status = 409;
+      return { error: "La carpeta ya existe" };
+    }
     mkdirSync(resolved, { recursive: true });
     return { ok: true, path: dirPath };
   })

@@ -122,9 +122,7 @@ export function BranchSelector({
       {/* Warning modal for uncommitted changes */}
       {showWarning && (
         <div className="absolute top-full left-0 mt-2 z-50 bg-surface-400 border border-warning-500/50 rounded-lg p-3 shadow-card min-w-[260px]">
-          <p className="text-sm text-warning-300 mb-2">
-            {t("branch.uncommittedWarning")}
-          </p>
+          <p className="text-sm text-warning-300 mb-2">{t("branch.uncommittedWarning")}</p>
           <div className="flex gap-2">
             <button
               onClick={confirmChange}

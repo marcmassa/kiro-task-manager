@@ -136,12 +136,13 @@ export function IntegrationCard({
                 </div>
                 {summary ? (
                   <p className="text-xs text-muted-500 ml-[18px]">
-                    {t("integration.issuesFound", { found: summary.found, mappable: summary.mappable })}
+                    {t("integration.issuesFound", {
+                      found: summary.found,
+                      mappable: summary.mappable,
+                    })}
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-600 ml-[18px]">
-                    {t("integration.noSyncData")}
-                  </p>
+                  <p className="text-xs text-muted-600 ml-[18px]">{t("integration.noSyncData")}</p>
                 )}
               </div>
             </div>
@@ -173,7 +174,9 @@ export function IntegrationCard({
         {/* Mini dashboard — 3 stat cards */}
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div className="rounded-xl border border-white/10 bg-surface-400/50 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-muted-500">{t("integration.lastSyncLabel")}</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-500">
+              {t("integration.lastSyncLabel")}
+            </p>
             <p className="text-sm font-medium text-white mt-1">{lastSyncFormatted}</p>
           </div>
           <div className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2">
@@ -183,7 +186,9 @@ export function IntegrationCard({
             <p className="text-sm font-medium text-white mt-1">{summary?.found ?? 0}</p>
           </div>
           <div className="rounded-xl border border-success/20 bg-success/10 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-success-300">{t("integration.importableLabel")}</p>
+            <p className="text-[11px] uppercase tracking-wide text-success-300">
+              {t("integration.importableLabel")}
+            </p>
             <p className="text-sm font-medium text-white mt-1">{summary?.mappable ?? 0}</p>
           </div>
         </div>
@@ -221,15 +226,15 @@ export function IntegrationCard({
         </div>
         <div>
           <p className="text-sm font-medium text-white">Linear</p>
-          <p className="text-xs text-muted-500">
-            {t("integration.linearDesc")}
-          </p>
+          <p className="text-xs text-muted-500">{t("integration.linearDesc")}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="block">
-          <span className="text-xs font-medium text-muted-300 mb-1.5 block">{t("integration.provider")}</span>
+          <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+            {t("integration.provider")}
+          </span>
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
@@ -242,12 +247,12 @@ export function IntegrationCard({
               </option>
             ))}
           </select>
-          <p className="text-[11px] text-muted-500 mt-1">
-            {t("integration.linearDesc")}
-          </p>
+          <p className="text-[11px] text-muted-500 mt-1">{t("integration.linearDesc")}</p>
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-muted-300 mb-1.5 block">{t("integration.apiKey")}</span>
+          <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+            {t("integration.apiKey")}
+          </span>
           <input
             type="password"
             value={apiKey}
@@ -258,9 +263,7 @@ export function IntegrationCard({
             spellCheck={false}
             aria-label={t("integration.apiKeyLabel")}
           />
-          <p className="text-[10px] text-muted-400 mt-1">
-            {t("integration.apiKeyHelper")}
-          </p>
+          <p className="text-[10px] text-muted-400 mt-1">{t("integration.apiKeyHelper")}</p>
         </label>
       </div>
 
@@ -272,9 +275,7 @@ export function IntegrationCard({
       )}
 
       <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-xs text-muted-500 max-w-md">
-          {t("integration.securityNote")}
-        </p>
+        <p className="text-xs text-muted-500 max-w-md">{t("integration.securityNote")}</p>
         <button
           onClick={handleConnect}
           disabled={!apiKey.trim() || submitting}

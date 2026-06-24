@@ -3,7 +3,13 @@ import { initReactI18next } from "react-i18next";
 import es from "./locales/es.json";
 import en from "./locales/en.json";
 
-const saved = localStorage.getItem("lang");
+const saved = (() => {
+  try {
+    return localStorage.getItem("lang");
+  } catch {
+    return null;
+  }
+})();
 const lng = saved === "en" ? "en" : "es";
 
 i18n.use(initReactI18next).init({
@@ -14,6 +20,7 @@ i18n.use(initReactI18next).init({
     en: { translation: en },
   },
   interpolation: { escapeValue: false },
+  initImmediate: false,
 });
 
 export default i18n;

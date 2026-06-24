@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Task, AgentExecution, WorkspaceColumn } from "../types";
+import { useT } from "../i18n/useT";
 import { columnColorTokens } from "../utils/columnColors";
 import { ChartRenderer } from "./ChartRenderer";
 import { calculateStats } from "../utils/statsCalculator";
@@ -95,6 +96,7 @@ export function StatsDashboard({
   workspaceSelector,
   activeWorkspaceName,
 }: StatsDashboardProps) {
+  const t = useT();
   const hasCustomColumns = customColumns.length > 0;
   const { stats, derivedError } = useMemo<{
     stats: StatsData | null;
@@ -103,7 +105,7 @@ export function StatsDashboard({
     try {
       return { stats: calculateStats(tasks), derivedError: null };
     } catch {
-      return { stats: null, derivedError: "Error al calcular las estadísticas. Intenta de nuevo." };
+      return { stats: null, derivedError: t("stats.calcError") };
     }
   }, [tasks]);
 
@@ -112,7 +114,7 @@ export function StatsDashboard({
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-screen">
-        <LoadingState message="Cargando estadísticas..." />
+        <LoadingState message={t("stats.loading")} />
       </div>
     );
   }
@@ -121,8 +123,10 @@ export function StatsDashboard({
     return (
       <div className="flex-1 flex flex-col min-h-screen">
         <PageHeader
-          title="Estadísticas"
-          subtitle={`Análisis de productividad · ${activeWorkspaceName ?? "Workspace activo"}`}
+          title={t("stats.title")}
+          subtitle={t("stats.subtitle", {
+            name: activeWorkspaceName ?? t("stats.defaultWorkspace"),
+          })}
           actions={workspaceSelector}
         />
         <main className="flex-1 px-8 py-6 flex items-center justify-center">
@@ -136,15 +140,17 @@ export function StatsDashboard({
     return (
       <div className="flex-1 flex flex-col min-h-screen">
         <PageHeader
-          title="Estadísticas"
-          subtitle={`Análisis de productividad · ${activeWorkspaceName ?? "Workspace activo"}`}
+          title={t("stats.title")}
+          subtitle={t("stats.subtitle", {
+            name: activeWorkspaceName ?? t("stats.defaultWorkspace"),
+          })}
           actions={workspaceSelector}
         />
         <main className="flex-1 px-8 py-6">
           <EmptyState
             icon={<ChartIcon size={32} className="text-accent-400" />}
-            title="Sin datos todavía"
-            message="Crea tu primera tarea para ver las estadísticas."
+            title={t("stats.noDataTitle")}
+            message={t("stats.noDataMsg")}
           />
         </main>
       </div>
@@ -169,7 +175,13 @@ export function StatsDashboard({
   const customRows = customColumns.map((col) => {
     const value = columnCounts.get(col.id) ?? 0;
     const tokens = columnColorTokens(col.color);
-    return { label: col.label, value, percent: pct(value), color: tokens.dot, textColor: tokens.text };
+    return {
+      label: col.label,
+      value,
+      percent: pct(value),
+      color: tokens.dot,
+      textColor: tokens.text,
+    };
   });
 
   const statusRows = [
@@ -230,47 +242,49 @@ export function StatsDashboard({
 
       <main className="flex-1 px-8 py-6 space-y-8">
         {/* ── KPI Cards ─────────────────────────────────────────── */}
-        <section aria-label="Indicadores clave de rendimiento">
+        <section aria-label={t("stats.kpiSection")}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard
-              label="Total tareas"
+              label={t("stats.totalTasks")}
               value={s.totalTasks}
               icon={<KanbanIcon size={20} />}
               variant="accent"
-              ariaLabel={formatStatAriaLabel("Total de tareas", s.totalTasks)}
+              ariaLabel={formatStatAriaLabel(t("stats.totalTasksLabel"), s.totalTasks)}
             />
             <KpiCard
-              label="Tareas vencidas"
+              label={t("stats.overdueTasks")}
               value={s.overdueTasks}
               icon={<WarningIcon size={20} />}
               variant="red"
-              ariaLabel={formatStatAriaLabel("Tareas vencidas", s.overdueTasks)}
+              ariaLabel={formatStatAriaLabel(t("stats.overdueTasksLabel"), s.overdueTasks)}
             />
             <KpiCard
-              label="En progreso"
+              label={t("stats.inProgressTasks")}
               value={s.inProgressTasks}
               icon={<ClockIcon size={20} />}
               variant="orange"
-              ariaLabel={formatStatAriaLabel("Tareas en progreso", s.inProgressTasks)}
+              ariaLabel={formatStatAriaLabel(t("stats.inProgressLabel"), s.inProgressTasks)}
             />
             <KpiCard
-              label="Urgentes pendientes"
+              label={t("stats.urgentPending")}
               value={s.urgentPendingTasks}
               icon={<FireIcon size={20} />}
               variant="red"
-              ariaLabel={formatStatAriaLabel("Tareas urgentes pendientes", s.urgentPendingTasks)}
+              ariaLabel={formatStatAriaLabel(t("stats.urgentLabel"), s.urgentPendingTasks)}
             />
           </div>
         </section>
 
         {/* ── Cumplimiento unificado ─────────────────────────────── */}
-        <section aria-label="Tasa de cumplimiento y fechas límite">
+        <section aria-label={t("stats.complianceSection")}>
           <Card>
             {/* Header row */}
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
-                <h2 className="text-sm font-semibold text-gray-200 mb-0.5">Tasa de Cumplimiento</h2>
-                <p className="text-xs text-muted-500">Tareas completadas sobre el total</p>
+                <h2 className="text-sm font-semibold text-gray-200 mb-0.5">
+                  {t("stats.completionRateTitle")}
+                </h2>
+                <p className="text-xs text-muted-500">{t("stats.completionRateSub")}</p>
               </div>
               <p className="text-4xl font-bold text-white tabular-nums leading-none shrink-0">
                 {s.completionRate}
@@ -285,7 +299,7 @@ export function StatsDashboard({
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={s.completionRate}
-              aria-label={`Tasa de cumplimiento: ${s.completionRate}%`}
+              aria-label={t("stats.completionRateLabel", { rate: s.completionRate })}
             >
               <div
                 className="h-full rounded-full bg-gradient-to-r from-accent to-aws-orange transition-[width] duration-500"
@@ -303,20 +317,19 @@ export function StatsDashboard({
                   <CalendarIcon size={18} />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-white">Sin fechas límite asignadas</p>
-                  <p className="text-xs text-muted-500 mt-0.5">
-                    Asigna una fecha de vencimiento para activar esta métrica.
-                  </p>
+                  <p className="text-xs font-medium text-white">{t("stats.noDueDates")}</p>
+                  <p className="text-xs text-muted-500 mt-0.5">{t("stats.noDueDatesDesc")}</p>
                 </div>
               </div>
             ) : (
               <>
                 {/* Sub-heading */}
                 <div className="flex items-center justify-between mb-4">
-                  <p className="metric-tile-label text-muted-500">Cumplimiento de fechas</p>
+                  <p className="metric-tile-label text-muted-500">{t("stats.dateCompliance")}</p>
                   {s.overdueAndPending > 0 && (
                     <Badge variant="danger">
-                      {s.overdueAndPending} vencida{s.overdueAndPending !== 1 ? "s" : ""}
+                      {s.overdueAndPending}{" "}
+                      {s.overdueAndPending !== 1 ? t("stats.overdueMany") : t("stats.overdueOne")}
                     </Badge>
                   )}
                 </div>
@@ -324,21 +337,23 @@ export function StatsDashboard({
                 {/* Three metric tiles */}
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <MetricTile
-                    label="A tiempo"
+                    label={t("stats.onTime")}
                     value={s.completedOnTime}
-                    sub={`${onTimePercent}% del total`}
+                    sub={t("stats.ofTotal", { pct: onTimePercent })}
                     variant="success"
                   />
                   <MetricTile
-                    label="Con retraso"
+                    label={t("stats.late")}
                     value={s.completedLate}
-                    sub={`${latePercent}% del total`}
+                    sub={t("stats.ofTotal", { pct: latePercent })}
                     variant="danger"
                   />
                   <MetricTile
-                    label="Puntualidad"
+                    label={t("stats.punctuality")}
                     value={s.punctualityRate !== null ? `${s.punctualityRate}%` : "—"}
-                    sub={s.punctualityRate !== null ? "tasa de éxito" : "sin datos"}
+                    sub={
+                      s.punctualityRate !== null ? t("stats.successRate") : t("stats.noMetricData")
+                    }
                     variant="accent"
                   />
                 </div>
@@ -346,8 +361,8 @@ export function StatsDashboard({
                 {/* Dual progress bar */}
                 <div>
                   <div className="flex justify-between text-[10px] uppercase tracking-wider text-white/35 mb-1.5">
-                    <span>A tiempo</span>
-                    <span>Con retraso</span>
+                    <span>{t("stats.onTime")}</span>
+                    <span>{t("stats.late")}</span>
                   </div>
                   <div className="compliance-bar-track">
                     {onTimePercent > 0 && (
@@ -370,22 +385,22 @@ export function StatsDashboard({
         </section>
 
         {/* ── Distribuciones ─────────────────────────────────────── */}
-        <section aria-label="Distribución de tareas">
+        <section aria-label={t("stats.distributionSection")}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Por estado */}
             <Card>
-              <SectionHeader label="Por estado" dotColor="ds-dot-accent bg-accent" />
+              <SectionHeader label={t("stats.byStatus")} dotColor="ds-dot-accent bg-accent" />
               <p className="text-xs text-muted-500 -mt-2 mb-4 tabular-nums">
-                {totalForStatus} tareas
+                {t("stats.taskCount", { total: totalForStatus })}
               </p>
               <StatsTable rows={statusRows} />
               <div className="sr-only">
                 <DataTable
-                  aria-label="Distribución de tareas por estado"
+                  aria-label={t("stats.statusDist")}
                   columns={[
-                    { key: "estado", header: "Estado" },
-                    { key: "cantidad", header: "Tareas", numeric: true },
-                    { key: "porcentaje", header: "%", numeric: true },
+                    { key: "estado", header: t("stats.col_estado") },
+                    { key: "cantidad", header: t("stats.col_tasks"), numeric: true },
+                    { key: "porcentaje", header: t("stats.col_pct"), numeric: true },
                   ]}
                   rows={s.statusDistribution.map((d) => ({
                     estado: d.label,
@@ -398,19 +413,22 @@ export function StatsDashboard({
                 <ChartRenderer
                   type="horizontal-bar"
                   data={s.statusDistribution}
-                  title="Distribución de tareas por estado"
+                  title={t("stats.statusDist")}
                 />
               </div>
             </Card>
 
             {/* Por categoría */}
             <Card>
-              <SectionHeader label="Por categoría" dotColor="ds-dot-warning bg-warning" />
+              <SectionHeader label={t("stats.byCategory")} dotColor="ds-dot-warning bg-warning" />
               <p className="text-xs text-muted-500 -mt-2 mb-4 tabular-nums">
-                {s.categoryDistribution.length} categorías · {totalForCategory} tareas
+                {t("stats.catCount", {
+                  count: s.categoryDistribution.length,
+                  total: totalForCategory,
+                })}
               </p>
               {s.categoryDistribution.length === 0 ? (
-                <p className="text-xs text-muted-500 py-4 text-center">Sin categorías asignadas</p>
+                <p className="text-xs text-muted-500 py-4 text-center">{t("stats.noCats")}</p>
               ) : (
                 <StatsTable rows={categoryRows} />
               )}
@@ -418,8 +436,11 @@ export function StatsDashboard({
 
             {/* Actividad semanal */}
             <Card>
-              <SectionHeader label="Actividad semanal" dotColor="ds-dot-success bg-success" />
-              <p className="text-xs text-muted-500 -mt-2 mb-4">Últimas 8 semanas</p>
+              <SectionHeader
+                label={t("stats.weeklyActivity")}
+                dotColor="ds-dot-success bg-success"
+              />
+              <p className="text-xs text-muted-500 -mt-2 mb-4">{t("stats.weeklyActivitySub")}</p>
               <ChartRenderer
                 type="line-area"
                 data={s.weeklyActivity.map((w) => ({
@@ -428,27 +449,27 @@ export function StatsDashboard({
                   percent: 0,
                   color: "#7c5cfc",
                 }))}
-                title="Actividad semanal"
+                title={t("stats.weeklyActivity")}
                 insufficientWeeklyData={s.insufficientWeeklyData}
               />
               {activeWeeklyRows.length > 0 && (
                 <div className="mt-5">
-                  <p className="metric-tile-label text-muted-500 mb-2">Semanas con actividad</p>
-                  <StatsTable rows={activeWeeklyRows} unit="tareas" />
+                  <p className="metric-tile-label text-muted-500 mb-2">{t("stats.weeksActive")}</p>
+                  <StatsTable rows={activeWeeklyRows} unit={t("stats.col_tasks")} />
                 </div>
               )}
             </Card>
 
             {/* Por prioridad */}
             <Card>
-              <SectionHeader label="Por prioridad" dotColor="ds-dot-danger bg-danger" />
+              <SectionHeader label={t("stats.byPriority")} dotColor="ds-dot-danger bg-danger" />
               <p className="text-xs text-muted-500 -mt-2 mb-4 tabular-nums">
-                {totalForPriority} tareas
+                {t("stats.taskCount", { total: totalForPriority })}
               </p>
               <ChartRenderer
                 type="donut"
                 data={s.priorityDistribution}
-                title="Distribución de tareas por prioridad"
+                title={t("stats.priorityDist")}
               />
               <div className="h-px bg-white/5 my-4" />
               <StatsTable rows={priorityRows} />

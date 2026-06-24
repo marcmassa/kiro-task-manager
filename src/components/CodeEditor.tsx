@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useT } from "../i18n/useT";
 import {
   EditorView,
   keymap,
@@ -142,6 +143,7 @@ export function CodeEditor({
   onSave,
   readOnly = false,
 }: CodeEditorProps): JSX.Element {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const languageCompartment = useRef(new Compartment());
@@ -231,7 +233,7 @@ export function CodeEditor({
     <div
       ref={containerRef}
       className="flex-1 min-h-0 overflow-hidden rounded-xl border border-white/5 [&_.cm-editor]:outline-none"
-      aria-label="Editor de código"
+      aria-label={t("editor.label")}
     />
   );
 }

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { fetchRepoConfig, updateRepoConfig, validateRepoPath } from "../api";
 import type { RepoConfig } from "../types";
 import { RepoStatusBadge } from "./RepoStatusBadge";
+import { useT } from "../i18n/useT";
+import i18n from "../i18n";
 
 /**
  * RepoSection — self-contained panel for configuring the workspace Git
@@ -14,6 +16,7 @@ import { RepoStatusBadge } from "./RepoStatusBadge";
  * Requirements: R3.1, R3.2, R3.3, R3.4, R3.5, R3.6, R3.7
  */
 export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Element {
+  const t = useT();
   const [config, setConfig] = useState<RepoConfig | null>(null);
   const [repoPath, setRepoPath] = useState("");
   const [repoRemoteUrl, setRepoRemoteUrl] = useState("");
@@ -65,13 +68,13 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
       } else {
         setValidationResult({
           ok: false,
-          message: result.message ?? "Error de validación",
+          message: result.message ?? i18n.t("repo.validationError"),
         });
       }
     } catch (e) {
       setValidationResult({
         ok: false,
-        message: e instanceof Error ? e.message : "Error de conexión",
+        message: e instanceof Error ? e.message : i18n.t("repo.validationConn"),
       });
     } finally {
       setValidating(false);
@@ -96,12 +99,12 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
       setConfig(updated);
       setGitTokenConfigured(!!(updated as any).gitTokenConfigured);
       setGitToken(""); // clear after save
-      setSaveMessage({ kind: "ok", text: "Configuración guardada" });
+      setSaveMessage({ kind: "ok", text: i18n.t("repo.saveOk") });
       setTimeout(() => setSaveMessage(null), 2500);
     } catch (e) {
       setSaveMessage({
         kind: "err",
-        text: e instanceof Error ? e.message : "No se pudo guardar la configuración",
+        text: e instanceof Error ? e.message : i18n.t("repo.saveErr"),
       });
       setTimeout(() => setSaveMessage(null), 4000);
     } finally {
@@ -110,7 +113,7 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
   }
 
   return (
-    <section aria-label="Configuración del repositorio" className="space-y-4">
+    <section aria-label={t("repo.configLabel")} className="space-y-4">
       {/* Current status badge */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <RepoStatusBadge
@@ -123,7 +126,7 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
       <div className="space-y-3">
         <label className="block">
           <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-            Ruta del repositorio local
+            {t("repo.localPath")}
           </span>
           <div className="flex items-center gap-2">
             <input
@@ -135,16 +138,16 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
               }}
               placeholder="/home/user/projects/my-app"
               className="input-field flex-1"
-              aria-label="Ruta del repositorio local"
+              aria-label={t("repo.localPathLabel")}
             />
             <button
               type="button"
               onClick={handleValidate}
               disabled={validating || !repoPath.trim()}
               className="btn-secondary shrink-0"
-              aria-label="Validar ruta del repositorio"
+              aria-label={t("repo.validateLabel")}
             >
-              {validating ? "Validando..." : "Validar"}
+              {validating ? t("repo.validating") : t("repo.validate")}
             </button>
           </div>
         </label>
@@ -163,7 +166,7 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
             {validationResult.ok ? (
               <>
                 <RepoStatusBadge status="connected" branch={validationResult.branch} />
-                <span className="text-xs text-success-300">Repositorio válido</span>
+                <span className="text-xs text-success-300">{t("repo.repoValid")}</span>
               </>
             ) : (
               <>
@@ -177,7 +180,7 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
         {/* Remote URL field */}
         <label className="block">
           <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-            URL remota (opcional)
+            {t("repo.remoteUrl")}
           </span>
           <input
             type="text"
@@ -185,27 +188,29 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
             onChange={(e) => setRepoRemoteUrl(e.target.value)}
             placeholder="https://github.com/user/repo.git"
             className="input-field"
-            aria-label="URL remota del repositorio"
+            aria-label={t("repo.remoteUrlLabel")}
           />
         </label>
 
         {/* Default branch field */}
         <label className="block">
-          <span className="text-xs font-medium text-muted-300 mb-1.5 block">Rama por defecto</span>
+          <span className="text-xs font-medium text-muted-300 mb-1.5 block">
+            {t("repo.defaultBranch")}
+          </span>
           <input
             type="text"
             value={repoDefaultBranch}
             onChange={(e) => setRepoDefaultBranch(e.target.value)}
             placeholder="main"
             className="input-field"
-            aria-label="Rama por defecto del repositorio"
+            aria-label={t("repo.defaultBranchLabel")}
           />
         </label>
 
         {/* Git token field */}
         <label className="block">
           <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-            Token de acceso personal
+            {t("repo.personalToken")}
           </span>
           <div className="flex items-center gap-2">
             <input
@@ -214,7 +219,7 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
               onChange={(e) => setGitToken(e.target.value)}
               placeholder="ghp_xxxxxxxxxxxx"
               className="input-field flex-1"
-              aria-label="Token de acceso personal para Git"
+              aria-label={t("repo.tokenLabel")}
               autoComplete="off"
             />
             <span
@@ -223,30 +228,28 @@ export function RepoSection({ workspaceId }: { workspaceId?: number }): JSX.Elem
                   ? "bg-green-900/30 text-green-400 border border-green-700/50"
                   : "bg-gray-800/50 text-gray-500 border border-gray-700/50"
               }`}
-              aria-label={gitTokenConfigured ? "Token configurado" : "Sin token"}
+              aria-label={
+                gitTokenConfigured ? t("repo.tokenConfiguredLabel") : t("repo.noTokenLabel")
+              }
             >
-              {gitTokenConfigured ? "✓ Token configurado" : "Sin token"}
+              {gitTokenConfigured ? t("repo.tokenConfigured") : t("repo.noToken")}
             </span>
           </div>
-          <p className="text-xs text-muted-500 mt-1">
-            Necesario para push/pull. Se cifra antes de almacenarse.
-          </p>
+          <p className="text-xs text-muted-500 mt-1">{t("repo.tokenHint")}</p>
         </label>
       </div>
 
       {/* Save button row */}
       <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-surface-400/30 border border-white/5">
-        <p className="text-xs text-muted-400">
-          Asocia un repositorio Git local para que el agente opere sobre el código.
-        </p>
+        <p className="text-xs text-muted-400">{t("repo.repoHint")}</p>
         <button
           type="button"
           onClick={handleSave}
           disabled={saving}
           className="btn-primary shrink-0"
-          aria-label="Guardar configuración del repositorio"
+          aria-label={t("repo.saveLabel")}
         >
-          {saving ? "Guardando..." : "Guardar"}
+          {saving ? t("state.saving") : t("action.save")}
         </button>
       </div>
 

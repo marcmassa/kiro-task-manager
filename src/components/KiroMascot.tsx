@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { Kiro } from "@lobehub/icons";
+import { useT } from "../i18n/useT";
 
 interface KiroMascotProps {
   className?: string;
@@ -59,7 +60,7 @@ interface KiroBaseProps {
 export function KiroBase({
   className = "",
   size = 160,
-  label = "Kiro, asistente de IA",
+  label,
   behind,
   silhouetteShiftX = 0,
   children,
@@ -70,6 +71,8 @@ export function KiroBase({
   const clipId = `kiro-bg-clip-${useId().replace(/:/g, "")}`;
   // Guard against 0 / negative sizes (parameter default only covers undefined).
   const dim = size > 0 ? size : 160;
+  const t = useT();
+  const resolvedLabel = label ?? t("kiroMascot.aiAssistant");
 
   return (
     <svg
@@ -78,7 +81,7 @@ export function KiroBase({
       height={dim}
       viewBox="0 0 24 24"
       className={className}
-      {...(decorative ? { "aria-hidden": true } : { role: "img", "aria-label": label })}
+      {...(decorative ? { "aria-hidden": true } : { role: "img", "aria-label": resolvedLabel })}
     >
       <defs>
         <clipPath id={clipId}>
@@ -252,13 +255,14 @@ export function NotebookWritingLayers() {
  * - `variant="compact"` → the official lobehub Kiro icon, for small renders.
  */
 export function KiroMascot({ className = "", size = 160, variant = "full" }: KiroMascotProps) {
+  const t = useT();
   if (variant === "compact") {
     return (
       <div
         className={className}
         style={{ width: size, height: size, display: "inline-flex" }}
         role="img"
-        aria-label="Kiro, asistente de IA"
+        aria-label={t("kiroMascot.aiAssistant")}
       >
         <Kiro.Color size={size} />
       </div>
@@ -269,7 +273,7 @@ export function KiroMascot({ className = "", size = 160, variant = "full" }: Kir
     <KiroBase
       className={className}
       size={size}
-      label="Kiro, asistente de IA anotando tareas en un cuaderno"
+      label={t("kiroMascot.annotating")}
       behind={<NotebookLayer />}
       silhouetteShiftX={-3.3}
     >

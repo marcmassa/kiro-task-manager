@@ -22,7 +22,7 @@ interface KanbanColumnProps {
 }
 
 const systemColorMap: Record<string, { dot: string; text: string; badge: string }> = {
-  accent:  { dot: "bg-accent",  text: "text-accent-300",  badge: "bg-accent/10 text-accent-300"  },
+  accent: { dot: "bg-accent", text: "text-accent-300", badge: "bg-accent/10 text-accent-300" },
   warning: { dot: "bg-warning", text: "text-warning-300", badge: "bg-warning/10 text-warning-300" },
   success: { dot: "bg-success", text: "text-success-300", badge: "bg-success/10 text-success-300" },
 };

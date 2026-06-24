@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { KiroBase, NotebookLayer, NotebookWritingLayers } from "./KiroMascot";
+import { useT } from "../i18n/useT";
 
 /**
  * The six supported Kiro moods — each corresponds to a distinct illustration
@@ -320,6 +321,26 @@ export function KiroIllustration({
   label,
 }: KiroIllustrationProps): JSX.Element {
   const reducedMotion = useReducedMotion();
+  const t = useT();
+
+  function getMoodLabel(mood: KiroMood): string {
+    switch (mood) {
+      case "saludo":
+        return t("kiroMascot.greeting");
+      case "trabajando":
+        return t("kiroMascot.working");
+      case "pensando":
+        return t("kiroMascot.thinking");
+      case "celebrando":
+        return t("kiroMascot.celebrating");
+      case "error":
+        return t("kiroMascot.error");
+      case "vacio":
+        return t("kiroMascot.idle");
+      default:
+        return t("kiroMascot.greeting");
+    }
+  }
 
   // Mood resolution: fallback to "saludo" for out-of-union runtime values
   const resolved = isKiroMood(mood) ? mood : "saludo";
@@ -332,7 +353,7 @@ export function KiroIllustration({
   let resolvedLabel: string | undefined;
   if (!decorative) {
     const trimmed = typeof label === "string" ? label.trim() : "";
-    resolvedLabel = trimmed.length > 0 ? trimmed : config.label;
+    resolvedLabel = trimmed.length > 0 ? trimmed : getMoodLabel(resolved);
   }
 
   // Animation class: only when animated and reduced motion is not active

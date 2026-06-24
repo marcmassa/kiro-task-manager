@@ -31,47 +31,73 @@ describe("sddKanban — effectiveColumn", () => {
   // Unit: SDD phases map to correct columns
   test("sdd_phase=requirements → requirements column", () => {
     expect(
-      effectiveColumn({ status: "todo", sdd_phase: null }, { state: "agent_working", sdd_phase: "requirements" }),
+      effectiveColumn(
+        { status: "todo", sdd_phase: null },
+        { state: "agent_working", sdd_phase: "requirements" },
+      ),
     ).toBe("requirements");
   });
 
   test("sdd_phase=design → design column", () => {
     expect(
-      effectiveColumn({ status: "todo", sdd_phase: null }, { state: "agent_working", sdd_phase: "design" }),
+      effectiveColumn(
+        { status: "todo", sdd_phase: null },
+        { state: "agent_working", sdd_phase: "design" },
+      ),
     ).toBe("design");
   });
 
   test("sdd_phase=tasks → tasks column", () => {
     expect(
-      effectiveColumn({ status: "in_progress", sdd_phase: null }, { state: "agent_working", sdd_phase: "tasks" }),
+      effectiveColumn(
+        { status: "in_progress", sdd_phase: null },
+        { state: "agent_working", sdd_phase: "tasks" },
+      ),
     ).toBe("tasks");
   });
 
   test("sdd_phase=execution → in_progress column", () => {
     expect(
-      effectiveColumn({ status: "todo", sdd_phase: null }, { state: "agent_working", sdd_phase: "execution" }),
+      effectiveColumn(
+        { status: "todo", sdd_phase: null },
+        { state: "agent_working", sdd_phase: "execution" },
+      ),
     ).toBe("in_progress");
   });
 
   // Unit: done execution falls back to task.status
   test("sdd_phase set but state=done → falls back to task.status", () => {
-    expect(effectiveColumn({ status: "todo", sdd_phase: null }, { state: "done", sdd_phase: "requirements" })).toBe("todo");
-    expect(effectiveColumn({ status: "done", sdd_phase: null }, { state: "done", sdd_phase: "design" })).toBe("done");
+    expect(
+      effectiveColumn(
+        { status: "todo", sdd_phase: null },
+        { state: "done", sdd_phase: "requirements" },
+      ),
+    ).toBe("todo");
+    expect(
+      effectiveColumn({ status: "done", sdd_phase: null }, { state: "done", sdd_phase: "design" }),
+    ).toBe("done");
   });
 
   // Unit: Legacy (null sdd_phase) follows task.status
   test("sdd_phase=null → todo", () => {
-    expect(effectiveColumn({ status: "todo", sdd_phase: null }, { state: "assigned", sdd_phase: null })).toBe("todo");
+    expect(
+      effectiveColumn({ status: "todo", sdd_phase: null }, { state: "assigned", sdd_phase: null }),
+    ).toBe("todo");
   });
 
   test("sdd_phase=null → in_progress", () => {
     expect(
-      effectiveColumn({ status: "in_progress", sdd_phase: null }, { state: "agent_working", sdd_phase: null }),
+      effectiveColumn(
+        { status: "in_progress", sdd_phase: null },
+        { state: "agent_working", sdd_phase: null },
+      ),
     ).toBe("in_progress");
   });
 
   test("sdd_phase=null → done", () => {
-    expect(effectiveColumn({ status: "done", sdd_phase: null }, { state: "done", sdd_phase: null })).toBe("done");
+    expect(
+      effectiveColumn({ status: "done", sdd_phase: null }, { state: "done", sdd_phase: null }),
+    ).toBe("done");
   });
 
   // Unit: null execution → task.status

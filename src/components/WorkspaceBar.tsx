@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import type { Workspace } from "../types";
 import { fetchWorkspaces, createWorkspace } from "../api";
 import { LayersIcon, PlusIcon } from "../Icons";
+import { useT } from "../i18n/useT";
 
 interface WorkspaceBarProps {
   activeWorkspaceId: number;
@@ -18,6 +19,7 @@ export function WorkspaceBar({
   activeWorkspaceId,
   onWorkspaceChange,
 }: WorkspaceBarProps): JSX.Element {
+  const t = useT();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -95,7 +97,7 @@ export function WorkspaceBar({
       <button
         className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-surface-400/60 transition-colors group"
         onClick={() => setOpen(!open)}
-        aria-label="Selector de workspace"
+        aria-label={t("workspaceBar.selector")}
         aria-expanded={open}
       >
         <LayersIcon className="text-accent-400" size={16} />
@@ -136,7 +138,7 @@ export function WorkspaceBar({
                   onWorkspaceChange(ws.id);
                   setOpen(false);
                 }}
-                aria-label={`Seleccionar workspace ${ws.name}`}
+                aria-label={t("workspaceBar.selectLabel", { name: ws.name })}
               >
                 <span
                   className={`w-2 h-2 rounded-full shrink-0 ${statusDotColor(ws.repoStatus)}`}
@@ -157,7 +159,7 @@ export function WorkspaceBar({
               <input
                 type="text"
                 className="w-full px-2 py-1.5 rounded bg-surface-600 border border-white/10 text-xs text-white placeholder-muted-500 focus:outline-none focus:border-accent"
-                placeholder="Nombre del workspace"
+                placeholder={t("workspaceBar.nameInput")}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => {
@@ -165,14 +167,14 @@ export function WorkspaceBar({
                   if (e.key === "Escape") setCreating(false);
                 }}
                 autoFocus
-                aria-label="Nombre del nuevo workspace"
+                aria-label={t("workspaceBar.nameInputNew")}
               />
               <div className="flex gap-1 mt-1.5">
                 <button
                   className="flex-1 text-[10px] px-2 py-1 rounded bg-accent text-white hover:bg-accent/80 transition-colors"
                   onClick={handleCreate}
                 >
-                  Crear
+                  {t("action.create")}
                 </button>
                 <button
                   className="flex-1 text-[10px] px-2 py-1 rounded bg-surface-400 text-muted-300 hover:bg-surface-300 transition-colors"
@@ -181,7 +183,7 @@ export function WorkspaceBar({
                     setNewName("");
                   }}
                 >
-                  Cancelar
+                  {t("action.cancel")}
                 </button>
               </div>
             </div>
@@ -189,10 +191,10 @@ export function WorkspaceBar({
             <button
               className="w-full flex items-center gap-2 px-3 py-2 border-t border-white/10 text-left hover:bg-surface-300/50 transition-colors text-accent-400"
               onClick={() => setCreating(true)}
-              aria-label="Crear nuevo workspace"
+              aria-label={t("workspaceBar.createLabel")}
             >
               <PlusIcon size={14} />
-              <span className="text-xs">Nuevo workspace</span>
+              <span className="text-xs">{t("workspaceBar.newWorkspace")}</span>
             </button>
           )}
         </div>

@@ -120,9 +120,7 @@ export function GitStatusList({
       )}
 
       {files.length === 0 && (
-        <p className="text-sm text-muted-500 text-center py-4">
-          {t("git.noChangesDir")}
-        </p>
+        <p className="text-sm text-muted-500 text-center py-4">{t("git.noChangesDir")}</p>
       )}
     </div>
   );

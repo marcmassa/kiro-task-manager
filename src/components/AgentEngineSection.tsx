@@ -2,33 +2,38 @@ import { useState, useEffect, useCallback } from "react";
 import { fetchAgentStatus, fetchAgentConfig, updateAgentConfig, triggerAgentRun } from "../api";
 import type { AgentStatusResponse, AgentEngineConfig } from "../types";
 import { useT } from "../i18n/useT";
+import i18n from "../i18n";
+import { useT } from "../i18n/useT";
 
-/** Color map for the status badge. */
-const STATUS_STYLES: Record<string, { badge: string; dot: string; label: string }> = {
+/** Color map for the status badge (no labels — resolved via i18n). */
+const STATUS_STYLES: Record<string, { badge: string; dot: string }> = {
   idle: {
     badge:
       "inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[10px] font-medium text-muted-400",
     dot: "bg-muted-500",
-    label: "Inactivo",
   },
   working: {
     badge:
       "inline-flex items-center gap-1 rounded-full bg-accent/10 border border-accent/20 px-2 py-0.5 text-[10px] font-medium text-accent-300",
     dot: "bg-accent",
-    label: "Trabajando",
   },
   error: {
     badge:
       "inline-flex items-center gap-1 rounded-full bg-danger/10 border border-danger/20 px-2 py-0.5 text-[10px] font-medium text-danger-400",
     dot: "bg-danger",
-    label: "Error",
   },
   disabled: {
     badge:
       "inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[10px] font-medium text-muted-500",
     dot: "bg-muted-600",
-    label: "Deshabilitado",
   },
+};
+
+const STATUS_LABEL_KEY: Record<string, string> = {
+  idle: "agent.statusIdle",
+  working: "agent.statusWorking",
+  error: "agent.statusError",
+  disabled: "agent.statusDisabled",
 };
 
 /**
@@ -129,24 +134,32 @@ export function AgentEngineSection(): JSX.Element {
   // ── Derived values ───────────────────────────────────────────────────
   const currentStatus = status?.status ?? "disabled";
   const style = STATUS_STYLES[currentStatus] ?? STATUS_STYLES.disabled;
+  const statusLabel = i18n.t(
+    (STATUS_LABEL_KEY[currentStatus] ?? "agent.statusDisabled") as Parameters<typeof i18n.t>[0],
+  );
   const isWorking = currentStatus === "working";
 
   return (
-    <section aria-label="Panel del motor de agente" className="space-y-4">
+    <section aria-label={t("agent.enginePanelLabel")} className="space-y-4">
       {/* Status badge + last cycle */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         {/* Badge */}
-        <span className={style.badge} aria-label={`Estado del agente: ${style.label}`}>
+        <span
+          className={style.badge}
+          aria-label={t("agent.engineStatusLabel", { status: statusLabel })}
+        >
           <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} aria-hidden="true" />
-          {style.label}
+          {statusLabel}
         </span>
 
         {/* Last cycle timestamp */}
         {status?.lastCycleAt && (
-          <span className="text-xs text-muted-500" aria-label="Último ciclo completado">
-            Último ciclo:{" "}
+          <span className="text-xs text-muted-500" aria-label={t("agent.lastCycleLabel")}>
+            {t("agent.lastCycleText")}{" "}
             <time dateTime={status.lastCycleAt}>
-              {new Date(status.lastCycleAt).toLocaleString("es-ES")}
+              {new Date(status.lastCycleAt).toLocaleString(
+                i18n.language === "en" ? "en-GB" : "es-ES",
+              )}
             </time>
           </span>
         )}
@@ -156,11 +169,14 @@ export function AgentEngineSection(): JSX.Element {
       {isWorking && status?.currentTaskId != null && (
         <div
           className="flex items-center gap-2 p-3 rounded-xl bg-accent/5 border border-accent/20"
-          aria-label="Tarea actual del agente"
+          aria-label={t("agent.currentTaskLabel")}
         >
           <span className="animate-pulse h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
           <span className="text-sm font-medium text-accent-300">
-            Tarea #{status.currentTaskId}: {status.currentTaskTitle}
+            {t("agent.currentTaskText", {
+              id: status.currentTaskId,
+              title: status.currentTaskTitle,
+            })}
           </span>
         </div>
       )}
@@ -171,16 +187,14 @@ export function AgentEngineSection(): JSX.Element {
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-400/30 border border-white/5">
           <div className="min-w-0">
             <p className="text-sm font-medium text-white">{t("agent.autoStart")}</p>
-            <p className="text-xs text-muted-400 mt-0.5">
-              Iniciar automáticamente cuando el servidor arranca
-            </p>
+            <p className="text-xs text-muted-400 mt-0.5">{t("agent.autoStartDesc")}</p>
           </div>
           <button
             id="agent-auto-start"
             role="switch"
             type="button"
             aria-checked={config?.autoStart ?? false}
-            aria-label="Activar o desactivar auto-inicio del agente"
+            aria-label={t("agent.autoStartLabel")}
             disabled={saving}
             onClick={handleToggleAutoStart}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:ring-offset-0 disabled:opacity-50 ${
@@ -199,10 +213,8 @@ export function AgentEngineSection(): JSX.Element {
         {/* Max chat turns */}
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-400/30 border border-white/5">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white">{t("agent.maxResponses")}</p>
-            <p className="text-xs text-muted-400 mt-0.5">
-              Límite de respuestas de chat por ejecución activa
-            </p>
+            <p className="text-sm font-medium text-white">{t("agent.maxTurns")}</p>
+            <p className="text-xs text-muted-400 mt-0.5">{t("agent.maxTurnsDesc")}</p>
           </div>
           <input
             type="number"
@@ -210,7 +222,7 @@ export function AgentEngineSection(): JSX.Element {
             max={50}
             step={1}
             value={config?.maxChatTurnsPerExecution ?? 10}
-            aria-label="Máximo de respuestas de chat por ejecución"
+            aria-label={t("agent.maxTurnsLabel")}
             disabled={saving}
             onChange={(e) => {
               const val = parseInt(e.target.value, 10);
@@ -229,10 +241,8 @@ export function AgentEngineSection(): JSX.Element {
         {/* Poll interval */}
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-400/30 border border-white/5">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white">{t("agent.pollingInterval")}</p>
-            <p className="text-xs text-muted-400 mt-0.5">
-              Frecuencia con la que el agente busca tareas (ms)
-            </p>
+            <p className="text-sm font-medium text-white">{t("agent.pollInterval")}</p>
+            <p className="text-xs text-muted-400 mt-0.5">{t("agent.pollIntervalDesc")}</p>
           </div>
           <div className="flex items-center gap-1.5">
             <input
@@ -242,7 +252,7 @@ export function AgentEngineSection(): JSX.Element {
               max={300000}
               step={1000}
               value={config?.pollIntervalMs ?? 30000}
-              aria-label={t("agent.pollingIntervalLabel")}
+              aria-label={t("agent.pollIntervalLabel")}
               disabled={saving}
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10);
@@ -268,7 +278,7 @@ export function AgentEngineSection(): JSX.Element {
         type="button"
         disabled={isWorking || running}
         onClick={handleRunCycle}
-        aria-label="Ejecutar un ciclo del agente manualmente"
+        aria-label={t("agent.runCycleLabel")}
         className="btn-primary inline-flex items-center gap-2"
       >
         {running ? (
@@ -277,10 +287,10 @@ export function AgentEngineSection(): JSX.Element {
               className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"
               aria-hidden="true"
             />
-            Ejecutando…
+            {t("agent.runCycleRunning")}
           </>
         ) : (
-          "Ejecutar Ciclo"
+          t("agent.runCycle")
         )}
       </button>
 
@@ -289,9 +299,9 @@ export function AgentEngineSection(): JSX.Element {
         <div
           className="rounded-xl border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger-400"
           role="alert"
-          aria-label="Último error del agente"
+          aria-label={t("agent.lastErrorLabel")}
         >
-          <span className="font-medium">Último error:</span> {status.lastError}
+          <span className="font-medium">{t("agent.lastErrorText")}</span> {status.lastError}
         </div>
       )}
     </section>

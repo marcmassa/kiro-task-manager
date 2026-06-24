@@ -66,7 +66,9 @@ export function WorkspaceSelector({
         aria-expanded={open}
       >
         <LayersIcon className="text-accent-400" size={16} />
-        <span className={`w-1.5 h-1.5 rounded-full ${active ? statusDotColor(active.repoStatus) : "bg-muted-600"}`} />
+        <span
+          className={`w-1.5 h-1.5 rounded-full ${active ? statusDotColor(active.repoStatus) : "bg-muted-600"}`}
+        />
         <span className="text-xs font-medium text-muted-200 group-hover:text-white transition-colors">
           {active?.name ?? "Workspaces"}
         </span>
@@ -117,7 +119,10 @@ export function WorkspaceSelector({
           {/* Open full CreateWorkspaceModal */}
           <button
             className="w-full flex items-center gap-2 px-3 py-2 border-t border-white/10 text-left hover:bg-surface-300/50 transition-colors text-accent-400"
-            onClick={() => { setOpen(false); setShowModal(true); }}
+            onClick={() => {
+              setOpen(false);
+              setShowModal(true);
+            }}
             aria-label="Crear nuevo workspace"
           >
             <PlusIcon size={14} />
@@ -126,17 +131,18 @@ export function WorkspaceSelector({
         </div>
       )}
 
-      {showModal && createPortal(
-        <CreateWorkspaceModal
-          onCreated={(ws) => {
-            onWorkspaceCreated(ws);
-            onWorkspaceChange(ws.id);
-            setShowModal(false);
-          }}
-          onClose={() => setShowModal(false)}
-        />,
-        document.body,
-      )}
+      {showModal &&
+        createPortal(
+          <CreateWorkspaceModal
+            onCreated={(ws) => {
+              onWorkspaceCreated(ws);
+              onWorkspaceChange(ws.id);
+              setShowModal(false);
+            }}
+            onClose={() => setShowModal(false)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }

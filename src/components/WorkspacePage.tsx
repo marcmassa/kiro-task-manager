@@ -250,9 +250,7 @@ export function WorkspacePage({
             </svg>
           </div>
           <h2 className="text-lg font-semibold text-white mb-2">{t("workspace.notConfigured")}</h2>
-          <p className="text-sm text-muted-400 mb-4">
-            {t("workspace.notConfigured_desc")}
-          </p>
+          <p className="text-sm text-muted-400 mb-4">{t("workspace.notConfigured_desc")}</p>
         </div>
       </div>
     );
@@ -354,9 +352,7 @@ export function WorkspacePage({
                 />
               ) : (
                 <div className="flex-1 flex items-center justify-center bg-surface-500/20">
-                  <p className="text-sm text-muted-500">
-                    {t("workspace.selectFile")}
-                  </p>
+                  <p className="text-sm text-muted-500">{t("workspace.selectFile")}</p>
                 </div>
               )}
               {/* Changes log below editor */}
@@ -365,7 +361,10 @@ export function WorkspacePage({
 
             {/* Git panel */}
             {gitPanelOpen && (
-              <aside className="w-[300px] shrink-0 overflow-y-auto" aria-label={t("workspace.gitPanel")}>
+              <aside
+                className="w-[300px] shrink-0 overflow-y-auto"
+                aria-label={t("workspace.gitPanel")}
+              >
                 <GitPanel workspaceId={workspaceId} onFileClick={handleFileClick} />
               </aside>
             )}

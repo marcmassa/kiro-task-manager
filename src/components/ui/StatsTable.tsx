@@ -1,3 +1,5 @@
+import { useT } from "../../i18n/useT";
+
 interface StatsTableRow {
   /**
    * Tailwind bg-* class for the accent strip, dot and progress bar.
@@ -36,9 +38,11 @@ interface StatsTableProps {
  * Filas: strip de color 4px | dot + label | barra proporcional | valor | %
  * Cabecera: visible, uppercase muted, con separador naranja AWS debajo.
  */
-export function StatsTable({ rows, unit = "tareas", showBar = true }: StatsTableProps) {
+export function StatsTable({ rows, unit: unitProp, showBar = true }: StatsTableProps) {
+  const t = useT();
+  const unit = unitProp ?? t("statsTable.unit");
   if (rows.length === 0) {
-    return <p className="text-xs text-muted-500 text-center py-6">Sin datos disponibles</p>;
+    return <p className="text-xs text-muted-500 text-center py-6">{t("statsTable.noData")}</p>;
   }
 
   const colSpan = showBar ? 5 : 4;
@@ -50,18 +54,18 @@ export function StatsTable({ rows, unit = "tareas", showBar = true }: StatsTable
           <tr>
             <th scope="col" className="stats-table-th w-1 px-0" aria-hidden="true" />
             <th scope="col" className="stats-table-th px-4 text-left">
-              Categoría
+              {t("statsTable.category")}
             </th>
             {showBar && (
               <th scope="col" className="stats-table-th px-3 text-left">
-                Distribución
+                {t("statsTable.distribution")}
               </th>
             )}
             <th scope="col" className="stats-table-th px-3 text-right">
-              Total
+              {t("statsTable.total")}
             </th>
             <th scope="col" className="stats-table-th px-4 text-right w-16">
-              %
+              {t("statsTable.percent")}
             </th>
           </tr>
           <tr aria-hidden="true">

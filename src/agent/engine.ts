@@ -675,7 +675,11 @@ export class AgentEngine {
         .query("SELECT state FROM agent_executions WHERE task_id = ?")
         .get(taskId) as { state: string } | null;
       if (exec && !["done", "changes_requested"].includes(exec.state)) {
-        postComment(this.db, taskId, `❌ No pude generar una respuesta: ${msg}. Inténtalo de nuevo.`);
+        postComment(
+          this.db,
+          taskId,
+          `❌ No pude generar una respuesta: ${msg}. Inténtalo de nuevo.`,
+        );
       }
       return;
     }

@@ -10,7 +10,6 @@ interface CreateWorkspaceModalProps {
   onClose: () => void;
 }
 
-
 type ProjectTypeOption = {
   type: WorkspaceProjectType;
   label: string;
@@ -19,32 +18,56 @@ type ProjectTypeOption = {
   accent: string;
 };
 
-const PROJECT_TYPES: ProjectTypeOption[] = [
+function previewLabel(col: string, t: (key: string, opts?: any) => string): string {
+  const map: Record<string, string> = {
+    "Por Hacer": t("kanban.col_todo"),
+    "En Progreso": t("kanban.col_inProgress"),
+    Completadas: t("kanban.col_done"),
+    Requirements: t("modal.previewRequirements"),
+    Diseño: t("modal.previewDesign"),
+    Tasks: t("modal.previewTasks"),
+  };
+  return map[col] ?? col;
+}
+
+const PROJECT_TYPES: (ProjectTypeOption & { labelKey: string; subtitleKey: string })[] = [
   {
     type: "normal",
     label: "Normal",
+    labelKey: "modal.projectNormal",
     subtitle: "Flujo estándar de 3 columnas",
+    subtitleKey: "modal.projectNormalDesc",
     preview: ["Por Hacer", "En Progreso", "Completadas"],
     accent: "border-accent bg-accent/5",
   },
   {
     type: "sdd",
     label: "SDD",
+    labelKey: "modal.projectSdd",
     subtitle: "Pipeline con fases de diseño",
+    subtitleKey: "modal.projectSddDesc",
     preview: ["Por Hacer", "Requirements", "Diseño", "Tasks", "En Progreso", "Completadas"],
     accent: "border-purple-500 bg-purple-500/5",
   },
   {
     type: "custom",
     label: "Custom",
+    labelKey: "modal.projectCustom",
     subtitle: "Define tus propias columnas",
+    subtitleKey: "modal.projectCustomDesc",
     preview: [],
     accent: "border-warning bg-warning/5",
   },
 ];
 
 function slugify(s: string) {
-  return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 32) || `col-${Date.now()}`;
+  return (
+    s
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .slice(0, 32) || `col-${Date.now()}`
+  );
 }
 
 export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModalProps) {
@@ -54,7 +77,7 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
   const [branch, setBranch] = useState("main");
   const [projectType, setProjectType] = useState<WorkspaceProjectType>("normal");
   const [customColumns, setCustomColumns] = useState<WorkspaceColumn[]>([
-    { id: "review", label: "Revisión", color: "purple" },
+    { id: "review", label: t("modal.reviewColumn"), color: "purple" },
   ]);
   const [newColLabel, setNewColLabel] = useState("");
   const [newColColor, setNewColColor] = useState<string>("emerald");
@@ -121,12 +144,12 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
           {/* Nombre */}
           <div>
             <label className="block text-sm font-medium text-muted-300 mb-1">
-              Nombre <span className="text-danger">*</span>
+              {t("modal.nameLabel")} <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               className="w-full px-3 py-2 rounded-lg bg-surface-600 border border-white/10 text-white placeholder-muted-500 focus:outline-none focus:border-accent text-sm"
-              placeholder="mi-proyecto"
+              placeholder={t("modal.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
@@ -134,10 +157,10 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
             />
           </div>
 
-          {/* Tipo de proyecto */}
+          {/* {t("modal.projectTypeLabel")} */}
           <div>
             <label className="block text-sm font-medium text-muted-300 mb-2">
-              Tipo de proyecto
+              {t("modal.projectTypeLabel")}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {PROJECT_TYPES.map((opt) => {
@@ -151,14 +174,21 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
                       selected ? opt.accent : "border-white/10 bg-surface-600 hover:border-white/20"
                     }`}
                   >
-                    <p className={`text-sm font-semibold mb-0.5 ${selected ? "text-white" : "text-muted-300"}`}>
-                      {opt.label}
+                    <p
+                      className={`text-sm font-semibold mb-0.5 ${selected ? "text-white" : "text-muted-300"}`}
+                    >
+                      {t(opt.labelKey)}
                     </p>
-                    <p className="text-[10px] text-muted-500 leading-tight mb-2">{opt.subtitle}</p>
+                    <p className="text-[10px] text-muted-500 leading-tight mb-2">
+                      {t(opt.subtitleKey)}
+                    </p>
                     {opt.preview.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {opt.preview.slice(0, 3).map((col) => (
-                          <span key={col} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-muted-400">
+                          <span
+                            key={col}
+                            className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-muted-400"
+                          >
                             {col}
                           </span>
                         ))}
@@ -179,10 +209,10 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
           {projectType === "custom" && (
             <div className="rounded-xl border border-white/10 bg-surface-600 p-4 space-y-3">
               <div>
-                <p className="text-xs font-medium text-muted-300 mb-1">{t("modal.pipelineColumns")}</p>
-                <p className="text-[10px] text-muted-500">
-                  {t("modal.fixedColumnsNote")}
+                <p className="text-xs font-medium text-muted-300 mb-1">
+                  {t("modal.pipelineColumns")}
                 </p>
+                <p className="text-[10px] text-muted-500">{t("modal.fixedColumnsNote")}</p>
               </div>
 
               {/* Fixed start */}
@@ -280,12 +310,13 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-muted-300 mb-1">
-                URL remota <span className="text-muted-500">(opcional)</span>
+                {t("modal.remoteUrlLabel")}{" "}
+                <span className="text-muted-500">{t("modal.optional")}</span>
               </label>
               <input
                 type="text"
                 className="w-full px-3 py-2 rounded-lg bg-surface-600 border border-white/10 text-white placeholder-muted-500 focus:outline-none focus:border-accent text-sm"
-                placeholder="https://github.com/user/repo.git"
+                placeholder={t("modal.placeholderRemoteUrl")}
                 value={remoteUrl}
                 onChange={(e) => setRemoteUrl(e.target.value)}
                 aria-label={t("modal.remoteUrl")}
@@ -293,12 +324,12 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
             </div>
             <div>
               <label className="block text-sm font-medium text-muted-300 mb-1">
-                Rama por defecto
+                {t("modal.defaultBranchLabel")}
               </label>
               <input
                 type="text"
                 className="w-full px-3 py-2 rounded-lg bg-surface-600 border border-white/10 text-white placeholder-muted-500 focus:outline-none focus:border-accent text-sm"
-                placeholder="main"
+                placeholder={t("modal.placeholderBranch")}
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
                 aria-label={t("modal.defaultBranch")}
@@ -317,7 +348,9 @@ export function CreateWorkspaceModal({ onCreated, onClose }: CreateWorkspaceModa
             <button
               type="submit"
               className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors text-sm disabled:opacity-50"
-              disabled={saving || !name.trim() || (projectType === "custom" && customColumns.length === 0)}
+              disabled={
+                saving || !name.trim() || (projectType === "custom" && customColumns.length === 0)
+              }
             >
               {saving ? t("modal.creating") : t("modal.createWorkspace")}
             </button>

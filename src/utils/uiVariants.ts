@@ -64,7 +64,7 @@ export interface TableModel<TRow extends Record<string, unknown>> {
 // ---------------------------------------------------------------------------
 
 /** Mensaje por defecto del estado vacío de DataTable (R7.5). */
-export const DEFAULT_EMPTY_TABLE_MESSAGE = "No hay datos para mostrar";
+export const DEFAULT_EMPTY_TABLE_MESSAGE = "No data to display";
 
 const BUTTON_VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: "btn-primary",

@@ -232,9 +232,7 @@ export function GitPanel({ workspaceId, onFileClick }: GitPanelProps): JSX.Eleme
           </button>
         </div>
         {!tokenConfigured && (
-          <p className="text-xs text-muted-500 text-center">
-            {t("git.configureToken")}
-          </p>
+          <p className="text-xs text-muted-500 text-center">{t("git.configureToken")}</p>
         )}
       </div>
     </section>

@@ -145,7 +145,10 @@ export function TaskFileChanges({ taskId, onFileClick }: TaskFileChangesProps): 
                     onFileClick(change.filePath);
                   }
                 }}
-                aria-label={t("task.openFilePath", { path: change.filePath, type: changeTypeLabel(change.changeType) })}
+                aria-label={t("task.openFilePath", {
+                  path: change.filePath,
+                  type: changeTypeLabel(change.changeType),
+                })}
               >
                 {/* Colored dot */}
                 <span

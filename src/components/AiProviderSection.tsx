@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { useT } from "../i18n/useT";
 import type {
   AiProviderMeta,
   AiProviderConfigResponse,
@@ -37,6 +38,7 @@ export function AiProviderSection({
 }: AiProviderSectionProps) {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const t = useT();
 
   const isConfigured = config?.configured === true;
 
@@ -72,10 +74,10 @@ export function AiProviderSection({
       {/* Delete confirm dialog */}
       {showDeleteConfirm && (
         <ConfirmDialog
-          title="Eliminar configuración"
-          message="¿Eliminar la configuración del proveedor de IA? El agente quedará sin cerebro hasta que configures uno nuevo."
-          confirmLabel="Eliminar"
-          cancelLabel="Cancelar"
+          title={t("aiProvider.deleteConfig")}
+          message={t("aiProvider.deleteConfigMsg")}
+          confirmLabel={t("aiProvider.deleteConfirm")}
+          cancelLabel={t("aiProvider.deleteCancel")}
           onConfirm={() => {
             onDelete();
             setShowDeleteConfirm(false);
@@ -103,15 +105,19 @@ function ConfiguredSummary({
   onDelete,
   deleting,
 }: ConfiguredSummaryProps) {
+  const t = useT();
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap p-4 rounded-xl bg-surface-400/30 border border-white/5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5 mb-1.5">
             <p className="text-sm font-semibold text-white">{config.providerName}</p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 border border-success/20 px-2 py-0.5 text-[10px] font-medium text-success-300">
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-success/10 border border-success/20 px-2 py-0.5 text-[10px] font-medium text-success-300"
+              aria-label={t("aiProvider.connected")}
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-success" />
-              Conectado
+              {t("aiProvider.connected")}
             </span>
           </div>
           <p className="text-xs text-muted-400">
@@ -125,17 +131,17 @@ function ConfiguredSummary({
           <button
             onClick={onChangeProvider}
             className="btn-secondary text-xs"
-            aria-label="Cambiar proveedor de IA"
+            aria-label={t("aiProvider.changeProviderLabel")}
           >
-            Cambiar proveedor
+            {t("aiProvider.changeProvider")}
           </button>
           <button
             onClick={onDelete}
             disabled={deleting}
             className="btn-danger text-xs"
-            aria-label="Eliminar configuración del proveedor de IA"
+            aria-label={t("aiProvider.deleteConfigLabel")}
           >
-            {deleting ? "Eliminando…" : "Eliminar"}
+            {t("aiProvider.deleteConfirm")}
           </button>
         </div>
       </div>
@@ -154,6 +160,7 @@ interface AiProviderFormProps {
 }
 
 function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProviderFormProps) {
+  const t = useT();
   const [providerId, setProviderId] = useState("");
   const [model, setModel] = useState("");
   const [customModel, setCustomModel] = useState("");
@@ -207,7 +214,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
       const result = await onTest(buildSaveInput());
       setTestResult(result);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al probar conexión");
+      setError(e instanceof Error ? e.message : t("aiProvider.testError"));
     } finally {
       setTesting(false);
     }
@@ -219,7 +226,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
     try {
       await onSave(buildSaveInput());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al guardar configuración");
+      setError(e instanceof Error ? e.message : t("aiProvider.saveError"));
     }
   }
 
@@ -237,13 +244,16 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5" aria-label="Formulario de proveedor de IA">
+    <form onSubmit={handleSubmit} className="space-y-5" aria-label={t("aiProvider.formAria")}>
       {/* Status badge when not configured */}
       {!onCancel && (
         <div className="flex items-center gap-2 mb-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[10px] font-medium text-muted-400">
+          <span
+            className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[10px] font-medium text-muted-400"
+            aria-label={t("aiProvider.notConfigured")}
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-muted-500" />
-            Sin configurar
+            {t("aiProvider.notConfigured")}
           </span>
         </div>
       )}
@@ -262,16 +272,16 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
       {/* Provider selector */}
       <label className="block">
         <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-          Proveedor <span className="text-danger-400">*</span>
+          {t("aiProvider.provider")} <span className="text-danger-400">*</span>
         </span>
         <select
           value={providerId}
           onChange={(e) => handleProviderChange(e.target.value)}
           className="input-field"
           required
-          aria-label="Seleccionar proveedor de IA"
+          aria-label={t("aiProvider.selectProvider")}
         >
-          <option value="">— Seleccionar proveedor —</option>
+          <option value="">{t("aiProvider.selectPlaceholder")}</option>
           {registry.map((p) => (
             <option key={p.id} value={p.id}>
               {p.displayName}
@@ -287,7 +297,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
           {selectedProvider.authType === "api_key" && (
             <label className="block">
               <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                API Key <span className="text-danger-400">*</span>
+                {t("aiProvider.apiKey")} <span className="text-danger-400">*</span>
               </span>
               <input
                 type="password"
@@ -297,7 +307,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 placeholder="sk-..."
                 required
                 autoComplete="off"
-                aria-label="API Key del proveedor"
+                aria-label={t("aiProvider.apiKeyLabel")}
               />
             </label>
           )}
@@ -307,7 +317,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
             <>
               <label className="block">
                 <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                  Región AWS <span className="text-danger-400">*</span>
+                  {t("aiProvider.awsRegion")} <span className="text-danger-400">*</span>
                 </span>
                 <input
                   type="text"
@@ -316,12 +326,12 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                   className="input-field"
                   placeholder="us-east-1"
                   required
-                  aria-label="Región AWS"
+                  aria-label={t("aiProvider.awsRegionLabel")}
                 />
               </label>
               <label className="block">
                 <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                  Access Key ID <span className="text-danger-400">*</span>
+                  {t("aiProvider.accessKeyId")} <span className="text-danger-400">*</span>
                 </span>
                 <input
                   type="text"
@@ -330,12 +340,12 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                   className="input-field"
                   placeholder="AKIA..."
                   required
-                  aria-label="Access Key ID"
+                  aria-label={t("aiProvider.accessKeyIdLabel")}
                 />
               </label>
               <label className="block">
                 <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                  Secret Access Key <span className="text-danger-400">*</span>
+                  {t("aiProvider.secretKey")} <span className="text-danger-400">*</span>
                 </span>
                 <input
                   type="password"
@@ -345,7 +355,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                   placeholder="••••••••"
                   required
                   autoComplete="off"
-                  aria-label="Secret Access Key"
+                  aria-label={t("aiProvider.secretKeyLabel")}
                 />
               </label>
             </>
@@ -355,7 +365,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
           {selectedProvider.authType === "none" && (
             <label className="block">
               <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                URL Base <span className="text-danger-400">*</span>
+                {t("aiProvider.baseUrl")} <span className="text-danger-400">*</span>
               </span>
               <input
                 type="text"
@@ -364,7 +374,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 className="input-field"
                 placeholder={selectedProvider.defaultBaseUrl || "http://localhost:11434"}
                 required
-                aria-label="URL base del proveedor"
+                aria-label={t("aiProvider.baseUrlLabel")}
               />
             </label>
           )}
@@ -372,22 +382,22 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
           {/* Model selector */}
           <label className="block">
             <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-              Modelo <span className="text-danger-400">*</span>
+              {t("aiProvider.model")} <span className="text-danger-400">*</span>
             </span>
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
               className="input-field"
               required
-              aria-label="Seleccionar modelo"
+              aria-label={t("aiProvider.selectModel")}
             >
-              <option value="">— Seleccionar modelo —</option>
+              <option value="">{t("aiProvider.selectModelPlaceholder")}</option>
               {selectedProvider.models.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
               ))}
-              <option value="__custom">Otro (escribir manualmente)</option>
+              <option value="__custom">{t("aiProvider.customModel")}</option>
             </select>
           </label>
 
@@ -395,7 +405,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
           {model === "__custom" && (
             <label className="block">
               <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                Nombre del modelo <span className="text-danger-400">*</span>
+                {t("aiProvider.modelName")} <span className="text-danger-400">*</span>
               </span>
               <input
                 type="text"
@@ -404,7 +414,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 className="input-field"
                 placeholder="nombre-del-modelo"
                 required
-                aria-label="Nombre personalizado del modelo"
+                aria-label={t("aiProvider.modelNameLabel")}
               />
             </label>
           )}
@@ -417,9 +427,9 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
               className="w-full flex items-center justify-between px-4 py-3 text-xs font-medium text-muted-300 hover:text-white hover:bg-surface-400/20 transition-colors"
               aria-expanded={showAdvanced}
               aria-controls="ai-advanced-config"
-              aria-label="Configuración avanzada"
+              aria-label={t("aiProvider.advancedLabel")}
             >
-              <span>Configuración avanzada</span>
+              <span>{t("aiProvider.advanced")}</span>
               <span className="text-muted-500">{showAdvanced ? "▲" : "▼"}</span>
             </button>
 
@@ -431,7 +441,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 {/* Temperature */}
                 <label className="block">
                   <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                    Temperature ({temperature.toFixed(1)})
+                    {t("aiProvider.temperature", { value: temperature.toFixed(1) })}
                   </span>
                   <input
                     type="range"
@@ -441,18 +451,18 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                     value={temperature}
                     onChange={(e) => setTemperature(parseFloat(e.target.value))}
                     className="w-full accent-accent"
-                    aria-label="Temperature del modelo"
+                    aria-label={t("aiProvider.temperatureLabel")}
                   />
                   <div className="flex justify-between text-[10px] text-muted-500 mt-1">
-                    <span>0.0 (determinista)</span>
-                    <span>2.0 (creativo)</span>
+                    <span>{t("aiProvider.temperatureDeterministic")}</span>
+                    <span>{t("aiProvider.temperatureCreative")}</span>
                   </div>
                 </label>
 
                 {/* Max tokens */}
                 <label className="block">
                   <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                    Tokens máximos
+                    {t("aiProvider.maxTokens")}
                   </span>
                   <input
                     type="number"
@@ -460,7 +470,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                     value={maxTokens}
                     onChange={(e) => setMaxTokens(parseInt(e.target.value) || 1)}
                     className="input-field"
-                    aria-label="Tokens máximos"
+                    aria-label={t("aiProvider.maxTokensLabel")}
                   />
                 </label>
 
@@ -468,7 +478,7 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 {selectedProvider.supportsCustomBaseUrl && selectedProvider.authType !== "none" && (
                   <label className="block">
                     <span className="text-xs font-medium text-muted-300 mb-1.5 block">
-                      URL Base personalizada
+                      {t("aiProvider.customBaseUrl")}
                     </span>
                     <input
                       type="text"
@@ -476,10 +486,10 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                       onChange={(e) => setBaseUrl(e.target.value)}
                       className="input-field"
                       placeholder={selectedProvider.defaultBaseUrl}
-                      aria-label="URL base personalizada"
+                      aria-label={t("aiProvider.customBaseUrlLabel")}
                     />
                     <p className="text-[10px] text-muted-500 mt-1">
-                      Dejar vacío para usar la URL por defecto del proveedor.
+                      {t("aiProvider.customBaseUrlHint")}
                     </p>
                   </label>
                 )}
@@ -502,7 +512,9 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 <>
                   <span>✓</span>
                   <span>
-                    Conexión exitosa{testResult.model ? ` — modelo: ${testResult.model}` : ""}
+                    {testResult.model
+                      ? t("aiProvider.connectionSuccessModel", { model: testResult.model })
+                      : t("aiProvider.connectionSuccess")}
                   </span>
                 </>
               ) : (
@@ -510,12 +522,12 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                   <span>✗</span>
                   <span>
                     {testResult.errorKind === "timeout"
-                      ? "Error: tiempo de espera agotado (15s)"
+                      ? t("aiProvider.connectionTimeout")
                       : testResult.errorKind === "auth_error"
-                        ? "Error: credenciales inválidas"
+                        ? t("aiProvider.invalidCredentials")
                         : testResult.errorKind === "network_error"
-                          ? "Error: no se pudo conectar al proveedor"
-                          : testResult.message || "Error del proveedor"}
+                          ? t("aiProvider.connectionFailed")
+                          : testResult.message || t("aiProvider.providerError")}
                   </span>
                 </>
               )}
@@ -530,9 +542,9 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 onClick={onCancel}
                 className="btn-secondary"
                 disabled={saving || testing}
-                aria-label="Cancelar configuración"
+                aria-label={t("action.cancel")}
               >
-                Cancelar
+                {t("action.cancel")}
               </button>
             )}
             <button
@@ -542,9 +554,9 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 testing || !providerId || !model || (model === "__custom" && !customModel.trim())
               }
               className="btn-secondary flex items-center gap-1.5"
-              aria-label="Probar conexión al proveedor"
+              aria-label={t("aiProvider.testConnection")}
             >
-              {testing ? "Probando…" : "Probar conexión"}
+              {testing ? t("aiProvider.testing") : t("aiProvider.testConnection")}
             </button>
             <button
               type="submit"
@@ -552,9 +564,9 @@ function AiProviderForm({ registry, onSave, onTest, onCancel, saving }: AiProvid
                 saving || !providerId || !model || (model === "__custom" && !customModel.trim())
               }
               className="btn-primary"
-              aria-label="Guardar configuración del proveedor"
+              aria-label={t("action.save")}
             >
-              {saving ? "Guardando…" : "Guardar"}
+              {saving ? t("state.saving") : t("action.save")}
             </button>
           </div>
         </>

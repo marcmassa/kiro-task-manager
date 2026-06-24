@@ -86,7 +86,15 @@ function IconJson() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <rect width="14" height="14" rx="2.5" fill="#f59e0b" opacity="0.12" />
-      <text x="7" y="10" textAnchor="middle" fontSize="7.5" fontWeight="700" fontFamily="monospace" fill="#f59e0b">
+      <text
+        x="7"
+        y="10"
+        textAnchor="middle"
+        fontSize="7.5"
+        fontWeight="700"
+        fontFamily="monospace"
+        fill="#f59e0b"
+      >
         {"{}"}
       </text>
     </svg>
@@ -97,7 +105,15 @@ function IconMarkdown() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <rect width="14" height="14" rx="2.5" fill="#9ca3af" opacity="0.12" />
-      <text x="7" y="10" textAnchor="middle" fontSize="8" fontWeight="700" fontFamily="monospace" fill="#9ca3af">
+      <text
+        x="7"
+        y="10"
+        textAnchor="middle"
+        fontSize="8"
+        fontWeight="700"
+        fontFamily="monospace"
+        fill="#9ca3af"
+      >
         M↓
       </text>
     </svg>
@@ -108,23 +124,36 @@ function getFileIconEl(name: string, type: "file" | "directory", expanded = fals
   if (type === "directory") return <IconFolder open={expanded} />;
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   switch (ext) {
-    case "ts":      return <IconBadge label="ts"  color="#3b82f6" />;
-    case "tsx":     return <IconBadge label="tsx" color="#60a5fa" />;
-    case "js":      return <IconBadge label="js"  color="#eab308" />;
-    case "jsx":     return <IconBadge label="jsx" color="#facc15" />;
-    case "json":    return <IconJson />;
-    case "md":      return <IconMarkdown />;
-    case "css":     return <IconBadge label="css" color="#38bdf8" />;
-    case "html":    return <IconBadge label="html" color="#f97316" />;
-    case "py":      return <IconBadge label="py"  color="#22d3ee" />;
+    case "ts":
+      return <IconBadge label="ts" color="#3b82f6" />;
+    case "tsx":
+      return <IconBadge label="tsx" color="#60a5fa" />;
+    case "js":
+      return <IconBadge label="js" color="#eab308" />;
+    case "jsx":
+      return <IconBadge label="jsx" color="#facc15" />;
+    case "json":
+      return <IconJson />;
+    case "md":
+      return <IconMarkdown />;
+    case "css":
+      return <IconBadge label="css" color="#38bdf8" />;
+    case "html":
+      return <IconBadge label="html" color="#f97316" />;
+    case "py":
+      return <IconBadge label="py" color="#22d3ee" />;
     case "sh":
-    case "bash":    return <IconBadge label="sh"  color="#10b981" />;
-    case "svg":     return <IconBadge label="svg" color="#f472b6" />;
+    case "bash":
+      return <IconBadge label="sh" color="#10b981" />;
+    case "svg":
+      return <IconBadge label="svg" color="#f472b6" />;
     case "png":
     case "jpg":
     case "jpeg":
-    case "webp":    return <IconBadge label="img" color="#a78bfa" />;
-    default:        return <IconDocument />;
+    case "webp":
+      return <IconBadge label="img" color="#a78bfa" />;
+    default:
+      return <IconDocument />;
   }
 }
 
@@ -241,10 +270,7 @@ function TreeItem({
 
   // Show create input inside this directory?
   const showCreateHere =
-    creating &&
-    creating.kind &&
-    creating.parentPath === node.path &&
-    node.expanded;
+    creating && creating.kind && creating.parentPath === node.path && node.expanded;
 
   return (
     <li role="treeitem" aria-expanded={isDir ? node.expanded : undefined}>
@@ -257,7 +283,9 @@ function TreeItem({
         role="button"
         aria-label={
           isDir
-            ? t(node.expanded ? "workspace.dirCollapse" : "workspace.dirExpand", { name: node.name })
+            ? t(node.expanded ? "workspace.dirCollapse" : "workspace.dirExpand", {
+                name: node.name,
+              })
             : t("workspace.openFilePath", { name: node.name })
         }
       >
@@ -265,7 +293,14 @@ function TreeItem({
           {isDir &&
             (node.loading ? (
               <svg width="8" height="8" viewBox="0 0 8 8" className="animate-spin" fill="none">
-                <circle cx="4" cy="4" r="3" stroke="#6b7280" strokeWidth="1.5" strokeDasharray="10 5" />
+                <circle
+                  cx="4"
+                  cy="4"
+                  r="3"
+                  stroke="#6b7280"
+                  strokeWidth="1.5"
+                  strokeDasharray="10 5"
+                />
               </svg>
             ) : (
               <svg
@@ -516,9 +551,7 @@ export function WorkspaceTreeView({
   }
 
   async function handleCreateConfirm(name: string) {
-    const targetPath = creating!.parentPath
-      ? `${creating!.parentPath}/${name}`
-      : name;
+    const targetPath = creating!.parentPath ? `${creating!.parentPath}/${name}` : name;
 
     try {
       if (creating!.kind === "dir") {
@@ -560,9 +593,7 @@ export function WorkspaceTreeView({
   if (!repoConfigured) {
     return (
       <div className="rounded-xl bg-surface-400/30 border border-white/5 p-4">
-        <p className="text-sm text-muted-400">
-          {t("workspace.notConfiguredExplorer")}
-        </p>
+        <p className="text-sm text-muted-400">{t("workspace.notConfiguredExplorer")}</p>
       </div>
     );
   }
@@ -571,8 +602,21 @@ export function WorkspaceTreeView({
     return (
       <div className="rounded-xl bg-surface-400/30 border border-white/5 p-4">
         <div className="flex items-center gap-2 text-muted-400 text-sm">
-          <svg width="12" height="12" viewBox="0 0 12 12" className="animate-spin shrink-0" fill="none">
-            <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="14 6" />
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            className="animate-spin shrink-0"
+            fill="none"
+          >
+            <circle
+              cx="6"
+              cy="6"
+              r="4.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeDasharray="14 6"
+            />
           </svg>
           <span>{t("workspace.loadingTree")}</span>
         </div>
@@ -594,7 +638,14 @@ export function WorkspaceTreeView({
     <div className="rounded-xl bg-surface-400/30 border border-white/5 overflow-hidden">
       {/* Header */}
       <div className="px-3 py-2 border-b border-white/5 bg-surface-400/20 flex items-center gap-2">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-accent-400 shrink-0" aria-hidden="true">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+          className="text-accent-400 shrink-0"
+          aria-hidden="true"
+        >
           <path
             d="M2.5 3A1.5 1.5 0 001 4.5v7A1.5 1.5 0 002.5 13h11A1.5 1.5 0 0015 11.5v-6A1.5 1.5 0 0013.5 4H7L5.5 3H2.5z"
             fill="currentColor"
@@ -624,8 +675,19 @@ export function WorkspaceTreeView({
               strokeLinejoin="round"
               fill="none"
             />
-            <path d="M9 2v4h4" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinejoin="round" />
-            <path d="M7 10v3M5.5 11.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            <path
+              d="M9 2v4h4"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              fill="none"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M7 10v3M5.5 11.5h3"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
 
@@ -648,7 +710,12 @@ export function WorkspaceTreeView({
               strokeLinejoin="round"
               fill="none"
             />
-            <path d="M8 7.5v3M6.5 9h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            <path
+              d="M8 7.5v3M6.5 9h3"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
       </div>
@@ -656,11 +723,24 @@ export function WorkspaceTreeView({
       {/* Context hint while creating */}
       {creating && (
         <div className="px-3 py-1.5 bg-accent/5 border-b border-accent/10 flex items-center gap-1.5">
-          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-accent-400 shrink-0">
-            <path d="M8 2v9M4 7l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 16 16"
+            fill="none"
+            className="text-accent-400 shrink-0"
+          >
+            <path
+              d="M8 2v9M4 7l4 4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
           <span className="text-[10px] text-muted-500">
-            {creating.kind === "file" ? t("workspace.newFile") : t("workspace.newFolder")} {t("workspace.creatingIn")}{" "}
+            {creating.kind === "file" ? t("workspace.newFile") : t("workspace.newFolder")}{" "}
+            {t("workspace.creatingIn")}{" "}
             <span className="font-mono text-accent-400">{contextLabel}</span>
             <span className="ml-2 opacity-60">— {t("workspace.escCancel")}</span>
           </span>

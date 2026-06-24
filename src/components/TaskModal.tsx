@@ -52,7 +52,9 @@ export function TaskModal({ task, categories, priorities, onSave, onClose }: Tas
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-muted-300 mb-2">{t("task.titleRequired")}</label>
+            <label className="block text-sm font-medium text-muted-300 mb-2">
+              {t("task.titleRequired")}
+            </label>
             <input
               type="text"
               className="input-field"
@@ -65,7 +67,9 @@ export function TaskModal({ task, categories, priorities, onSave, onClose }: Tas
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-muted-300 mb-2">{t("task.description")}</label>
+            <label className="block text-sm font-medium text-muted-300 mb-2">
+              {t("task.description")}
+            </label>
             <textarea
               className="input-field resize-none"
               rows={3}
@@ -77,7 +81,9 @@ export function TaskModal({ task, categories, priorities, onSave, onClose }: Tas
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-muted-300 mb-2">{t("task.priority")}</label>
+              <label className="block text-sm font-medium text-muted-300 mb-2">
+                {t("task.priority")}
+              </label>
               <select
                 className="input-field"
                 value={formData.priority_id}
@@ -92,7 +98,9 @@ export function TaskModal({ task, categories, priorities, onSave, onClose }: Tas
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-muted-300 mb-2">{t("task.category")}</label>
+              <label className="block text-sm font-medium text-muted-300 mb-2">
+                {t("task.category")}
+              </label>
               <select
                 className="input-field"
                 value={formData.category_id}
@@ -121,7 +129,9 @@ export function TaskModal({ task, categories, priorities, onSave, onClose }: Tas
 
           {task && (
             <div>
-              <label className="block text-sm font-medium text-muted-300 mb-2">{t("task.status")}</label>
+              <label className="block text-sm font-medium text-muted-300 mb-2">
+                {t("task.status")}
+              </label>
               <select
                 className="input-field"
                 value={formData.status}

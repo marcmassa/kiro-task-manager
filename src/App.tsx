@@ -43,6 +43,7 @@ import {
 import { effectiveColumn } from "./utils/sddKanban";
 import { KiroColumnTransition } from "./components/KiroColumnTransition";
 import type { SddPhase } from "./utils/sddLifecycle";
+import { useT } from "./i18n/useT";
 
 type Page = "home" | "kanban" | "workspace" | "stats" | "config";
 
@@ -66,6 +67,8 @@ export default function App() {
   // ── SDD animation state ───────────────────────────────────────────────────
   const [currentSddPhase, setCurrentSddPhase] = useState<SddPhase | null>(null);
   const prevExecutionsRef = useRef<Map<number, AgentExecution>>(new Map());
+
+  const t = useT();
 
   // ── Workspace state ──────────────────────────────────────────────────────────
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -112,7 +115,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error loading data:", error);
-      setError("Error al cargar las estadísticas. Intenta de nuevo.");
+      setError(t("app.loadError"));
     } finally {
       setLoading(false);
     }
@@ -253,7 +256,7 @@ export default function App() {
       <div className="flex items-center justify-center min-h-screen bg-surface-600">
         <div className="flex flex-col items-center gap-4">
           <KiroIllustration mood="pensando" size={120} />
-          <p className="text-muted-400 text-sm">Cargando tareas...</p>
+          <p className="text-muted-400 text-sm">{t("state.loading")}</p>
         </div>
       </div>
     );
@@ -265,12 +268,8 @@ export default function App() {
         <div className="flex flex-col items-center gap-4">
           <KiroIllustration mood="error" size={120} />
           <p className="text-sm text-danger-400">{error}</p>
-          <button
-            onClick={loadData}
-            className="btn-primary"
-            aria-label="Reintentar carga de tareas"
-          >
-            Reintentar
+          <button onClick={loadData} className="btn-primary" aria-label={t("app.retryLabel")}>
+            {t("action.retry")}
           </button>
         </div>
       </div>
@@ -282,7 +281,7 @@ export default function App() {
       {/* FEAT-012: SDD phase transition animation */}
       <KiroColumnTransition currentPhase={currentSddPhase} />
       {/* Sidebar — solo íconos de navegación */}
-      <aside className="sidebar" aria-label="Navegación principal">
+      <aside className="sidebar" aria-label={t("app.navAria")}>
         <nav className="flex flex-col items-center gap-2 flex-1">
           {/* Logo */}
           <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center mb-6">
@@ -292,32 +291,32 @@ export default function App() {
           {/* Nav Items */}
           <button
             className={`sidebar-item ${currentPage === "home" ? "active" : ""}`}
-            aria-label="Inicio"
-            title="Inicio"
+            aria-label={t("nav.home")}
+            title={t("nav.home")}
             onClick={() => setCurrentPage("home")}
           >
             <HomeIcon size={20} />
           </button>
           <button
             className={`sidebar-item ${currentPage === "kanban" ? "active" : ""}`}
-            aria-label="Tablero Kanban"
-            title="Tablero Kanban"
+            aria-label={t("nav.kanban")}
+            title={t("nav.kanban")}
             onClick={() => setCurrentPage("kanban")}
           >
             <KanbanIcon size={20} />
           </button>
           <button
             className={`sidebar-item ${currentPage === "workspace" ? "active" : ""}`}
-            aria-label="Workspace"
-            title="Workspace"
+            aria-label={t("nav.workspace")}
+            title={t("nav.workspace")}
             onClick={() => setCurrentPage("workspace")}
           >
             <CodeIcon size={20} />
           </button>
           <button
             className={`sidebar-item ${currentPage === "stats" ? "active" : ""}`}
-            aria-label="Estadísticas"
-            title="Estadísticas"
+            aria-label={t("nav.stats")}
+            title={t("nav.stats")}
             onClick={() => setCurrentPage("stats")}
           >
             <ChartIcon size={20} />
@@ -328,8 +327,8 @@ export default function App() {
 
           <button
             className={`sidebar-item ${currentPage === "config" ? "active" : ""}`}
-            aria-label="Configuración"
-            title="Configuración"
+            aria-label={t("nav.settings")}
+            title={t("nav.settings")}
             onClick={() => setCurrentPage("config")}
           >
             <SettingsIcon size={20} />
@@ -348,9 +347,9 @@ export default function App() {
                 <button
                   onClick={loadData}
                   className="btn-danger text-sm"
-                  aria-label="Reintentar carga de tareas"
+                  aria-label={t("app.retryLabel")}
                 >
-                  Reintentar
+                  {t("action.retry")}
                 </button>
               </div>
             )}
@@ -360,7 +359,9 @@ export default function App() {
               inProgressCount={inProgressTasks.length}
               doneCount={doneTasks.length}
               customColumns={customColumns}
-              columnCounts={new Map(customColumns.map((c) => [c.id, columnTasks.get(c.id)?.length ?? 0]))}
+              columnCounts={
+                new Map(customColumns.map((c) => [c.id, columnTasks.get(c.id)?.length ?? 0]))
+              }
               onNavigate={(page) => setCurrentPage(page as Page)}
               activeWorkspace={activeWorkspace}
               workspaceSelector={workspaceSelector}
@@ -371,13 +372,17 @@ export default function App() {
         {currentPage === "kanban" && (
           <div className="flex flex-col min-h-full">
             <PageHeader
-              title="Tablero de Tareas"
-              subtitle={`${tasks.length} tareas · ${doneTasks.length} completadas · ${activeWorkspace?.name ?? "Workspace"}`}
+              title={t("kanban.title")}
+              subtitle={t("app.taskCount", {
+                count: tasks.length,
+                done: doneTasks.length,
+                workspace: activeWorkspace?.name ?? t("home.defaultWorkspace"),
+              })}
               actions={
                 <div className="flex items-center gap-2">
                   <button onClick={handleNewTask} className="btn-primary flex items-center gap-2">
                     <PlusIcon size={18} />
-                    <span>Nueva Tarea</span>
+                    <span>{t("app.newTask")}</span>
                   </button>
                   <span className="w-px h-5 bg-white/5" aria-hidden="true" />
                   {workspaceSelector}
@@ -393,9 +398,9 @@ export default function App() {
                 <button
                   onClick={loadData}
                   className="btn-danger text-sm"
-                  aria-label="Reintentar carga de tareas"
+                  aria-label={t("app.retryLabel")}
                 >
-                  Reintentar
+                  {t("action.retry")}
                 </button>
               </div>
             )}
@@ -405,26 +410,36 @@ export default function App() {
             <div className="px-8 py-5">
               <div className="flex gap-6 overflow-x-auto pb-1">
                 {[
-                  { label: "Por Hacer", count: todoTasks.length, bar: "bg-accent" },
+                  { label: t("app.statsTodo"), count: todoTasks.length, bar: "bg-accent" },
                   ...customColumns.map((col) => ({
                     label: col.label,
                     count: columnTasks.get(col.id)?.length ?? 0,
                     bar: `bg-${col.color}-500`,
                   })),
-                  { label: "En Progreso", count: inProgressTasks.length, bar: "bg-warning" },
-                  { label: "Completadas", count: doneTasks.length, bar: "bg-success" },
+                  {
+                    label: t("app.statsInProgress"),
+                    count: inProgressTasks.length,
+                    bar: "bg-warning",
+                  },
+                  { label: t("app.statsDone"), count: doneTasks.length, bar: "bg-success" },
                 ].map((col) => (
                   <div key={col.label} className="stat-card flex-1 min-w-[320px] max-w-[400px]">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-medium text-muted-400 leading-tight">{col.label}</span>
-                      <span className={`text-lg font-bold ${col.count > 0 ? "text-white" : "text-muted-600"}`}>
+                      <span className="text-xs font-medium text-muted-400 leading-tight">
+                        {col.label}
+                      </span>
+                      <span
+                        className={`text-lg font-bold ${col.count > 0 ? "text-white" : "text-muted-600"}`}
+                      >
                         {col.count}
                       </span>
                     </div>
                     <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                       <div
                         className={`h-full ${col.bar} rounded-full transition-all duration-500`}
-                        style={{ width: tasks.length ? `${(col.count / tasks.length) * 100}%` : "0%" }}
+                        style={{
+                          width: tasks.length ? `${(col.count / tasks.length) * 100}%` : "0%",
+                        }}
                       />
                     </div>
                   </div>
@@ -437,9 +452,7 @@ export default function App() {
             {tasks.length > 0 && doneTasks.length === tasks.length && (
               <div className="flex flex-col items-center gap-3 py-6">
                 <KiroIllustration mood="celebrando" size={100} />
-                <p className="text-sm text-success-400 font-medium">
-                  ¡Felicidades! Todas las tareas están completadas 🎉
-                </p>
+                <p className="text-sm text-success-400 font-medium">{t("app.celebration")}</p>
               </div>
             )}
 
@@ -447,7 +460,7 @@ export default function App() {
             <main className="flex-1 px-8 pb-8">
               <div className="flex gap-6 overflow-x-auto pb-4">
                 <KanbanColumn
-                  title="Por Hacer"
+                  title={t("kanban.col_todo")}
                   status="todo"
                   tasks={todoTasks}
                   color="accent"
@@ -474,7 +487,7 @@ export default function App() {
                   />
                 ))}
                 <KanbanColumn
-                  title="En Progreso"
+                  title={t("kanban.col_inProgress")}
                   status="in_progress"
                   tasks={inProgressTasks}
                   color="warning"
@@ -486,7 +499,7 @@ export default function App() {
                   onDrop={handleDrop}
                 />
                 <KanbanColumn
-                  title="Completadas"
+                  title={t("kanban.col_done")}
                   status="done"
                   tasks={doneTasks}
                   color="success"
@@ -507,7 +520,9 @@ export default function App() {
             tasks={tasks}
             executions={executions}
             customColumns={customColumns}
-            columnCounts={new Map(customColumns.map((c) => [c.id, columnTasks.get(c.id)?.length ?? 0]))}
+            columnCounts={
+              new Map(customColumns.map((c) => [c.id, columnTasks.get(c.id)?.length ?? 0]))
+            }
             loading={loading}
             error={error}
             onRetry={loadData}
@@ -570,8 +585,10 @@ export default function App() {
 
       {showConfirmDialog && taskToDelete && (
         <ConfirmDialog
-          title="Eliminar tarea"
-          message={`¿Estás seguro de que deseas eliminar "${taskToDelete.title}"? Esta acción no se puede deshacer.`}
+          title={t("app.deleteConfirmTitle")}
+          message={t("app.deleteConfirmMsg", { title: taskToDelete.title })}
+          confirmLabel={t("action.delete")}
+          cancelLabel={t("action.cancel")}
           onConfirm={handleConfirmDelete}
           onCancel={() => {
             setShowConfirmDialog(false);
