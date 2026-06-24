@@ -29,6 +29,10 @@ const darkTheme = EditorView.theme(
     "&": {
       backgroundColor: "#1a1b26",
       color: "#e2e8f0",
+      height: "100%",
+    },
+    ".cm-scroller": {
+      overflow: "auto",
     },
     ".cm-content": {
       caretColor: "#7c5cfc",
@@ -226,7 +230,7 @@ export function CodeEditor({
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-hidden rounded-xl border border-white/5 [&_.cm-editor]:h-full [&_.cm-editor]:outline-none [&_.cm-scroller]:overflow-auto"
+      className="flex-1 min-h-0 overflow-hidden rounded-xl border border-white/5 [&_.cm-editor]:outline-none"
       aria-label="Editor de código"
     />
   );

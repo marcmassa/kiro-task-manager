@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" role="img" aria-label="Task Manager">
+  <defs>
+    <clipPath id="bg">
+      <path d="M18.8 0H5.2A5.2 5.2 0 000 5.2v13.6A5.2 5.2 0 005.2 24h13.6a5.2 5.2 0 005.2-5.2V5.2A5.2 5.2 0 0018.8 0z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Purple rounded square -->
+  <path d="M18.8 0H5.2A5.2 5.2 0 000 5.2v13.6A5.2 5.2 0 005.2 24h13.6a5.2 5.2 0 005.2-5.2V5.2A5.2 5.2 0 0018.8 0z" fill="#9046FF"/>
+
+  <g clip-path="url(#bg)">
+    <!-- Notebook — behind ghost -->
+    <g transform="translate(15.9 12.5) rotate(35)">
+      <rect x="-5.3" y="-5.7" width="11" height="13" rx="1" fill="#000" opacity="0.2"/>
+      <rect x="-5.5" y="-6" width="11" height="13" rx="1" fill="#ffffff" stroke="#5733e0" stroke-width="0.4"/>
+      <circle cx="-3.6" cy="-6" r="0.45" fill="#1a1b26" opacity="0.55"/>
+      <circle cx="-1.8" cy="-6" r="0.45" fill="#1a1b26" opacity="0.55"/>
+      <circle cx="0"    cy="-6" r="0.45" fill="#1a1b26" opacity="0.55"/>
+      <circle cx="1.8"  cy="-6" r="0.45" fill="#1a1b26" opacity="0.55"/>
+      <circle cx="3.6"  cy="-6" r="0.45" fill="#1a1b26" opacity="0.55"/>
+      <path d="M-4 -3.5 l0.7 0.7 l1.3 -1.5" fill="none" stroke="#10b981" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="-1.6" y1="-3.5" x2="3.2"  y2="-3.5" stroke="#7c5cfc" stroke-width="0.5"  opacity="0.5"/>
+      <line x1="-4"   y1="-0.7" x2="-0.6" y2="-0.7" stroke="#7c5cfc" stroke-width="0.55" opacity="0.85"/>
+      <line x1="-4"   y1="2"    x2="3"    y2="2"    stroke="#7c5cfc" stroke-width="0.5"  opacity="0.4"/>
+      <line x1="-4"   y1="4.5"  x2="2.2"  y2="4.5"  stroke="#7c5cfc" stroke-width="0.5"  opacity="0.3"/>
+    </g>
+
+    <!-- Ghost silhouette — shifted −3.3 X -->
+    <g transform="translate(-3.3 0)">
+      <path d="M7.97 16.376c-1.644 3.642 1.86 4.556 4.443 2.424.76 2.39 3.608.607 4.631-1.247 2.251-4.084 1.342-8.249 1.108-9.108-1.6-5.859-9.6-5.869-10.976.03-.323 1.033-.328 2.206-.507 3.423-.09.617-.16 1.009-.393 1.655-.139.373-.323.7-.62 1.257-.458.865-.264 2.53 2.101 1.665l.224-.1h-.01l-.001.001z" fill="#ffffff"/>
+      <path d="M12.722 10.985c-.656 0-.755-.785-.755-1.252 0-.423.074-.756.218-.97a.61.61 0 01.537-.283c.229 0 .428.095.567.289.159.218.243.55.243.964 0 .785-.303 1.252-.805 1.252h-.005z" fill="#000000"/>
+      <path d="M15.425 10.985c-.656 0-.755-.785-.755-1.252 0-.423.074-.756.219-.97a.61.61 0 01.536-.283c.229 0 .428.095.567.289.159.218.243.55.243.964 0 .785-.303 1.252-.805 1.252h-.005z" fill="#000000"/>
+    </g>
+
+    <!-- Pencil — in front of ghost -->
+    <g transform="translate(4.8 0.2)">
+      <g transform="translate(7.1 13.1) rotate(-65) scale(0.72)">
+        <rect x="-1.5" y="-8.2" width="3" height="14.8" rx="0.7" fill="#000" opacity="0.18"/>
+        <rect x="-1.5" y="-8"   width="3" height="2"    rx="0.7" fill="#ef4444"/>
+        <rect x="-1.5" y="-6"   width="3" height="1"           fill="#9ca3af"/>
+        <rect x="-1.5" y="-5"   width="3" height="9"           fill="#fbbf24"/>
+        <rect x="-1.5" y="-5"   width="1" height="9"           fill="#fde68a" opacity="0.7"/>
+        <rect x="0.6"  y="-5"   width="0.9" height="9"         fill="#1a1b26" opacity="0.18"/>
+        <polygon points="-1.5,4 1.5,4 0,6.5" fill="#fde68a"/>
+        <polygon points="0,4 1.5,4 0,6.5"    fill="#fbbf24" opacity="0.4"/>
+        <polygon points="-0.6,5.4 0.6,5.4 0,6.5" fill="#1a1b26"/>
+      </g>
+      <!-- Writing-motion scribble -->
+      <line x1="10.9" y1="15.0" x2="11.7" y2="15.0" stroke="#7c5cfc" stroke-width="0.45" stroke-linecap="round" opacity="0.6"/>
+      <line x1="10.8" y1="15.6" x2="11.2" y2="15.6" stroke="#7c5cfc" stroke-width="0.4"  stroke-linecap="round" opacity="0.4"/>
+    </g>
+
+    <!-- Sparkles -->
+    <path d="M4.5 5 L5 6.4 L6.4 6.9 L5 7.4 L4.5 8.8 L4 7.4 L2.6 6.9 L4 6.4 Z" fill="#b4a5fd" opacity="0.9"/>
+    <circle cx="20"   cy="5.2" r="0.6" fill="#b4a5fd" opacity="0.8"/>
+    <circle cx="20.8" cy="6.8" r="0.4" fill="#b4a5fd" opacity="0.55"/>
+  </g>
+</svg>

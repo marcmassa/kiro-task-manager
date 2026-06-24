@@ -757,9 +757,10 @@ export async function fetchWorkspaceFile(
   id: number,
   filePath: string,
 ): Promise<FileContentResponse> {
-  return request<FileContentResponse>(
-    `${BASE_URL}/workspaces/${id}/files/${encodeURIComponent(filePath)}`,
-  );
+  // Encode each segment individually so slashes remain real path separators
+  // and Elysia's wildcard route (*) captures the full multi-level path correctly.
+  const encoded = filePath.split("/").map(encodeURIComponent).join("/");
+  return request<FileContentResponse>(`${BASE_URL}/workspaces/${id}/files/${encoded}`);
 }
 
 /** PUT /api/workspaces/:id/files/*path — escribe contenido en un fichero del workspace. */
@@ -768,9 +769,22 @@ export async function saveWorkspaceFile(
   filePath: string,
   content: string,
 ): Promise<{ ok: boolean }> {
-  return request(`${BASE_URL}/workspaces/${id}/files/${encodeURIComponent(filePath)}`, {
+  const encoded = filePath.split("/").map(encodeURIComponent).join("/");
+  return request(`${BASE_URL}/workspaces/${id}/files/${encoded}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
+  });
+}
+
+/** POST /api/workspaces/:id/mkdir — crea un directorio vacío en el workspace. */
+export async function createWorkspaceDir(
+  id: number,
+  dirPath: string,
+): Promise<{ ok: boolean; path: string }> {
+  return request(`${BASE_URL}/workspaces/${id}/mkdir`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: dirPath }),
   });
 }

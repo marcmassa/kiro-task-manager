@@ -48,24 +48,35 @@ export function ChangesLogPanel({ workspaceId, onFileClick }: ChangesLogPanelPro
   const [changes, setChanges] = useState<FileChange[]>([]);
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mountedRef = useRef(false);
 
   async function loadChanges() {
     try {
       const data = await fetchWorkspaceChanges(50, workspaceId);
+      if (!mountedRef.current) return;
+      // React's prepareForCommit reads window.getSelection().anchorNode.nodeType,
+      // but CodeMirror's contenteditable leaves anchorNode null → crash.
+      // CodeMirror stores selection in EditorState and restores it after React
+      // commits, so removing browser ranges here is safe and imperceptible.
+      if (document.activeElement?.closest(".cm-editor")) {
+        window.getSelection()?.removeAllRanges();
+      }
       setChanges(data);
     } catch {
       // Silently fail — non-critical panel
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }
 
   useEffect(() => {
+    mountedRef.current = true;
     setChanges([]);
     setLoading(true);
-    loadChanges();
-    intervalRef.current = setInterval(loadChanges, 5000);
+    void loadChanges();
+    intervalRef.current = setInterval(() => { void loadChanges(); }, 5000);
     return () => {
+      mountedRef.current = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [workspaceId]);

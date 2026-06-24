@@ -278,7 +278,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-600 flex">
+    <div className="h-full bg-surface-600 flex">
       {/* FEAT-012: SDD phase transition animation */}
       <KiroColumnTransition currentPhase={currentSddPhase} />
       {/* Sidebar — solo íconos de navegación */}
@@ -338,7 +338,7 @@ export default function App() {
       </aside>
 
       {/* Main content area */}
-      <div className="flex-1 ml-[72px]">
+      <div className="flex-1 ml-[72px] h-full overflow-y-auto">
         {currentPage === "home" && (
           <>
             {error && tasks.length > 0 && (
@@ -432,8 +432,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* Celebration: all tasks completed */}
-            {tasks.length > 0 && todoTasks.length === 0 && inProgressTasks.length === 0 && (
+            {/* Celebration: all tasks completed — only when every task is in done,
+                not just when standard columns are empty (custom columns hold tasks too) */}
+            {tasks.length > 0 && doneTasks.length === tasks.length && (
               <div className="flex flex-col items-center gap-3 py-6">
                 <KiroIllustration mood="celebrando" size={100} />
                 <p className="text-sm text-success-400 font-medium">

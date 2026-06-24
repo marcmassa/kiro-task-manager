@@ -5,6 +5,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 
 @layer base {
+  /* Anchor the document to the viewport so every h-full chain resolves correctly.
+     Each page manages its own scroll via overflow-y-auto containers. */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
     @apply antialiased text-gray-200 bg-surface-600 font-sans;
   }

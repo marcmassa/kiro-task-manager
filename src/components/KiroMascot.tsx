@@ -114,7 +114,7 @@ export function KiroBase({
  */
 export function NotebookLayer() {
   return (
-    <g transform="translate(17.6 11.5) rotate(20)">
+    <g transform="translate(15.9 12.5) rotate(35)">
       {/* Shadow */}
       <rect x="-5.3" y="-5.7" width="11" height="13" rx="1" fill="#000" opacity="0.2" />
       {/* Page */}
@@ -181,13 +181,12 @@ export function NotebookLayer() {
 export function NotebookWritingLayers() {
   return (
     <>
-      {/* Pencil + hand + writing cue are grouped and shifted to follow the
-          notebook (which lives in NotebookLayer). Lowered so the pencil stays
-          below Kiro's eyes and writes on a lower notebook line. */}
-      <g transform="translate(6.3 -2.8)">
-        {/* Pencil ON TOP — smaller, mirrored tilt: eraser up-LEFT, tip pointing
-          down-right onto the active line. Scaled down to read as a smaller pencil. */}
-        <g transform="translate(8.3 12.31) rotate(-35) scale(0.72)">
+      {/* Pencil + writing cue are grouped and shifted to follow the notebook
+          (which lives in NotebookLayer). Positioned so the body sits below
+          Kiro's eyes and the tip writes on the notebook's lower area. */}
+      <g transform="translate(4.8 0.2)">
+        {/* Pencil — eraser upper-left, tip pointing lower-right onto the page. */}
+        <g transform="translate(7.1 13.1) rotate(-65) scale(0.72)">
           {/* Shadow */}
           <rect x="-1.5" y="-8.2" width="3" height="14.8" rx="0.7" fill="#000" opacity="0.18" />
           {/* Eraser */}
@@ -209,35 +208,23 @@ export function NotebookWritingLayers() {
           <polygon points="-0.6,5.4 0.6,5.4 0,6.5" fill="#1a1b26" />
         </g>
 
-        {/* Hand gripping the pencil — drawn ON TOP of the pencil body so it reads
-          as a fist wrapped around it. Same white as the ghost. */}
-        <circle cx="8.92" cy="13.19" r="1.45" fill="#ffffff" />
-        {/* Soft shading on the underside of the hand for a little depth */}
-        <path
-          d="M7.82 13.89 a1.45 1.45 0 0 0 2.2 0"
-          fill="none"
-          stroke="#1a1b26"
-          strokeWidth="0.3"
-          strokeLinecap="round"
-          opacity="0.18"
-        />
-
-        {/* Writing-motion cue — tiny scribble strokes just under the pencil tip */}
+        {/* Writing-motion cue — tiny scribble strokes just past the pencil tip.
+            Tip world position ≈ (16.1, 15.3); in parent-local space ≈ (11.3, 15.1) */}
         <line
-          x1="10.2"
-          y1="16.1"
-          x2="10.9"
-          y2="16.1"
+          x1="10.9"
+          y1="15.0"
+          x2="11.7"
+          y2="15.0"
           stroke="#7c5cfc"
           strokeWidth="0.45"
           strokeLinecap="round"
           opacity="0.6"
         />
         <line
-          x1="10.1"
-          y1="16.7"
-          x2="10.5"
-          y2="16.7"
+          x1="10.8"
+          y1="15.6"
+          x2="11.2"
+          y2="15.6"
           stroke="#7c5cfc"
           strokeWidth="0.4"
           strokeLinecap="round"

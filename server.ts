@@ -171,6 +171,8 @@ const app = new Elysia()
   // Serve static files from public directory
   .get("/styles.css", () => Bun.file(path.join(PUBLIC_DIR, "styles.css")))
   .get("/dist/index.js", () => Bun.file(path.join(PUBLIC_DIR, "dist/index.js")))
+  .get("/favicon.svg", () => new Response(Bun.file(path.join(PUBLIC_DIR, "favicon.svg")), { headers: { "Content-Type": "image/svg+xml" } }))
+  .get("/banner.svg", () => new Response(Bun.file(path.join(PUBLIC_DIR, "banner.svg")), { headers: { "Content-Type": "image/svg+xml" } }))
 
   // Get all tasks with related data (Fase 9: filter by workspace_id)
   .get("/api/tasks", ({ query }) => {
@@ -1478,8 +1480,9 @@ const app = new Elysia()
       set.status = 422;
       return { error: "Workspace sin directorio" };
     }
-    // Extract the file path from the URL — Elysia puts the wildcard in params["*"]
-    const filePath = (params as any)["*"];
+    // Extract the file path from the URL — Elysia puts the wildcard in params["*"].
+    // The client sends encodeURIComponent(path) so slashes arrive as %2F; decode first.
+    const filePath = decodeURIComponent((params as any)["*"] ?? "");
     if (!filePath) {
       set.status = 422;
       return { error: "Se requiere un path de fichero" };
@@ -1531,7 +1534,7 @@ const app = new Elysia()
       set.status = 400;
       return { error: "Se requiere el campo 'content'" };
     }
-    const filePath = (params as any)["*"];
+    const filePath = decodeURIComponent((params as any)["*"] ?? "");
     if (!filePath) {
       set.status = 422;
       return { error: "Se requiere un path de fichero" };
@@ -1547,6 +1550,19 @@ const app = new Elysia()
     }
     await Bun.write(resolved, content);
     return { ok: true, path: filePath, size: Buffer.byteLength(content, "utf-8") };
+  })
+
+  .post("/api/workspaces/:id/mkdir", ({ params, body, set }) => {
+    const ws = db.query("SELECT * FROM workspaces WHERE id = ?").get(Number(params.id)) as any;
+    if (!ws) { set.status = 404; return { error: "Workspace no encontrado" }; }
+    if (!ws.repo_path) { set.status = 422; return { error: "Workspace sin directorio" }; }
+    const { path: dirPath } = body as { path?: string };
+    if (!dirPath) { set.status = 400; return { error: "Se requiere el campo 'path'" }; }
+    const resolved = resolveInSandbox(ws.repo_path, dirPath);
+    if (!resolved) { set.status = 422; return { error: "Ruta inválida o fuera del directorio de trabajo" }; }
+    if (existsSync(resolved)) { set.status = 409; return { error: "La carpeta ya existe" }; }
+    mkdirSync(resolved, { recursive: true });
+    return { ok: true, path: dirPath };
   })
 
   .post("/api/workspaces/:id/upload", async ({ params, query, body, set }) => {

@@ -37,7 +37,7 @@
     <!-- Clipped layers -->
     <g clip-path="url(#kiro-clip-banner)">
       <!-- Notebook — behind ghost -->
-      <g transform="translate(17.6 11.5) rotate(20)">
+      <g transform="translate(15.9 12.5) rotate(35)">
         <rect x="-5.3" y="-5.7" width="11" height="13" rx="1" fill="#000" opacity="0.2"/>
         <rect x="-5.5" y="-6" width="11" height="13" rx="1" fill="#ffffff" stroke="#5733e0" stroke-width="0.4"/>
         <circle cx="-3.6" cy="-6" r="0.45" fill="#1a1b26" opacity="0.55"/>
@@ -59,9 +59,9 @@
         <path d="M15.425 10.985c-.656 0-.755-.785-.755-1.252 0-.423.074-.756.219-.97a.61.61 0 01.536-.283c.229 0 .428.095.567.289.159.218.243.55.243.964 0 .785-.303 1.252-.805 1.252h-.005z" fill="#000000"/>
       </g>
 
-      <!-- Pencil + hand -->
-      <g transform="translate(6.3 -2.8)">
-        <g transform="translate(8.3 12.31) rotate(-35) scale(0.72)">
+      <!-- Pencil -->
+      <g transform="translate(4.8 0.2)">
+        <g transform="translate(7.1 13.1) rotate(-65) scale(0.72)">
           <rect x="-1.5" y="-8.2" width="3" height="14.8" rx="0.7" fill="#000" opacity="0.18"/>
           <rect x="-1.5" y="-8" width="3" height="2" rx="0.7" fill="#ef4444"/>
           <rect x="-1.5" y="-6" width="3" height="1" fill="#9ca3af"/>
@@ -70,7 +70,6 @@
           <polygon points="-1.5,4 1.5,4 0,6.5" fill="#fde68a"/>
           <polygon points="-0.6,5.4 0.6,5.4 0,6.5" fill="#1a1b26"/>
         </g>
-        <circle cx="8.92" cy="13.19" r="1.45" fill="#ffffff"/>
       </g>
 
       <!-- Sparkles -->
